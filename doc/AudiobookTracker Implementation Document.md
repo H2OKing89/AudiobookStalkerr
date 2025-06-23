@@ -1,82 +1,70 @@
-# **AudioStacker Implementation Document**
+# AudioStacker **Implementation Document**
 
 ---
 
-## **I. Overview & Goals**
+## I. Overview & Goals
 
-**Purpose:**
-Automate searching for, tracking, and notifying about new audiobook releases from Audible (or other sources), with efficient caching and notification control, all in a maintainable, modular, and future‑proof way.
+**Purpose**
+Automate the discovery, tracking, and notification of new audiobook releases on Audible (or other sources). Provide efficient caching and rate‑limited API access in a maintainable, modular, and future‑proof code‑base.
 
-**Primary Goals:**
+**Primary goals**
 
-* Define and monitor a dynamic list of wanted audiobooks (by series/author/title/publisher).
-* Periodically search Audible’s API for new releases.
-* Cache results to avoid duplicate API hits and notifications.
-* Notify users (Pushover, Discord, etc.) when new matches are found.
-* Make it easy to expand to new search sources or notification methods.
+1. Watch a dynamic list of audiobooks (by series, author, title, publisher).
+2. Query Audible daily for new or updated items.
+3. Cache results to avoid duplicate API calls and duplicate notifications.
+4. Send daily digests via Pushover, Discord, and/or e‑mail.
+5. Remain easily extensible for new data sources and notification channels.
 
-**Big picture:**
-If Sonarr and an anime waifu had a baby for audiobooks, this would be it.
-
----
-
-## **II. Core Logic / Workflow (TL;DR)**
-
-1. **Load** config and audiobook search list (YAML/JSON).
-2. **Initialize** database/cache (SQLite).
-3. **Iterate** through each search entry (author / title / publisher / series):
-
-   * Query Audible’s API with smart params.
-   * Parse results, filtering out podcasts, duplicates, non‑matches, and back‑catalog older than *X* days (configurable).
-   * For every candidate:
-
-     * If unseen or updated → insert/update DB.
-     * If not yet notified → send notification, mark as notified.
-4. **Log** every significant action/error.
-5. \*\*Trigger **once per day**, then exit. Schedule via cron, Home Assistant automation, or systemd timer – no long‑running daemon needed.).
+> *If Sonarr and an anime waifu had a baby for audiobooks, this would be it.*
 
 ---
 
-## **III. Project Breakdown (MVP)**
+## II. Daily Workflow — TL;DR
 
-### **A. Config / Data**
+1. **Load** `config.yaml` and `audiobooks.yaml` (wanted list).
+2. **Init** SQLite cache (create tables if missing).
+3. **Loop** through each watch‑item:
+      • Query Audible (auto‑paginate ≤50 results/page).
+      • Filter out podcasts, duplicates, and releases older than *X* days (configurable).
+      • For every candidate: insert/update DB → send notification if not yet flagged.
+4. **Log** all actions & errors (JSON to `logs/`).
+5. **Exit.** Run once per day via cron / systemd / Home Assistant.
 
-`config/config.yaml` — runtime settings & secrets
-`config/audiobooks.yaml` — watch‑list of books/series/authors/publishers
+---
 
-Key settings:
+## III. Project Breakdown (MVP)
 
-* `notification_suppression_days` (default **7**, cap 30) – must be **≤** `cache_cleanup_days`.
+\### A. Config & Data
 
-* `cache_cleanup_days` (default **90**, cap 365) – must be **≥** `notification_suppression_days`.
+* **`config/config.yaml`** — runtime settings & secrets
+* **`config/audiobooks.yaml`** — watch‑list of titles/series/authors
 
-* Code enforcement: if user sets `notification_suppression_days` higher than `cache_cleanup_days`, AudioStacker auto‑bumps `cache_cleanup_days` to `suppression + 1` and logs a warning.
+| Setting                         | Default | Cap      | Rule                                      |
+| ------------------------------- | ------- | -------- | ----------------------------------------- |
+| `notification_suppression_days` | 7 days  | 30 days  | Must be ≤ `cache_cleanup_days`            |
+| `cache_cleanup_days`            | 90 days | 365 days | Must be ≥ `notification_suppression_days` |
 
-* *Hard‑coded* API rate‑limit constants per endpoint (token‑bucket / decorator).
+If a user mis‑configures the two values, AudioStacker automatically bumps `cache_cleanup_days` to `suppression + 1` and logs a warning.
 
-* `notification_suppression_days` (default 10, cap 30).
+* **Rate‑limits:** hard‑coded constants per endpoint; enforced via token‑bucket decorator.
 
-* `cache_cleanup_days` (default 10, cap 30).
-
-* *Hard‑coded* API rate‑limit constants per endpoint (token‑bucket / decorator).
-
-### **B. Core Modules**
+\### B. Core Modules
 
 ```
 src/audiostacker/
- ├── main.py          # orchestration / CLI
- ├── audible.py       # API client & normalizer
- ├── database.py      # SQLite helpers & cache layer
- ├── utils.py         # misc helpers (dates, logging, rate‑limit)
+ ├── main.py          # orchestrator / CLI
+ ├── audible.py       # API client & normaliser
+ ├── database.py      # SQLite helpers & cache
+ ├── utils.py         # logging, rate‑limit, misc helpers
  └── notify/
       ├── __init__.py
       ├── notify.py   # dispatcher
       └── pushover.py # Pushover channel
 ```
 
-*(Future: discord.py, email, gotify, etc.)*
+*(Future: discord.py, email.py, gotify.py, etc.)*
 
-### **C. Database Schema**
+\### C. Database Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS audiobooks (
@@ -91,259 +79,163 @@ CREATE TABLE IF NOT EXISTS audiobooks (
     last_checked   TIMESTAMP,
     notified       INTEGER DEFAULT 0 CHECK (notified IN (0,1))
 );
--- Indexes for speed
-CREATE INDEX IF NOT EXISTS idx_author   ON audiobooks(author);
-CREATE INDEX IF NOT EXISTS idx_series   ON audiobooks(series, series_number);
-CREATE INDEX IF NOT EXISTS idx_release  ON audiobooks(release_date);
--- Indexes for speed
+
 CREATE INDEX IF NOT EXISTS idx_author   ON audiobooks(author);
 CREATE INDEX IF NOT EXISTS idx_series   ON audiobooks(series, series_number);
 CREATE INDEX IF NOT EXISTS idx_release  ON audiobooks(release_date);
 ```
 
-### **D. Core Features (MVP)**
+\### D. Core Features
 
-* **Efficient search:** handle 50‑result API limit, auto‑paginate.
-* **Filtering:** drop podcasts via `content_type` / `content_delivery_type`.
-* **Deduplication & cache:** avoid repeat API hits & notifications.
-* **Notification:** Pushover with direct link; *dry‑run* mode prints only.
-* **Config validation:** fail fast on malformed YAML.
-* **Structured logging:** to `logs/`, JSON or key‑value.
-
----
-
-## **IV. Step‑by‑Step Build Plan**
-
-\*\*Step 1 – Skeleton & DB
-∙ Create repo layout.
-∙ Implement `database.py` (create table + upsert).
-∙ Add sample `audiobooks.yaml` (≥3 entries).
-∙ Commit a `.editorconfig` and enable Black/ruff config for consistent style.
-
-Step 2 – Audible Client
-∙ Build `audible.py` (query & normalize).
-∙ Add helpers in `utils.py` (rate‑limit decorator, date utils).
-∙ Unit‑test with canned JSON.
-∙ **Mock API 429/Rate‑Limit headers** to verify back‑off logic.
-
-**Step 3 – Main Orchestrator**
-∙ Load configs.
-∙ Loop watch‑list → query → filter → cache → notify.
-∙ Respect dry‑run & log levels.
-
-**Step 4 – Notification Layer**
-∙ Implement `notify/pushover.py`.
-∙ Wire `notify.py` dispatcher.
-∙ End‑to‑end test.
-
-**Step 5 – Logging & CLI**
-∙ Add structured logging, audit log.
-∙ CLI flags: `--dry-run`, `--debug`, `--once`.
-
-**Step 6 – Hardening & Docs**
-∙ Edge‑case tests (multi‑author, API 429, etc.).
-∙ Write README + config examples + API reference.
-
-**Step 7 (Stretch)**
-∙ Add Discord/email channels.
-∙ Tag‑based watch‑lists, fuzzy matching, web UI.
+* Efficient search (auto‑paginate, 50‑item API cap).
+* Filters: skip podcasts via `content_type` / `content_delivery_type`.
+* Deduplication: DB cache + `notification_suppression_days`.
+* Notifications: Pushover daily digest (dry‑run prints only).
+* Config validation & structured logging.
 
 ---
 
-## **V. Future Candy**
+## IV. Step‑by‑Step Build Plan
 
-* Flask/FastAPI dashboard (add/remove watch‑items).
-* Auto‑download integration (qBittorrent, SABnzbd).
-* Goodreads/Kagi metadata enrichment.
-* Async DB (aiosqlite) for 1k+ books.
+1. **Skeleton & DB**
+      • Repo layout & `.editorconfig` + Black / ruff.
+      • Implement `database.py`; create DB; add sample `audiobooks.yaml`.
+2. **Audible client**
+      • Build `audible.py`; helpers in `utils.py`.
+      • Unit‑test with canned JSON + mocked 429 headers.
+3. **Main orchestrator** (`main.py`)
+      • Load configs → query → filter → cache → notify (honour `--dry-run`).
+4. **Notification layer**
+      • Implement Pushover, wire dispatcher, E2E test.
+5. **Logging & CLI**
+      • JSON logs, audit log; CLI flags `--debug` `--once`.
+6. **Hardening & docs** – edge‑case tests, README, examples.
+7. *(Stretch)* Discord/email channels, fuzzy matching, web UI.
 
 ---
 
-## **Notification Format & Batching**
+## V. Future Enhancements
 
-| Field                 | Example (Pushover)                               | Purpose                             |
-| --------------------- | ------------------------------------------------ | ----------------------------------- |
-| **Title**             | `Mushoku Tensei Vol 26`                          | Quick glance in phone‑banner        |
-| **Message body**      | \`Author: Rifujin na Magonote                    |                                     |
-| Narrator: Cliff Kirk  |                                                  |                                     |
-| Release: 2025‑06‑12\` | Core metadata                                    |                                     |
-| **URL**               | `https://www.audible.com/pd/<ASIN>` (first item) | Quick jump – no local server needed |
-| **URL Title**         | `Open on Audible`                                | Friendly label                      |
-| **Priority**          | `-1` (batch) / `0` (immediate)                   | Allow user throttle                 |
+* Flask/FastAPI dashboard for watch‑list edits.
+* Auto‑download hooks (qBittorrent, SABnzbd).
+* Metadata enrichment via Goodreads/Kagi.
+* Async DB (`aiosqlite`) for very large watch‑lists.
 
-### Batching Rules
+---
 
-* \*\***Daily digest**: collect all new books in the run and send a single notification.
-* \*\*If more than 20 items, send the first 20 lines then “...and X more” (no extra URL needed).
-* \*\*One digest per daily run keeps within notification limits – no intra‑day batching necessary.
+## Notification Formats
 
-### Example Pushover Payload (JSON)
+\### Daily Pushover Digest
 
-````json
+| Field     | Example                                                                  | Purpose              |
+| --------- | ------------------------------------------------------------------------ | -------------------- |
+| Title     | `Mushoku Tensei Vol 26`                                                  | Quick phone banner   |
+| Body      | `Author: Rifujin na Magonote\nNarrator: Cliff Kirk\nRelease: 2025‑06‑12` | Core metadata        |
+| URL       | `https://www.audible.com/pd/<ASIN>`                                      | One‑tap Audible link |
+| URL Title | `Open on Audible`                                                        | Friendly label       |
+| Priority  | `-1` (batch) / `0` (immediate)                                           | Throttle control     |
+
+*One notification per day.* If >20 matches, include first 20 lines then “…and X more”.
+
+\### Example Pushover JSON
+
+```json
 {
   "token": "<APP_TOKEN>",
   "user": "<USER_KEY>",
   "title": "3 new audiobooks matched!",
-  "message": "Mushoku Tensei Vol 26 — 2025‑06‑12
-Reincarnated as a Sword Vol 11 — 2025‑06‑20
-Classroom of the Elite Y2 Vol 9.5 — 2025‑05‑08",
-  "url": "https://www.audible.com/pd/B0DK2GS3LZ",  // first book’s ASIN
+  "message": "Mushoku Tensei Vol 26 — 2025‑06‑12\nReincarnated as a Sword Vol 11 — 2025‑06‑20\nClassroom of the Elite Y2 Vol 9.5 — 2025‑05‑08",
+  "url": "https://www.audible.com/pd/B0DK2GS3LZ",
   "url_title": "Open on Audible",
   "priority": 0
 }
-```json
+```
 
-````
-
-**Email Digest Example (HTML)**
+\### HTML Email Digest
 
 ```html
 <h2>AudioStacker Daily Digest – 2025‑06‑21</h2>
 <ul>
-  <li>
-    <strong>Mushoku Tensei Vol 26</strong> – 2025‑06‑12<br/>
-    Author: Rifujin na Magonote • Narrator: Cliff Kirk<br/>
-    <a href="https://www.audible.com/pd/B0DK2GS3LZ">Open on Audible</a>
-  </li>
-  <li>
-    <strong>Reincarnated as a Sword Vol 11</strong> – 2025‑06‑20<br/>
-    Author: Yuu Tanaka • Narrator: Josh Hurley<br/>
-    <a href="https://www.audible.com/pd/B0FDVLJ8TN">Open on Audible</a>
-  </li>
-  <li>
-    …and 8 more
-  </li>
+  <li><strong>Mushoku Tensei Vol 26</strong> – 2025‑06‑12<br/>
+      Author: Rifujin na Magonote • Narrator: Cliff Kirk<br/>
+      <a href="https://www.audible.com/pd/B0DK2GS3LZ">Open on Audible</a></li>
+  <li><strong>Reincarnated as a Sword Vol 11</strong> – 2025‑06‑20<br/>
+      Author: Yuu Tanaka • Narrator: Josh Hurley<br/>
+      <a href="https://www.audible.com/pd/B0FDVLJ8TN">Open on Audible</a></li>
+  <li>…and 8 more</li>
 </ul>
 ```
 
-* Subject line: **“AudioStacker – 10 new audiobooks found (2025‑06‑21)”**
-* Body: HTML list with title (link), author, narrator, release date.
-* If >20 items, truncate list and add “…and X more” with a CSV attachment of full results.
+*Subject:* **AudioStacker – 10 new audiobooks (2025‑06‑21)**
 
-### Discord Embed Digest
+\### Discord Embed Digest
+Discord limits: 1 embed ≈ 6000 chars, 256‑char title, 4096‑char description, 25 fields, max 10 embeds per message.
 
-**Discord limits to 1 embed ≈ 6000 chars – max 256‑char title, 4096‑char description, 25 fields (each 1024) and 10 embeds per message.**
-
-Strategy:
-
-* Build one embed titled `AudioStacker – Daily Digest (YYYY‑MM‑DD)`.
-* Put first **10–12** books as individual *fields* (Name = Title, Value = `Author •  Release   [Open Audible](URL)`).
-* If >12 items, send multiple embeds (but never >10 embeds in one message) – or fall back to "…and X more" in final field.
-
-```json
-{
-  "embeds": [
-    {
-      "title": "AudioStacker – Daily Digest (2025‑06‑21)",
-      "description": "10 new audiobooks matched!",
-      "color": 7506394,
-      "fields": [
-        {
-          "name": "Mushoku Tensei Vol 26 (2025‑06‑12)",
-          "value": "Rifujin na Magonote • Cliff Kirk
-[Open Audible](https://www.audible.com/pd/B0DK2GS3LZ)",
-          "inline": false
-        },
-        {
-          "name": "Reincarnated as a Sword Vol 11 (2025‑06‑20)",
-          "value": "Yuu Tanaka • Josh Hurley
-[Open Audible](https://www.audible.com/pd/B0FDVLJ8TN)",
-          "inline": false
-        }
-        // up to 25 fields total
-      ]
-    }
-  ]
-}
-```
-
-*Embed color optional. If more than 25 books, create additional embeds or truncate with a final field:*
-`{"name": "…and 8 more", "value": "See Email digest for full list", "inline": false}`
+* First embed title: *AudioStacker – Daily Digest (YYYY‑MM‑DD)*.
+* Each book = a field (Name = Title & date, Value = `Author • Narrator • [Open Audible](URL)`).
+* If >25 books, send second embed or append `…and X more` field.
 
 ---
 
-## **VI. Error Handling & Resilience**
+## VI. Error Handling & Resilience
 
-* **API:** retry w/ exponential back‑off, specifically trap HTTP 429.
-* **Notifications:** queue & retry, dedupe on repeated fails.
-* **Robust loop:** catch‑all around each watch item so one failure ≠ stop‑the‑world.
-
----
-
-## **VII. Indexing & Maintenance**
-
-* Index `asin`, `author`, `series`, `release_date`.
-* Schedule `VACUUM` + prune old rows after `cache_cleanup_days`.
-* Warn if DB > configurable size.
+* **API** – retry w/ exponential back‑off; trap HTTP 429.
+* **Notifications** – queue & retry; dedupe.
+* **Main loop** – catch‑all so one failure doesn’t stop execution.
 
 ---
 
-## **VIII. Testing & CI/CD**
+## VII. Indexing & Maintenance
 
-* Pytest unit + integration suites.
-* GitHub Actions: lint (ruff), tests, packaging.
-
----
-
-## **IX. Logging & Observability**
-
-* JSON logs → `logs/audiostacker.log`.
-* Audit log entry for every notification: ASIN, timestamp, channel.
+* `VACUUM` + prune rows older than `cache_cleanup_days` & notified = 1.
+* Warn if database exceeds threshold size.
 
 ---
 
-## \*\*X. Security Notes
+## VIII. Testing & CI/CD
 
-* Store secrets via env vars (`AUDIOSTACKER_PUSHOVER_TOKEN`, etc.).
-* **Mask secrets in logs** – never dump raw env values.
-* Sanitize all API inputs/outputs.
-* Optional: integrate with 1Password CLI / Vault for prod.
+* Pytest unit + integration; GitHub Actions for lint + tests.
 
 ---
 
-## **XI. Roles & Credits**
+## IX. Logging & Observability
 
-* **Quentin** – Chief architect, debugger, meme lord.
-* **ChatGPT** – Rubber‑duck, code generator, hype machine.
+* JSON logs → `logs/audiostacker.log`; separate audit log for notifications.
 
 ---
 
-## **XII. Next Immediate Tasks**
+## X. Security Notes
+
+* Secrets via env‑vars; never log raw secrets.
+* Sanitise all external data.
+* Optional: central secrets manager.
+
+---
+
+## XI. Roles & Credits
+
+* **Quentin** – chief architect, debugger, meme lord.
+* **ChatGPT** – rubber‑duck, code generator, hype machine.
+
+---
+
+## XII. Next Immediate Tasks
 
 1. Commit this doc (`doc/implementation.md`).
-2. Scaffold repo folders & `.gitignore` (include `logs/`, `.venv/`, `*.pyc`).
-3. Implement `database.py` → run unit test to create DB file.
-4. Hack in first Audible query with fake data to prove the loop.
+2. Scaffold repo + `.gitignore` (`logs/`, `.venv/`, `*.pyc`).
+3. Build `database.py`; run initial unit test.
+4. Prototype first Audible query with mock data.
 
-\*\*
+---
 
-## **XII. Logic Variations & Tunables (Ideas Parking‑Lot)**
+## XIII. Logic Variations & Tunables (Parking‑Lot)
 
-* **Scheduling**
+* **Scheduling:** hourly mode (`notification_suppression_hours`).
+* **Notification:** favourite‑author bypass; Friday‑digest.
+* **Cache:** Redis cluster; SHA‑1 diff for metadata edits.
+* **Storage:** Postgres w/ JSONB for analytics.
+* **Matching:** Levenshtein / language filtering.
+* **Automation Hooks:** downloader triggers, taser.
 
-  * Hourly run with `notification_suppression_hours` instead of daily.
-  * Cloud cron (GitHub Actions, cron‑hub) for server‑less triggers.
-* **Notification Logic**
-
-  * “Favorite author” bypass window.
-  * Weekend digest that aggregates Mon‑Fri.
-* **Cache Strategy**
-
-  * Redis backend for clustered deployments.
-  * SHA‑1 hash diff to detect metadata edits.
-* **Rate‑Limit Handling**
-
-  * Central job queue that sleeps after consecutive 429s.
-* **Storage Upgrades**
-
-  * PostgreSQL migration path, raw JSON BLOB column for analytics.
-* **Matching Algorithms**
-
-  * Levenshtein/Jaro‑Winkler fuzzy on titles; language filtering.
-* **Automation Hooks**
-
-  * Post‑match call to downloader or taser.
-
-*(Optional ideas for future sprints – not in MVP scope.)*
-
-Ship fast, ship often, iterate.\*\*
+> Ship fast, ship often, iterate.
+> *This document is a living artifact. Expect changes as we build and learn.*
