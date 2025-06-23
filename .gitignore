@@ -1,0 +1,13 @@
+logs/
+*.pyc
+__pycache__/
+.venv/
+config/*.secret.yaml
+.env
+audiobooks.yaml
+config.yaml
+*.db
+*.sqlite3
+*.sqlite
+*.log
+*.pid
