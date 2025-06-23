@@ -1,12 +1,3 @@
-Heck yeah, Quentin! Let’s **document this Audible scraping method**, including:
-
-* All the **relevant keys** you want to extract (for audiobooks)
-* The **filter logic** to keep junk out (especially podcasts and weird extras)
-* **API limitations** (like max 50 results per request)
-* Notes on **paging** and practical next steps
-
----
-
 # 📚 **Audible API: Audiobook Search & Filter Cheatsheet**
 
 ## **1. API Endpoint**
@@ -151,5 +142,4 @@ done
 
 ---
 
-**Anything you want to add, change, or automate from here?**
-This is already pro-level anime-fan data wrangling—if you need Python, YAML, or anything else, just say so and I’ll whip it up!
+
