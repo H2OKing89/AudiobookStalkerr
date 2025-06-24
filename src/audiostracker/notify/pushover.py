@@ -63,8 +63,7 @@ class PushoverNotifier:
                 if i == 0:
                     line = line[:remaining_length-4] + "..."
                     message_lines.append(line)
-                else:
-                    # Add "...and X more" if there are remaining items
+                else:                    # Add "...and X more" if there are remaining items
                     remaining_count = count - i
                     more_text = f"...and {remaining_count} more"
                     if len(more_text) <= remaining_length:
@@ -80,14 +79,13 @@ class PushoverNotifier:
         url = audiobooks[0].get('link', '') if audiobooks else ''
         
         return title, message, url
-    
-    def send_digest(self, audiobooks: List[Dict[str, Any]], ical_files: Optional[List[str]] = None) -> bool:
+
+    def send_digest(self, audiobooks: List[Dict[str, Any]]) -> bool:
         """
         Send a digest notification for multiple audiobooks
         
         Args:
             audiobooks: List of audiobook dictionaries
-            ical_files: Optional list of iCal file paths to attach
             
         Returns:
             bool: True if notification was sent successfully
@@ -107,8 +105,7 @@ class PushoverNotifier:
                 'priority': self.priority,
                 'sound': self.sound
             }
-            
-            # Add optional fields
+              # Add optional fields
             if url:
                 payload['url'] = url
                 payload['url_title'] = "Open on Audible"
@@ -116,38 +113,19 @@ class PushoverNotifier:
             if self.device:
                 payload['device'] = self.device
             
-            # Prepare files for attachment if provided
-            files = None
-            if ical_files and len(ical_files) > 0:
-                # Pushover supports one attachment per message, use the first iCal file
-                ical_file = ical_files[0]
-                if os.path.exists(ical_file):
-                    try:
-                        files = {'attachment': (os.path.basename(ical_file), open(ical_file, 'rb'), 'text/calendar')}
-                        logging.debug(f"Attaching iCal file: {ical_file}")
-                    except Exception as e:
-                        logging.warning(f"Failed to attach iCal file {ical_file}: {e}")
-                        files = None
-            
             logging.debug(f"Sending Pushover notification: {title}")
             
             response = requests.post(
                 self.PUSHOVER_API_URL,
                 data=payload,
-                files=files,
                 timeout=10
             )
-            
-            # Close file handle if opened
-            if files:
-                files['attachment'][1].close()
             
             response.raise_for_status()
             
             result = response.json()
             if result.get('status') == 1:
-                logging.info(f"Pushover notification sent successfully for {len(audiobooks)} audiobooks" + 
-                           (f" with iCal attachment" if files else ""))
+                logging.info(f"Pushover notification sent successfully for {len(audiobooks)} audiobooks")
                 return True
             else:
                 errors = result.get('errors', ['Unknown error'])

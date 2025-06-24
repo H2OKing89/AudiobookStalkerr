@@ -2,6 +2,9 @@ import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from ..utils import retry_with_exponential_backoff
@@ -132,8 +135,7 @@ Audible Link: https://www.audible.com/pd/{asin}
             html_part = MIMEText(html_content, 'html')
             msg.attach(text_part)
             msg.attach(html_part)
-            
-            # Send email
+              # Send email
             self._send_email(msg)
             
             logging.debug(f"Successfully sent email notification for: {title}")
@@ -142,9 +144,9 @@ Audible Link: https://www.audible.com/pd/{asin}
         except Exception as e:
             logging.error(f"Failed to send email notification: {e}")
             raise e
-    
+
     @retry_with_exponential_backoff(max_retries=3)
-    def send_digest(self, audiobooks: List[Dict[str, Any]]) -> bool:
+    def send_digest(self, audiobooks: List[Dict[str, Any]], ical_files: Optional[List[str]] = None) -> bool:
         """Send a digest notification for multiple audiobooks"""
         if not audiobooks:
             return True
@@ -180,12 +182,31 @@ Audible Link: https://www.audible.com/pd/{asin}
             </body>
             </html>
             """
-            
-            # Attach parts
+              # Attach parts
             text_part = MIMEText(text_content, 'plain')
             html_part = MIMEText(html_content, 'html')
             msg.attach(text_part)
             msg.attach(html_part)
+            
+            # Attach iCal files if provided
+            if ical_files:
+                for ical_file in ical_files:
+                    if os.path.exists(ical_file):
+                        try:
+                            with open(ical_file, 'rb') as f:
+                                attachment = MIMEBase('text', 'calendar')
+                                attachment.set_payload(f.read())
+                                encoders.encode_base64(attachment)
+                                attachment.add_header(
+                                    'Content-Disposition',
+                                    f'attachment; filename="{os.path.basename(ical_file)}"'
+                                )
+                                msg.attach(attachment)
+                                logging.debug(f"Attached iCal file: {ical_file}")
+                        except Exception as e:
+                            logging.warning(f"Failed to attach iCal file {ical_file}: {e}")
+                    else:
+                        logging.warning(f"iCal file not found: {ical_file}")
             
             # Send email
             self._send_email(msg)

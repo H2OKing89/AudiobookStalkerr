@@ -78,7 +78,6 @@ class DiscordNotifier:
                 headers={'Content-Type': 'application/json'},
                 timeout=30
             )
-            
             response.raise_for_status()
             logging.debug(f"Successfully sent Discord notification for: {audiobook.get('title', 'Unknown')}")
             return True
@@ -91,7 +90,7 @@ class DiscordNotifier:
             raise e
     
     @retry_with_exponential_backoff(max_retries=3)
-    def send_digest(self, audiobooks: List[Dict[str, Any]]) -> bool:
+    def send_digest(self, audiobooks: List[Dict[str, Any]], ical_files: Optional[List[str]] = None) -> bool:
         """Send a digest notification for multiple audiobooks"""
         if not audiobooks:
             return True
@@ -110,9 +109,15 @@ class DiscordNotifier:
                 else:
                     batch_info = ""
                 
+                content = f"📚 **New Audiobooks Found{batch_info}** - {len(batch)} book{'s' if len(batch) != 1 else ''}"
+                
+                # Add note about iCal files if present (Discord doesn't support file attachments via webhooks)
+                if ical_files:
+                    content += f"\n\n📅 **iCal files generated:** {len(ical_files)} file{'s' if len(ical_files) != 1 else ''} (available via email notifications)"
+                
                 payload = {
                     "username": self.username,
-                    "content": f"📚 **New Audiobooks Found{batch_info}** - {len(batch)} book{'s' if len(batch) != 1 else ''}",
+                    "content": content,
                     "embeds": embeds
                 }
                 

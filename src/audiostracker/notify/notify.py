@@ -62,7 +62,6 @@ class NotificationDispatcher:
         if not audiobooks:
             logging.debug(f"No audiobooks to notify for channel: {channel}")
             return True
-        
         if channel not in self.channels:
             logging.warning(f"Channel '{channel}' not available or not enabled")
             return False
@@ -70,20 +69,19 @@ class NotificationDispatcher:
         try:
             notifier = self.channels[channel]
             
-            # Check if the notifier supports iCal attachments (currently only Pushover)
-            if hasattr(notifier, 'send_digest'):
-                # Try to call with ical_files parameter
-                try:
-                    success = notifier.send_digest(audiobooks, ical_files)
-                except TypeError:
-                    # Fallback for notifiers that don't support ical_files parameter
-                    success = notifier.send_digest(audiobooks)
-            else:
+            # For Discord, pass ical_files to show note about availability
+            # For Email, pass ical_files to attach them
+            # For Pushover, don't pass ical_files (not supported)
+            if channel == 'discord':
+                success = notifier.send_digest(audiobooks, ical_files)
+            elif channel == 'email':
+                success = notifier.send_digest(audiobooks, ical_files)
+            else:  # pushover or other channels
                 success = notifier.send_digest(audiobooks)
             
             if success:
                 logging.info(f"Successfully sent notification to {channel} for {len(audiobooks)} audiobooks" +
-                           (f" with {len(ical_files)} iCal files" if ical_files else ""))
+                           (f" with {len(ical_files)} iCal files" if ical_files and channel == 'email' else ""))
             else:
                 logging.error(f"Failed to send notification to {channel}")
             
