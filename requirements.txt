@@ -3,6 +3,7 @@ PyYAML
 python-dotenv
 pytest
 pydantic
+pytz
 # For email notifications (standard library, but good to document)
 # smtplib - built-in
 # email.mime - built-in

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from .database import get_connection
 import uuid
+import pytz
 
 class ICalExporter:
     """iCalendar (.ics) export functionality for audiobook release dates"""
@@ -52,17 +53,30 @@ class ICalExporter:
         if asin:
             description += f"Audible Link: https://www.audible.com/pd/{asin}\\n"
         
-        # Parse release date
+        # Parse release date and set to midnight California time
+        ca_tz = pytz.timezone('America/Los_Angeles')
         try:
+            # Parse the release date
             release_dt = datetime.strptime(release_date, '%Y-%m-%d')
-            # Use the release date as an all-day event
-            dtstart = release_dt.strftime('%Y%m%d')
-            dtend = (release_dt + timedelta(days=1)).strftime('%Y%m%d')
+            # Set to midnight California time
+            ca_midnight = ca_tz.localize(release_dt.replace(hour=0, minute=0, second=0, microsecond=0))
+            # Convert to UTC for the iCal format
+            utc_start = ca_midnight.astimezone(pytz.UTC)
+            utc_end = utc_start + timedelta(hours=1)  # 1-hour event
+            
+            # Format timestamps for iCal (YYYYMMDDTHHMMSSZ format)
+            dtstart = utc_start.strftime('%Y%m%dT%H%M%SZ')
+            dtend = utc_end.strftime('%Y%m%dT%H%M%SZ')
+            
         except ValueError:
-            # If date parsing fails, use today
+            # If date parsing fails, use today at midnight California time
             today = datetime.now()
-            dtstart = today.strftime('%Y%m%d')
-            dtend = (today + timedelta(days=1)).strftime('%Y%m%d')
+            ca_midnight = ca_tz.localize(today.replace(hour=0, minute=0, second=0, microsecond=0))
+            utc_start = ca_midnight.astimezone(pytz.UTC)
+            utc_end = utc_start + timedelta(hours=1)
+            
+            dtstart = utc_start.strftime('%Y%m%dT%H%M%SZ')
+            dtend = utc_end.strftime('%Y%m%dT%H%M%SZ')
         
         # Generate unique ID
         uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@audiostacker"
@@ -73,20 +87,20 @@ class ICalExporter:
         # Format the event
         event = f"""BEGIN:VEVENT
 UID:{uid}
-DTSTART;VALUE=DATE:{dtstart}
-DTEND;VALUE=DATE:{dtend}
+DTSTART:{dtstart}
+DTEND:{dtend}
 DTSTAMP:{timestamp}
 SUMMARY:{event_title}
 DESCRIPTION:{description}
 CATEGORIES:Audiobooks,Entertainment
 STATUS:CONFIRMED
-TRANSP:TRANSPARENT
+TRANSP:OPAQUE
 END:VEVENT"""
         
         return event
     
     def _create_ical_header(self) -> str:
-        """Create the iCal file header"""
+        """Create the iCal file header with timezone support"""
         return """BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//AudioStacker//AudioStacker//EN
@@ -94,7 +108,24 @@ CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:AudioStacker - New Releases
 X-WR-CALDESC:New audiobook releases tracked by AudioStacker
-X-WR-TIMEZONE:UTC"""
+X-WR-TIMEZONE:America/Los_Angeles
+BEGIN:VTIMEZONE
+TZID:America/Los_Angeles
+BEGIN:DAYLIGHT
+DTSTART:20070311T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+TZNAME:PDT
+TZOFFSETFROM:-0800
+TZOFFSETTO:-0700
+END:DAYLIGHT
+BEGIN:STANDARD
+DTSTART:20071104T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+TZNAME:PST
+TZOFFSETFROM:-0700
+TZOFFSETTO:-0800
+END:STANDARD
+END:VTIMEZONE"""
     
     def _create_ical_footer(self) -> str:
         """Create the iCal file footer"""

@@ -1,5 +1,5 @@
 import logging
-from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging
+from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging, merge_env_config
 from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel
 from .audible import search_audible, set_audible_rate_limit, confidence
 from .notify.notify import create_dispatcher
@@ -17,6 +17,7 @@ def main():
     load_dotenv(ENV_PATH)
     
     config = load_yaml(CONFIG_PATH)
+    config = merge_env_config(config)  # Merge environment variables into config
     validate_config(config)
     setup_logging(config)
     set_audible_rate_limit(config.get('rate_limits', {}).get('audible_api_per_minute', 10))

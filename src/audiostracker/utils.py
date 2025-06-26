@@ -41,6 +41,35 @@ def load_env():
         raise ValueError("Missing Pushover user key or API token in .env")
     return user_key, api_token
 
+def merge_env_config(config):
+    """Merge environment variables into config for all notification channels"""
+    env_path = os.path.join(os.path.dirname(__file__), 'config', '.env')
+    load_dotenv(dotenv_path=env_path)
+    
+    # Pushover
+    if 'pushover' in config:
+        config['pushover']['user_key'] = os.getenv('PUSHOVER_USER_KEY', config['pushover'].get('user_key', ''))
+        config['pushover']['api_token'] = os.getenv('PUSHOVER_API_TOKEN', config['pushover'].get('api_token', ''))
+    
+    # Discord
+    if 'discord' in config:
+        config['discord']['webhook_url'] = os.getenv('DISCORD_WEBHOOK_URL', config['discord'].get('webhook_url', ''))
+    
+    # Email
+    if 'email' in config:
+        config['email']['from_email'] = os.getenv('EMAIL_FROM', config['email'].get('from_email', ''))
+        config['email']['username'] = os.getenv('EMAIL_USERNAME', config['email'].get('username', ''))
+        config['email']['password'] = os.getenv('EMAIL_PASSWORD', config['email'].get('password', ''))
+        
+        # Handle EMAIL_TO as comma-separated string
+        email_to = os.getenv('EMAIL_TO', '')
+        if email_to:
+            config['email']['to_emails'] = [email.strip() for email in email_to.split(',') if email.strip()]
+        elif not config['email'].get('to_emails'):
+            config['email']['to_emails'] = []
+    
+    return config
+
 # Load YAML config
 def load_yaml(path):
     with open(path, 'r', encoding='utf-8') as f:

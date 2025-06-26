@@ -84,10 +84,27 @@ def search_audible(query, search_field="title", max_pages=4, results_per_page=50
                 logging.debug(f"Filtered out podcast: {prod.get('title', 'N/A')} (ASIN: {prod.get('asin', 'N/A')})")
                 continue
             # Normalize fields to match jq output exactly
+            # Extract all authors (excluding translators) and join them
+            authors = prod.get('authors') or []
+            author_names = []
+            for author in authors:
+                name = author.get('name', '')
+                # Skip translators and other non-primary authors
+                if name and not any(role in name.lower() for role in ['translator', 'editor', 'foreword', 'afterword']):
+                    author_names.append(name)
+            
+            # Use primary author or join multiple authors
+            if len(author_names) == 1:
+                author_str = author_names[0]
+            elif len(author_names) > 1:
+                author_str = ', '.join(author_names)  # Join multiple authors
+            else:
+                author_str = 'N/A'
+            
             book = {
                 'asin': prod.get('asin'),
                 'title': prod.get('title', 'N/A'),
-                'author': (prod.get('authors') or [{}])[0].get('name', 'N/A'),
+                'author': author_str,
                 'series': (prod.get('series') or [{}])[0].get('title', 'N/A'),
                 'series_number': (prod.get('series') or [{}])[0].get('sequence', 'N/A'),
                 'release_date': prod.get('release_date', 'N/A'),
@@ -169,21 +186,29 @@ def confidence(result, wanted):
         else:
             log_parts.append(f"Series mismatch: '{norm_series_result}' vs '{norm_series_wanted}' ({series_ratio:.2f})")
     
-    # Author (0.2) - Use 90% threshold as recommended
+    # Author (0.2) - Use 90% threshold and handle multiple authors
     norm_author_result = normalize_string(result['author'])
     norm_author_wanted = normalize_string(wanted.get('author', ''))
-    author_ratio = fuzzy_ratio(result['author'], wanted.get('author', ''))
+    
+    # Check if any author in the result matches the wanted author
+    result_authors = [a.strip() for a in result['author'].split(',') if a.strip()]
+    wanted_author = wanted.get('author', '')
+    
+    best_author_ratio = 0.0
+    for res_author in result_authors:
+        ratio = fuzzy_ratio(res_author, wanted_author)
+        best_author_ratio = max(best_author_ratio, ratio)
+    
     if norm_author_result and norm_author_wanted:
-        if norm_author_result == norm_author_wanted:
+        if norm_author_result == norm_author_wanted or best_author_ratio >= 0.90:
             score += 0.2
-        elif author_ratio >= 0.90:  # Higher threshold for authors
-            score += 0.18
-            log_parts.append(f"Fuzzy author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({author_ratio:.2f})")
-        elif author_ratio >= 0.75:  # Partial credit for decent matches
+            if best_author_ratio < 1.0:
+                log_parts.append(f"Fuzzy author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({best_author_ratio:.2f})")
+        elif best_author_ratio >= 0.75:  # Partial credit for decent matches
             score += 0.10
-            log_parts.append(f"Partial author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({author_ratio:.2f})")
+            log_parts.append(f"Partial author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({best_author_ratio:.2f})")
         else:
-            log_parts.append(f"Author mismatch: '{norm_author_result}' vs '{norm_author_wanted}' ({author_ratio:.2f})")
+            log_parts.append(f"Author mismatch: '{norm_author_result}' vs '{norm_author_wanted}' ({best_author_ratio:.2f})")
     
     # Publisher (0.1) - Use 95% threshold as recommended
     norm_publisher_result = normalize_string(result['publisher'])
