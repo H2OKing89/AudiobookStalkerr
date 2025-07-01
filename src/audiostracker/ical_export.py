@@ -1,20 +1,59 @@
 import logging
 import os
+import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, TypeVar
 from .database import get_connection
 import uuid
 import pytz
+from functools import wraps
+
+# Define a generic type for the return value
+T = TypeVar('T')
+
+def retry(max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0, exceptions=(Exception,)) -> Callable:
+    """
+    Retry decorator with exponential backoff for improved reliability
+    
+    Args:
+        max_retries: Maximum number of retries
+        delay: Initial delay between retries in seconds
+        backoff: Backoff multiplier
+        exceptions: Exceptions to catch and retry
+        
+    Returns:
+        Callable: Decorated function
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            mtries, mdelay = max_retries, delay
+            last_exception = RuntimeError(f"Failed after {max_retries} retries with no exception captured")
+            
+            while mtries > 0:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    logging.warning(f"Retry due to {e.__class__.__name__}: {e}. Retrying in {mdelay:.1f}s... ({mtries} tries left)")
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            
+            logging.error(f"Failed after {max_retries} retries: {last_exception}")
+            raise last_exception
+        return wrapper
+    return decorator
 
 class ICalExporter:
     """iCalendar (.ics) export functionality for audiobook release dates"""
     
     def __init__(self, config: Dict[str, Any]):
-        self.config = config
-        self.enabled = config.get('ical', {}).get('enabled', False)
-        self.export_path = config.get('ical', {}).get('file_path', 'data/ical_export/')
-        self.batch_size = config.get('ical', {}).get('batch', {}).get('max_books', 10)
-        self.batch_enabled = config.get('ical', {}).get('batch', {}).get('enabled', True)
+        self.config: Dict[str, Any] = config
+        self.enabled: bool = config.get('ical', {}).get('enabled', False)
+        self.export_path: str = config.get('ical', {}).get('file_path', 'data/ical_export/')
+        self.batch_size: int = config.get('ical', {}).get('batch', {}).get('max_books', 10)
+        self.batch_enabled: bool = config.get('ical', {}).get('batch', {}).get('enabled', True)
         
         # Ensure export directory exists
         if self.enabled:
@@ -131,16 +170,17 @@ END:VTIMEZONE"""
         """Create the iCal file footer"""
         return "END:VCALENDAR"
     
+    @retry(max_retries=3, exceptions=(IOError, OSError))
     def export_audiobooks(self, audiobooks: List[Dict[str, Any]], filename: Optional[str] = None) -> str:
         """
-        Export audiobooks to iCal format
+        Export audiobooks to iCal format with automatic retries for IO errors
         
         Args:
             audiobooks: List of audiobook dictionaries
             filename: Optional custom filename (without extension)
             
         Returns:
-            str: Path to the exported file
+            str: Path to the exported file or empty string if export failed or was skipped
         """
         if not self.enabled:
             logging.info("iCal export is disabled")
@@ -158,24 +198,40 @@ END:VTIMEZONE"""
         file_path = os.path.join(self.export_path, f"{filename}.ics")
         
         try:
+            # Ensure export directory exists
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
                 # Write header
                 f.write(self._create_ical_header() + "\n")
                 
                 # Write events
+                events_written = 0
                 for audiobook in audiobooks:
-                    event = self._format_ical_event(audiobook)
-                    f.write(event + "\n")
+                    try:
+                        event = self._format_ical_event(audiobook)
+                        f.write(event + "\n")
+                        events_written += 1
+                    except Exception as event_error:
+                        logging.error(f"Failed to format event for audiobook {audiobook.get('title', 'Unknown')}: {event_error}")
+                        # Continue with the next audiobook
                 
                 # Write footer
                 f.write(self._create_ical_footer() + "\n")
             
-            logging.info(f"Successfully exported {len(audiobooks)} audiobooks to {file_path}")
+            logging.info(f"Successfully exported {events_written} audiobooks to {file_path}")
             return file_path
             
+        except IOError as io_error:
+            logging.error(f"I/O error during iCal export to {file_path}: {io_error}")
+            return ""
         except Exception as e:
             logging.error(f"Failed to export audiobooks to iCal: {e}")
-            raise e
+            # Only re-raise in development environments or for unexpected errors
+            if isinstance(e, (ValueError, TypeError, KeyError)):
+                # These are likely data issues we can recover from
+                return ""
+            raise
     
     def export_from_database(self, days_ahead: int = 30) -> str:
         """

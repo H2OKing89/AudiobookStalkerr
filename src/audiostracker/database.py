@@ -2,6 +2,7 @@ import sqlite3
 from contextlib import closing
 import os
 import json
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import logging
@@ -9,7 +10,26 @@ import logging
 DB_FILE = os.path.join(os.path.dirname(__file__), 'audiobooks.db')
 
 def get_connection():
-    return sqlite3.connect(DB_FILE)
+    """
+    Get a connection to the SQLite database with improved settings for reliability.
+    
+    Returns:
+        sqlite3.Connection: A connection to the SQLite database
+    """
+    conn = sqlite3.connect(DB_FILE, timeout=30)  # Add timeout to handle busy database
+    
+    # Set pragmas for better performance and reliability
+    conn.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging for better concurrency
+    conn.execute("PRAGMA synchronous = NORMAL")  # Balance between safety and speed
+    conn.execute("PRAGMA foreign_keys = ON")  # Enforce foreign key constraints
+    
+    # Enable extended error codes for better diagnostics
+    conn.execute("PRAGMA locking_mode = NORMAL")
+    
+    # Have SQLite return Row objects
+    conn.row_factory = sqlite3.Row
+    
+    return conn
 
 def init_db():
     with get_connection() as conn:
@@ -155,21 +175,72 @@ def prune_old_entries(days=90):
         c.execute('DELETE FROM audiobooks WHERE notified=1 AND release_date < ?', (cutoff,))
         conn.commit()
 
-def prune_released():
-    """Delete audiobooks released the day before today or earlier."""
-    yesterday = (datetime.now().date() - timedelta(days=1))
+def prune_released(grace_period_days: int = 0):
+    """
+    Delete audiobooks whose release date has passed.
+    
+    Args:
+        grace_period_days: Number of days to keep audiobooks after their release date (0 = remove on release day)
+    
+    Returns:
+        int: Number of deleted records
+        
+    This function removes audiobooks from the database when they've been released.
+    With grace_period_days=0, books are removed on their exact release date.
+    With grace_period_days>0, books are kept for that many days after release.
+    """
+    today = datetime.now().date()
+    cutoff_date = today - timedelta(days=grace_period_days)
+    
+    # First, get info about what will be deleted for logging
+    deleted_books = []
     with get_connection() as conn:
         c = conn.cursor()
-        c.execute('DELETE FROM audiobooks WHERE date(release_date) < ?', (yesterday.isoformat(),))
+        c.execute('''
+            SELECT asin, title, author, release_date FROM audiobooks 
+            WHERE date(release_date) <= ? 
+            ORDER BY release_date
+        ''', (cutoff_date.isoformat(),))
+        
+        deleted_books = [dict(zip(("asin", "title", "author", "release_date"), row)) for row in c.fetchall()]
+    
+    # Now perform the deletion
+    with get_connection() as conn:
+        c = conn.cursor()
+        c.execute('DELETE FROM audiobooks WHERE date(release_date) <= ?', (cutoff_date.isoformat(),))
         deleted_count = c.rowcount
         conn.commit()
-        return deleted_count
+    
+    # Log details about what was removed
+    if deleted_count > 0:
+        logging.info(f"Removed {deleted_count} released audiobooks with cutoff date {cutoff_date}")
+        for book in deleted_books:
+            logging.debug(f"Removed released book: {book['title']} by {book['author']} (Released: {book['release_date']})")
+    
+    return deleted_count
 
 def vacuum_db():
-    with get_connection() as conn:
-        c = conn.cursor()
-        c.execute('VACUUM')
-        conn.commit()
+    """
+    Optimize the database by rebuilding it completely.
+    
+    VACUUM rebuilds the entire database to defragment it and reclaim unused space.
+    This should be run periodically, especially after deleting many records.
+    """
+    logging.info("Running database VACUUM operation to optimize storage")
+    vacuum_start = time.time()
+    
+    try:
+        with get_connection() as conn:
+            c = conn.cursor()
+            c.execute('VACUUM')
+            conn.commit()
+            
+        vacuum_time = time.time() - vacuum_start
+        logging.info(f"Database VACUUM completed successfully in {vacuum_time:.2f} seconds")
+        return True
+    except Exception as e:
+        logging.error(f"Database VACUUM failed: {e}")
+        return False
 
 # Example usage (in main.py or a test script):
 if __name__ == "__main__":

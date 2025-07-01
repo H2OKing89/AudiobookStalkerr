@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 import re
+import logging
 
 class AudiobookEntry(BaseModel):
     """Represents a wanted audiobook entry from audiobooks.yaml"""
@@ -27,7 +28,7 @@ class Audiobook(BaseModel):
     publisher: str
     series: str
     series_number: str
-    release_date: str = Field(..., regex=r'^\d{4}-\d{2}-\d{2}$')
+    release_date: str = Field(..., description="Release date in YYYY-MM-DD format")
     link: str
     last_checked: Optional[datetime] = None
     notified_channels: Optional[Dict[str, bool]] = Field(default_factory=dict)
@@ -35,10 +36,21 @@ class Audiobook(BaseModel):
     @validator('release_date')
     def validate_release_date(cls, v):
         try:
-            datetime.strptime(v, '%Y-%m-%d')
+            # First validate the format
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+                raise ValueError('release_date must be in YYYY-MM-DD format')
+            
+            # Then validate it's a valid date
+            dt = datetime.strptime(v, '%Y-%m-%d')
+            
+            # Check for reasonable date range (e.g., not in the distant past or future)
+            current_year = datetime.now().year
+            if dt.year < current_year - 5 or dt.year > current_year + 10:
+                logging.warning(f"Unusual release year detected: {dt.year} for date {v}")
+            
             return v
-        except ValueError:
-            raise ValueError('release_date must be in YYYY-MM-DD format')
+        except ValueError as e:
+            raise ValueError(f'Invalid release date: {e}')
     
     @property
     def release_date_obj(self) -> date:
@@ -66,7 +78,7 @@ class PushoverConfig(NotificationConfig):
     user_key: Optional[str] = None
     api_token: Optional[str] = None
     sound: Optional[str] = "pushover"
-    priority: int = Field(0, ge=-2, le=2)
+    priority: int = Field(default=0, ge=-2, le=2)
     device: Optional[str] = ""
 
 class DiscordConfig(NotificationConfig):

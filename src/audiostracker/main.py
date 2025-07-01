@@ -1,6 +1,6 @@
 import logging
 from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging, merge_env_config
-from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel
+from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
 from .audible import search_audible, set_audible_rate_limit, confidence
 from .notify.notify import create_dispatcher
 from .ical_export import create_exporter
@@ -25,10 +25,40 @@ def main():
     validate_audiobooks(wanted)
     # Init DB
     init_db()
-    # Clean DB: remove any audiobooks released the day before today or earlier
-    deleted_count = prune_released()
+    
+    # Get cleanup configuration with default value of 0 (remove on exact release date)
+    cleanup_grace_period = config.get('database', {}).get('cleanup_grace_period_days', 0)
+    
+    # Clean DB: remove audiobooks that have been released
+    deleted_count = prune_released(grace_period_days=cleanup_grace_period)
+    
+    # Periodically optimize the database
+    vacuum_interval = config.get('database', {}).get('vacuum_interval_days', 7)
+    last_vacuum_file = os.path.join(os.path.dirname(DB_FILE), '.last_vacuum')
+    
+    should_vacuum = False
+    if os.path.exists(last_vacuum_file):
+        try:
+            with open(last_vacuum_file, 'r') as f:
+                last_vacuum = datetime.fromisoformat(f.read().strip())
+            days_since_vacuum = (datetime.now() - last_vacuum).days
+            should_vacuum = days_since_vacuum >= vacuum_interval
+        except (ValueError, IOError):
+            should_vacuum = True
+    else:
+        should_vacuum = True
+    
+    if should_vacuum:
+        logging.info(f"Running scheduled database optimization (interval: {vacuum_interval} days)")
+        vacuum_db()
+        # Record vacuum time
+        try:
+            with open(last_vacuum_file, 'w') as f:
+                f.write(datetime.now().isoformat())
+        except IOError as e:
+            logging.warning(f"Failed to update vacuum timestamp: {e}")
+    
     today = datetime.now().date()  # Define today for use in filtering logic
-    logging.info(f"Cleaned DB: removed {deleted_count} audiobooks released before {today}")
     # Only store books with release_date >= today and high confidence
     CONFIDENCE_THRESHOLD = 0.5  # Lowered from 5 to 0.5 for weighted scoring
     all_new = []
