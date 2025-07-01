@@ -1,7 +1,7 @@
 import logging
 from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging, merge_env_config
 from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
-from .audible import search_audible, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, check_for_volume_duplicates
+from .audible import search_audible, search_audible_parallel, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, find_all_good_matches
 from .notify.notify import create_dispatcher
 from .ical_export import create_exporter
 from datetime import datetime, timedelta
@@ -69,11 +69,8 @@ def main():
     authors = wanted['audiobooks'].get('author', {})
     for author_name, books in authors.items():
         logging.info(f"Searching Audible for author: {author_name}")
-        raw_results = search_audible(author_name, search_field='author')
-        
-        # Apply volume deduplication
-        results = check_for_volume_duplicates(raw_results)
-        logging.info(f"Found {len(results)} deduplicated results for author '{author_name}' (was {len(raw_results)})")
+        results = search_audible_parallel(author_name, search_field='author')
+        logging.info(f"Found {len(results)} results for author '{author_name}'")
         
         for book in books:
             wanted_info = dict(book)
@@ -92,15 +89,15 @@ def main():
             if not future_results:
                 continue
             
-            # Use enhanced matching with dynamic confidence
-            best_match = find_best_match_with_review(
+            # Use enhanced matching to find ALL good matches
+            good_matches = find_all_good_matches(
                 future_results, 
                 wanted_info, 
                 MIN_CONFIDENCE, 
                 PREFERRED_CONFIDENCE
             )
             
-            if best_match:
+            for best_match in good_matches:
                 is_new = insert_or_update_audiobook(
                     asin=best_match['asin'],
                     title=best_match['title'],
@@ -131,11 +128,8 @@ def main():
                 # Search using the book title instead of series name for better API results
                 search_query = book.get('title', book['series'])
                 logging.info(f"Searching Audible for series '{book['series']}' using query: {search_query}")
-                raw_series_results = search_audible(search_query, search_field='title')
-                
-                # Apply volume deduplication
-                series_results = check_for_volume_duplicates(raw_series_results)
-                logging.info(f"Found {len(series_results)} deduplicated results for query '{search_query}' (was {len(raw_series_results)})")
+                series_results = search_audible_parallel(search_query, search_field='title')
+                logging.info(f"Found {len(series_results)} results for query '{search_query}'")
                 
                 wanted_info = dict(book)
                 wanted_info['author'] = author_name
@@ -153,15 +147,15 @@ def main():
                 if not future_series_results:
                     continue
                 
-                # Use enhanced matching for series results
-                best_series_match = find_best_match_with_review(
+                # Use enhanced matching to find ALL good matches for series
+                good_series_matches = find_all_good_matches(
                     future_series_results, 
                     wanted_info, 
                     MIN_CONFIDENCE, 
                     PREFERRED_CONFIDENCE
                 )
                 
-                if best_series_match:
+                for best_series_match in good_series_matches:
                     is_new = insert_or_update_audiobook(
                         asin=best_series_match['asin'],
                         title=best_series_match['title'],

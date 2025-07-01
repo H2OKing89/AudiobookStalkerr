@@ -1,4 +1,6 @@
 import requests
+import aiohttp
+import asyncio
 import logging
 import time
 import json
@@ -210,6 +212,80 @@ def _fetch_audible_page(query: str, search_field: str, page: int, results_per_pa
     
     return normalized
 
+async def _fetch_audible_page_async(session: aiohttp.ClientSession, query: str, search_field: str, page: int, results_per_page: int) -> List[Dict[str, Any]]:
+    """
+    Asynchronously fetch a single page of results from Audible API
+    
+    Args:
+        session: aiohttp ClientSession
+        query: Search query
+        search_field: Field to search (title, author, etc.)
+        page: Page number
+        results_per_page: Results per page
+        
+    Returns:
+        List[Dict[str, Any]]: Normalized results
+    """
+    base_url = "https://api.audible.com/1.0/catalog/products"
+    base_params = {
+        search_field: query,
+        'num_results': results_per_page,
+        'products_sort_by': '-ReleaseDate',
+        'response_groups': 'product_desc,media,contributors,series,product_attrs,relationships,product_extended_attrs,category_ladders',
+        'marketplace': 'US',  # Ensure consistent US marketplace
+    }
+    
+    if page > 0:
+        base_params['page'] = page
+    
+    # Apply rate limiting (4 requests per second)
+    await asyncio.sleep(0.25)
+    
+    try:
+        async with session.get(base_url, params=base_params) as response:
+            response.raise_for_status()
+            
+            try:
+                data = await response.json()
+            except aiohttp.ContentTypeError as e:
+                logging.error(f"Failed to parse JSON response for query '{query}' page {page}: {e}")
+                return []
+            
+            products = data.get('products', [])
+            normalized = []
+            
+            for product in products:
+                # Language filtering - skip non-matching languages
+                product_language = product.get('language', '').lower()
+                if product_language and product_language != _default_language:
+                    logging.debug(f"Skipping book '{product.get('title', '')}' due to language mismatch: {product_language} != {_default_language}")
+                    continue
+                
+                # Skip podcasts and other non-audiobook content
+                content_type = product.get('content_type', '').lower()
+                if content_type and content_type == 'podcast':
+                    logging.debug(f"Skipping podcast: {product.get('title', '')}")
+                    continue
+                
+                # Process the product using the shared function
+                normalized_product = _process_product(product)
+                normalized.append(normalized_product)
+            
+            return normalized
+            
+    except aiohttp.ServerDisconnectedError as e:
+        logging.error(f"Server disconnected for query '{query}' page {page}: {e}")
+        return []
+    except aiohttp.ClientError as e:
+        logging.error(f"Client error for query '{query}' page {page}: {e}")
+        return []
+    except asyncio.TimeoutError as e:
+        logging.error(f"Timeout error for query '{query}' page {page}: {e}")
+        return []
+    except Exception as e:
+        logging.error(f"Unexpected async fetch error for query '{query}' page {page}: {e}")
+        return []
+
 def search_audible(query: str, search_field: str = "title", max_pages: int = 4, results_per_page: int = 50) -> List[Dict[str, Any]]:
     """
     Search Audible API for audiobooks matching the query.
@@ -281,6 +357,158 @@ def search_audible(query: str, search_field: str = "title", max_pages: int = 4, 
     
     return all_results
 
+async def search_audible_async(query: str, search_field: str = "title", max_pages: int = 4, results_per_page: int = 50) -> List[Dict[str, Any]]:
+    """
+    Asynchronously search Audible API for audiobooks matching the query.
+    Uses parallel requests within rate limits for improved performance.
+    
+    Args:
+        query: Search query
+        search_field: 'title', 'author', or 'series'
+        max_pages: Maximum number of pages to fetch
+        results_per_page: Number of results per page
+        
+    Returns:
+        List[Dict[str, Any]]: Normalized audiobook results
+    """
+    all_results = []
+    
+    # Check cache for all pages first
+    cached_pages = {}
+    pages_to_fetch = []
+    
+    for page in range(max_pages):
+        cache_key = _get_cache_key(query, search_field, page, results_per_page)
+        cached_results = _get_cached_results(cache_key)
+        
+        if cached_results is not None:
+            cached_pages[page] = cached_results
+            logging.info(f"Found {len(cached_results)} cached results for query '{query}' page {page}")
+        else:
+            pages_to_fetch.append(page)
+    
+    # If we have all pages cached, return them
+    if not pages_to_fetch:
+        for page in range(max_pages):
+            if page in cached_pages:
+                all_results.extend(cached_pages[page])
+        return all_results
+    
+    # Fetch missing pages asynchronously with proper session management
+    headers = {
+        'User-Agent': 'curl/8.5.0',
+    }
+    
+    # Use longer timeout and robust connector settings
+    timeout = aiohttp.ClientTimeout(total=120, connect=15, sock_read=30)
+    connector = aiohttp.TCPConnector(
+        limit=4, 
+        limit_per_host=4, 
+        enable_cleanup_closed=True
+    )
+    
+    try:
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout, connector=connector) as session:
+            # Create tasks for all pages to fetch
+            tasks = []
+            for page in pages_to_fetch:
+                task = _fetch_audible_page_async(session, query, search_field, page, results_per_page)
+                tasks.append((page, task))
+            
+            # Wait for ALL tasks to complete before session closes
+            if tasks:
+                try:
+                    # Use gather to wait for all tasks simultaneously
+                    task_results = await asyncio.gather(
+                        *[task for _, task in tasks], 
+                        return_exceptions=True
+                    )
+                    
+                    # Process results
+                    fetched_pages = {}
+                    for i, (page, _) in enumerate(tasks):
+                        result = task_results[i]
+                        if isinstance(result, Exception):
+                            logging.error(f"Failed to fetch page {page} for query '{query}': {result}")
+                            continue
+                        
+                        # Ensure result is a list before processing
+                        if not isinstance(result, list):
+                            logging.error(f"Unexpected result type for page {page}: {type(result)}")
+                            continue
+                            
+                        fetched_pages[page] = result
+                        
+                        # Cache the results
+                        cache_key = _get_cache_key(query, search_field, page, results_per_page)
+                        _cache_results(cache_key, result)
+                        
+                        logging.info(f"Fetched {len(result)} results from API for query '{query}' page {page}")
+                        
+                        # If we got fewer results than requested, we've reached the end
+                        if len(result) < results_per_page:
+                            break
+                            
+                except Exception as e:
+                    logging.error(f"Error gathering async tasks for query '{query}': {e}")
+                    fetched_pages = {}
+            else:
+                fetched_pages = {}
+                
+    except Exception as e:
+        logging.error(f"Session error for query '{query}': {e}")
+        fetched_pages = {}
+    
+    # Combine cached and fetched results in order
+    for page in range(max_pages):
+        if page in cached_pages:
+            all_results.extend(cached_pages[page])
+        elif page in fetched_pages:
+            all_results.extend(fetched_pages[page])
+        else:
+            # If this page failed and it's not page 0, we can stop
+            if page > 0:
+                break
+    
+    return all_results
+
+def search_audible_parallel(query: str, search_field: str = "title", max_pages: int = 4, results_per_page: int = 50) -> List[Dict[str, Any]]:
+    """
+    Synchronous wrapper for async search that provides parallel execution.
+    Use this for improved performance over the standard search_audible function.
+    
+    Args:
+        query: Search query  
+        search_field: 'title', 'author', or 'series'
+        max_pages: Maximum number of pages to fetch
+        results_per_page: Number of results per page
+        
+    Returns:
+        List[Dict[str, Any]]: Normalized audiobook results
+    """
+    try:
+        # Try to get existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If we're in an async context, create a new event loop in a thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run, 
+                    search_audible_async(query, search_field, max_pages, results_per_page)
+                )
+                return future.result()
+        else:
+            # Use the existing event loop
+            return loop.run_until_complete(
+                search_audible_async(query, search_field, max_pages, results_per_page)
+            )
+    except RuntimeError:
+        # No event loop exists, create one
+        return asyncio.run(
+            search_audible_async(query, search_field, max_pages, results_per_page)
+        )
+
 def narrator_match(narrators_result, narrators_wanted):
     """Check if any narrator in the result matches any in the wanted list"""
     if not narrators_result or not narrators_wanted:
@@ -321,6 +549,7 @@ def confidence(result, wanted):
     Boost weights (additive, can exceed 1.0):
     - Publisher: +0.1 bonus if matches
     - Narrator: +0.1 bonus if matches
+    - Volume Recency: +0.05 bonus for newer volumes in same series
     
     Args:
         result: Dictionary containing audiobook data from Audible API
@@ -338,8 +567,9 @@ def confidence(result, wanted):
     
     # Bonus weights (additive)
     bonus_weights = {
-        'publisher': 0.1,  # Bonus for publisher match
-        'narrator': 0.1,   # Bonus for narrator match
+        'publisher': 0.1,      # Bonus for publisher match
+        'narrator': 0.1,       # Bonus for narrator match
+        'volume_recency': 0.05 # Bonus for newer volumes in same series
     }
     
     thresholds = {
@@ -360,22 +590,65 @@ def confidence(result, wanted):
     score = 0.0
     log_parts = []
     
-    # Title matching
+    # Extract volume information early for volume-aware matching
+    result_volume = extract_volume_number(result['title'])
+    wanted_volume = extract_volume_number(wanted.get('title', ''))
+    
+    # Title matching - use volume-aware normalization for series books
     norm_title_result = normalize_string(result['title'])
     norm_title_wanted = normalize_string(wanted.get('title', ''))
-    title_ratio = fuzzy_ratio(result['title'], wanted.get('title', ''))
     
-    if norm_title_result and norm_title_wanted:
-        if norm_title_result == norm_title_wanted:
+    # For series books, compare base titles without volume numbers
+    result_series = result.get('series', '')
+    wanted_series = wanted.get('series', '')
+    
+    if result_series and wanted_series and normalize_string(result_series) == normalize_string(wanted_series):
+        # Same series - use volume-aware title matching
+        result_base_title = get_title_volume_key(result['title'])
+        wanted_base_title = get_title_volume_key(wanted.get('title', ''))
+        
+        if result_base_title == wanted_base_title:
+            # Same base title (series match) - give high score
             score += core_weights['title'] * credit['exact']
-        elif title_ratio >= thresholds['title']['high']:
-            score += core_weights['title'] * credit['high']
-            log_parts.append(f"Fuzzy title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
-        elif title_ratio >= thresholds['title']['medium']:
-            score += core_weights['title'] * credit['medium']
-            log_parts.append(f"Partial title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
+            log_parts.append(f"Series title match: '{result_base_title}' == '{wanted_base_title}'")
+            
+            # Volume recency bonus - prefer higher volume numbers
+            if result_volume and wanted_volume:
+                if result_volume > wanted_volume:
+                    score += bonus_weights['volume_recency']
+                    log_parts.append(f"Volume recency bonus: {result_volume} > {wanted_volume}")
+                elif result_volume == wanted_volume:
+                    log_parts.append(f"Same volume: {result_volume}")
+                else:
+                    log_parts.append(f"Older volume: {result_volume} < {wanted_volume}")
+            elif result_volume:
+                # Has volume info when wanted doesn't - small bonus
+                score += bonus_weights['volume_recency'] * 0.5
+                log_parts.append(f"Has volume info: {result_volume}")
         else:
-            log_parts.append(f"Title mismatch: '{norm_title_result}' vs '{norm_title_wanted}' ({title_ratio:.2f})")
+            # Different base titles in same series
+            title_ratio = fuzzy_ratio(result['title'], wanted.get('title', ''))
+            if title_ratio >= thresholds['title']['high']:
+                score += core_weights['title'] * credit['high']
+                log_parts.append(f"Fuzzy series title match: '{result_base_title}' ~ '{wanted_base_title}' ({title_ratio:.2f})")
+            elif title_ratio >= thresholds['title']['medium']:
+                score += core_weights['title'] * credit['medium']
+                log_parts.append(f"Partial series title match: '{result_base_title}' ~ '{wanted_base_title}' ({title_ratio:.2f})")
+    else:
+        # Regular title matching for non-series or different series
+        title_ratio = fuzzy_ratio(result['title'], wanted.get('title', ''))
+        
+        if norm_title_result and norm_title_wanted:
+            if norm_title_result == norm_title_wanted:
+                score += core_weights['title'] * credit['exact']
+            elif title_ratio >= thresholds['title']['high']:
+                score += core_weights['title'] * credit['high']
+                log_parts.append(f"Fuzzy title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
+            elif title_ratio >= thresholds['title']['medium']:
+                score += core_weights['title'] * credit['medium']
+                log_parts.append(f"Partial title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
+            else:
+                log_parts.append(f"Title mismatch: '{norm_title_result}' vs '{norm_title_wanted}' ({title_ratio:.2f})")
     
     # Series matching
     norm_series_result = normalize_string(result['series'])
@@ -708,70 +981,50 @@ def find_best_match_with_review(results: List[Dict[str, Any]], wanted: Dict[str,
     logging.info(f"No matches above minimum confidence ({min_confidence}). Best was {best_score:.2f}")
     return None
 
-def check_for_volume_duplicates(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def find_all_good_matches(results: List[Dict[str, Any]], wanted: Dict[str, Any], 
+                        min_confidence: float = 0.5, 
+                        preferred_confidence: float = 0.7) -> List[Dict[str, Any]]:
     """
-    Remove duplicate volumes of the same series/title using proper decimal comparison
+    Find all matches that meet the minimum confidence threshold
     
     Args:
         results: List of search results
+        wanted: Wanted book criteria
+        min_confidence: Minimum acceptable confidence (default 0.5)
+        preferred_confidence: Preferred confidence level (default 0.7)
         
     Returns:
-        List[Dict[str, Any]]: Deduplicated results
+        List[Dict[str, Any]]: All matching results with added 'needs_review' and 'confidence_score' fields
     """
     if not results:
-        return results
+        return []
     
-    seen_series = {}
-    deduplicated = []
-    
+    # Score all results
+    scored_results = []
     for result in results:
-        title = result.get('title', '')
-        series = result.get('series', '')
-        
-        # Generate series key for grouping
-        series_key = normalize_string(series) if series else get_title_volume_key(title)
-        volume_num = extract_volume_number(title)
-        
-        if not series_key:
-            # No series info, add as-is
-            deduplicated.append(result)
-            continue
-        
-        # Create the deduplication key
-        if volume_num is not None:
-            # Use the exact decimal volume as string for key
-            volume_key = str(volume_num)
-            dedupe_key = (series_key, volume_key)
-        else:
-            # Non-numbered title
-            dedupe_key = (series_key, "base")
-        
-        # Track this series/volume combination
-        if dedupe_key not in seen_series:
-            # First time seeing this series/volume combination
-            seen_series[dedupe_key] = result
-            result['extracted_volume'] = volume_num
-            deduplicated.append(result)
-        else:
-            # We've seen this series/volume before - compare to decide which to keep
-            existing = seen_series[dedupe_key]
+        score = confidence(result, wanted)
+        if score >= min_confidence:  # Only include results that meet minimum threshold
+            result = result.copy()  # Create a copy to avoid modifying original
+            result['confidence_score'] = score
+            result['needs_review'] = score < preferred_confidence
             
-            # For exact volume matches, prefer more recent release date
-            current_date = result.get('release_date', '')
-            existing_date = existing.get('release_date', '')
-            
-            if current_date > existing_date:
-                # Replace with more recent
-                seen_series[dedupe_key] = result
-                result['extracted_volume'] = volume_num
-                # Remove the old one and add the new one
-                if existing in deduplicated:
-                    deduplicated.remove(existing)
-                deduplicated.append(result)
-            # Otherwise skip this duplicate
+            if score >= preferred_confidence:
+                logging.info(f"High confidence match ({score:.2f}): {result['title']}")
+            else:
+                logging.warning(f"Low confidence match ({score:.2f}) - needs review: {result['title']}")
+                
+            scored_results.append((score, result))
     
-    logging.info(f"Deduplication: {len(results)} → {len(deduplicated)} results")
-    return deduplicated
+    # Sort by confidence score (highest first)
+    scored_results.sort(key=lambda x: x[0], reverse=True)
+    
+    # Extract just the results (without the scores)
+    good_matches = [result for _, result in scored_results]
+    
+    if not good_matches:
+        logging.info(f"No matches above minimum confidence ({min_confidence}).")
+        
+    return good_matches
 
 if __name__ == "__main__":
     import sys

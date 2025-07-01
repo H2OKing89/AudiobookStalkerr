@@ -5,6 +5,7 @@ A tool for tracking and notifying users about upcoming audiobook releases from A
 ## Features
 
 - **Audiobook Tracking**: Automatically search Audible for new audiobooks based on configured authors and series
+- **Multi-Match Processing**: Identifies and processes ALL matching audiobooks above a confidence threshold (multiple volumes, editions, etc.)
 - **Multiple Notification Channels**: Support for Pushover, Discord, and Email notifications
 - **Calendar Integration**: Export upcoming releases as iCalendar (.ics) files for calendar applications
 - **Configurable**: Easy YAML-based configuration with environment variable support

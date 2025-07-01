@@ -45,8 +45,9 @@ AudioStacker is a utility that tracks audiobook releases on Audible based on you
 
 3. **Audiobook Discovery**
    - Search Audible for audiobooks matching configured authors
-   - Filter results based on confidence score
-   - Add new audiobooks to the database
+   - Identify ALL matches above confidence threshold
+   - Process multiple matches per search (e.g., all volumes in a series)
+   - Add all matching audiobooks to the database
 
 4. **Notification**
    - Send notifications for new releases through configured channels

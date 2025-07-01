@@ -7,7 +7,7 @@
 **Purpose**
 Automate discovery, tracking, and notification of new audiobook releases. Efficient caching and rate‑limited API access in a maintainable, modular code‑base.
 
-**Primary Goals**
+## **Primary Goals**
 
 1. Watch dynamic list of audiobooks (series, author, title, publisher).
 2. Daily Audible queries for new items.
@@ -83,14 +83,14 @@ audiobooks:
           - "Optional Co‑Narrator"
 ```
 
-**Retention**
+### Retention
 
 * Cache pruned the **day *after* release** (`release_date < DATE('now','-1 day')`).
 * One‑time notification per ASIN per channel (tracked via `notified_channels`).
 
 ### B. Project Structure
 
-```
+``` tree
 # top‑level (excluding .venv, .git, __pycache__)
 .
 ├── bin/
@@ -152,7 +152,14 @@ CREATE TABLE IF NOT EXISTS audiobooks (
 * **Action:** DELETE FROM audiobooks WHERE release\_date < DATE('now');
 * **Why:** Only track upcoming/new releases.
 
-### 2. Notification Logic
+### 2. Multi-Match Processing
+
+* **All Good Matches:** Process ALL search results above confidence threshold (min 0.5)
+* **No Deduplication:** Multiple volumes in a series (e.g., Vol. 4, Vol. 5) will ALL be added to the database and notified
+* **Confidence Thresholds:** High confidence (≥0.7) for normal processing, low confidence (0.5-0.7) flagged for manual review
+* **Parallel Search:** Asynchronously search and process results for maximum efficiency
+
+### 3. Notification Logic
 
 * **Notify once per ASIN *per channel***: track a `notified_channels` set (e.g. `{"pushover", "discord"}`) or a versioned table.
 * On the first successful send to a channel, add that channel to `notified_channels`.
@@ -185,15 +192,17 @@ CREATE TABLE IF NOT EXISTS audiobooks (
 ## VI. ✅ COMPLETED FEATURES UPDATE (June 2025)
 
 ### Multi-Channel Notification System ✅
+
 **Implemented comprehensive multi-channel notification support:**
 
-- ✅ **Database Schema**: Migrated to `notified_channels` JSON column for per-channel tracking
-- ✅ **Pushover Integration**: Complete with priority, sound, and device targeting
-- ✅ **Discord Integration**: Webhook-based notifications with rich embeds and batching
-- ✅ **Email Integration**: SMTP support with HTML/text multipart messages
-- ✅ **Notification Dispatcher**: Centralized management for all channels
+* ✅ **Database Schema**: Migrated to `notified_channels` JSON column for per-channel tracking
+* ✅ **Pushover Integration**: Complete with priority, sound, and device targeting
+* ✅ **Discord Integration**: Webhook-based notifications with rich embeds and batching
+* ✅ **Email Integration**: SMTP support with HTML/text multipart messages
+* ✅ **Notification Dispatcher**: Centralized management for all channels
 
 **Configuration Example:**
+
 ```yaml
 pushover:
   enabled: true
@@ -217,20 +226,22 @@ email:
 ```
 
 ### Enhanced Error Handling ✅
+
 **Implemented robust retry logic with exponential backoff:**
 
-- ✅ **Retry Decorator**: `@retry_with_exponential_backoff()` for all external calls
-- ✅ **Rate Limiting**: Configurable API rate limits with decorator pattern
-- ✅ **Exception Handling**: Comprehensive error catching with detailed logging
-- ✅ **Safe Execution**: Wrapper functions for critical operations
+* ✅ **Retry Decorator**: `@retry_with_exponential_backoff()` for all external calls
+* ✅ **Rate Limiting**: Configurable API rate limits with decorator pattern
+* ✅ **Exception Handling**: Comprehensive error catching with detailed logging
+* ✅ **Safe Execution**: Wrapper functions for critical operations
 
 ### iCal Export System ✅
+
 **Complete calendar export functionality:**
 
-- ✅ **RFC Compliance**: Standards-compliant iCalendar file generation
-- ✅ **Batch Export**: Configurable batching for large datasets
-- ✅ **Automatic Cleanup**: Removes old export files (30+ days)
-- ✅ **Integration**: Seamless integration with main workflow
+* ✅ **RFC Compliance**: Standards-compliant iCalendar file generation
+* ✅ **Batch Export**: Configurable batching for large datasets
+* ✅ **Automatic Cleanup**: Removes old export files (30+ days)
+* ✅ **Integration**: Seamless integration with main workflow
 
 ```yaml
 ical:
@@ -242,12 +253,13 @@ ical:
 ```
 
 ### Pydantic Models & Validation ✅
+
 **Complete type safety and validation:**
 
-- ✅ **Configuration Models**: Validated config loading with clear error messages
-- ✅ **Audiobook Models**: Type-safe audiobook data structures
-- ✅ **Notification Models**: Channel-specific configuration validation
-- ✅ **Database Migration**: Automatic schema updates with validation
+* ✅ **Configuration Models**: Validated config loading with clear error messages
+* ✅ **Audiobook Models**: Type-safe audiobook data structures
+* ✅ **Notification Models**: Channel-specific configuration validation
+* ✅ **Database Migration**: Automatic schema updates with validation
 
 ```python
 # Example models implemented:
@@ -259,6 +271,7 @@ class EmailConfig(NotificationConfig): ...
 ```
 
 ### Updated Database Schema ✅
+
 ```sql
 CREATE TABLE audiobooks (
     asin TEXT PRIMARY KEY,
@@ -275,30 +288,37 @@ CREATE TABLE audiobooks (
 ```
 
 ### Testing Suite ✅
+
 **Comprehensive test coverage:**
 
-- ✅ **Integration Tests**: Multi-channel notifications, database operations
-- ✅ **Unit Tests**: Individual component testing with mocks
-- ✅ **End-to-End Tests**: Complete workflow validation
-- ✅ **Feature Tests**: Dedicated test script (`test_features.py`)
+* ✅ **Integration Tests**: Multi-channel notifications, database operations
+* ✅ **Unit Tests**: Individual component testing with mocks
+* ✅ **End-to-End Tests**: Complete workflow validation
+* ✅ **Feature Tests**: Dedicated test script (`test_features.py`)
 
 ### Updated Workflow
-```
+
+``` plaintext
 1. Load config and validate with Pydantic models
 2. Initialize database with automatic schema migration
 3. Query Audible API with retry logic and rate limiting
-4. Store results with confidence scoring and deduplication
-5. Prune released audiobooks (day after release)
-6. Send notifications via enabled channels:
+4. Find ALL matching audiobooks above confidence threshold
+   - High confidence matches (≥0.7): Ready for notification
+   - Low confidence matches (0.5-0.7): Flagged for manual review
+   - Multiple volumes for same series ALL processed (no deduplication)
+5. Store ALL good matches in the database
+6. Prune released audiobooks (day after release)
+7. Send notifications via enabled channels:
    - Check per-channel notification status
    - Send to unnotified channels only
    - Mark as notified per channel
-7. Export to iCal if enabled
-8. Cleanup old exports
+8. Export to iCal if enabled
+9. Cleanup old exports
 ```
 
 ### File Structure Updates
-```
+
+``` tree
 src/audiostracker/
 ├── main.py              # Updated with multi-channel notifications
 ├── audible.py           # Enhanced with retry logic
@@ -318,6 +338,7 @@ src/audiostracker/
 ```
 
 ### Environment Variables Required
+
 ```bash
 # Pushover
 PUSHOVER_USER_KEY=your_pushover_user_key
@@ -334,12 +355,14 @@ EMAIL_TO=recipient1@example.com,recipient2@example.com
 ```
 
 ### Summary
+
 **All requested features have been successfully implemented:**
-- ✅ Multi-channel notification support with database tracking
-- ✅ Better error handling with exponential backoff retry logic
-- ✅ Complete notification implementations (Pushover, Discord, Email)
-- ✅ iCal export functionality with batching and cleanup
-- ✅ Pydantic models for validation and type safety
-- ✅ Comprehensive testing suite
+
+* ✅ Multi-channel notification support with database tracking
+* ✅ Better error handling with exponential backoff retry logic
+* ✅ Complete notification implementations (Pushover, Discord, Email)
+* ✅ iCal export functionality with batching and cleanup
+* ✅ Pydantic models for validation and type safety
+* ✅ Comprehensive testing suite
 
 The system is now production-ready with enterprise-grade reliability and maintainability.
