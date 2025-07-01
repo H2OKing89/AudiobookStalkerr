@@ -12,3 +12,8 @@ config.yaml
 *.log
 *.pid
 data/
+*.db-wal
+*.db-shm
+*.db-journal
+.pytest_cache/
+.last_vacuum

@@ -1,7 +1,7 @@
 import logging
 from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging, merge_env_config
 from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
-from .audible import search_audible, set_audible_rate_limit, confidence
+from .audible import search_audible, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, check_for_volume_duplicates
 from .notify.notify import create_dispatcher
 from .ical_export import create_exporter
 from datetime import datetime, timedelta
@@ -21,6 +21,7 @@ def main():
     validate_config(config)
     setup_logging(config)
     set_audible_rate_limit(config.get('rate_limits', {}).get('audible_api_per_minute', 10))
+    set_language_filter(config.get('language', 'english'))  # Set language filter from config
     wanted = load_yaml(AUDIOBOOKS_PATH)
     validate_audiobooks(wanted)
     # Init DB
@@ -59,78 +60,140 @@ def main():
             logging.warning(f"Failed to update vacuum timestamp: {e}")
     
     today = datetime.now().date()  # Define today for use in filtering logic
-    # Only store books with release_date >= today and high confidence
-    CONFIDENCE_THRESHOLD = 0.5  # Lowered from 5 to 0.5 for weighted scoring
+    # Enhanced confidence thresholds
+    MIN_CONFIDENCE = 0.5    # Minimum acceptable confidence
+    PREFERRED_CONFIDENCE = 0.7  # Preferred confidence level
     all_new = []
+    needs_review_books = []  # Track books that need manual review
+    
     authors = wanted['audiobooks'].get('author', {})
     for author_name, books in authors.items():
         logging.info(f"Searching Audible for author: {author_name}")
-        results = search_audible(author_name, search_field='author')
-        logging.info(f"Found {len(results)} results for author '{author_name}'")
+        raw_results = search_audible(author_name, search_field='author')
+        
+        # Apply volume deduplication
+        results = check_for_volume_duplicates(raw_results)
+        logging.info(f"Found {len(results)} deduplicated results for author '{author_name}' (was {len(raw_results)})")
+        
         for book in books:
             wanted_info = dict(book)
             wanted_info['author'] = author_name
+            
+            # Filter results by release date first
+            future_results = []
             for result in results:
                 try:
                     release = datetime.strptime(result['release_date'], '%Y-%m-%d').date()
                 except Exception:
                     continue  # skip if date is missing or invalid
-                if release < today:
-                    continue  # only keep today or future
-                score = confidence(result, wanted_info)
-                if score < CONFIDENCE_THRESHOLD:
-                    logging.debug(f"Low confidence ({score}) for {result['title']} vs {wanted_info}")
-                    continue
+                if release >= today:  # only keep today or future
+                    future_results.append(result)
+            
+            if not future_results:
+                continue
+            
+            # Use enhanced matching with dynamic confidence
+            best_match = find_best_match_with_review(
+                future_results, 
+                wanted_info, 
+                MIN_CONFIDENCE, 
+                PREFERRED_CONFIDENCE
+            )
+            
+            if best_match:
                 is_new = insert_or_update_audiobook(
-                    asin=result['asin'],
-                    title=result['title'],
-                    author=result['author'],
-                    narrator=result['narrator'],
-                    publisher=result['publisher'],
-                    series=result['series'],
-                    series_number=result['series_number'],
-                    release_date=result['release_date']
+                    asin=best_match['asin'],
+                    title=best_match['title'],
+                    author=best_match['author'],
+                    narrator=best_match['narrator'],
+                    publisher=best_match['publisher'],
+                    series=best_match['series'],
+                    series_number=best_match['series_number'],
+                    release_date=best_match['release_date']
                 )
+                
+                if best_match.get('needs_review', False):
+                    needs_review_books.append({
+                        'book': best_match,
+                        'wanted': wanted_info,
+                        'confidence': best_match.get('confidence_score', 0)
+                    })
+                
                 if is_new:
-                    logging.debug(f"Inserted new: {result['title']} (ASIN: {result['asin']}) by {result['author']} (confidence={score})")
-                    all_new.append(result)
+                    logging.debug(f"Inserted new: {best_match['title']} (ASIN: {best_match['asin']}) by {best_match['author']} (confidence={best_match.get('confidence_score', 0):.2f})")
+                    all_new.append(best_match)
                 else:
-                    logging.debug(f"Updated existing: {result['title']} (ASIN: {result['asin']}) by {result['author']} (confidence={score})")
+                    logging.debug(f"Updated existing: {best_match['title']} (ASIN: {best_match['asin']}) by {best_match['author']} (confidence={best_match.get('confidence_score', 0):.2f})")
+                    
+        # Process series searches for this author
         for book in books:
             if book.get('series'):
                 # Search using the book title instead of series name for better API results
                 search_query = book.get('title', book['series'])
                 logging.info(f"Searching Audible for series '{book['series']}' using query: {search_query}")
-                series_results = search_audible(search_query, search_field='title')
-                logging.info(f"Found {len(series_results)} results for query '{search_query}'")
+                raw_series_results = search_audible(search_query, search_field='title')
+                
+                # Apply volume deduplication
+                series_results = check_for_volume_duplicates(raw_series_results)
+                logging.info(f"Found {len(series_results)} deduplicated results for query '{search_query}' (was {len(raw_series_results)})")
+                
                 wanted_info = dict(book)
                 wanted_info['author'] = author_name
+                
+                # Filter results by release date first
+                future_series_results = []
                 for result in series_results:
                     try:
                         release = datetime.strptime(result['release_date'], '%Y-%m-%d').date()
                     except Exception:
                         continue
-                    if release < today:
-                        continue
-                    score = confidence(result, wanted_info)
-                    if score < CONFIDENCE_THRESHOLD:
-                        logging.debug(f"Low confidence ({score}) for {result['title']} vs {wanted_info}")
-                        continue
+                    if release >= today:
+                        future_series_results.append(result)
+                
+                if not future_series_results:
+                    continue
+                
+                # Use enhanced matching for series results
+                best_series_match = find_best_match_with_review(
+                    future_series_results, 
+                    wanted_info, 
+                    MIN_CONFIDENCE, 
+                    PREFERRED_CONFIDENCE
+                )
+                
+                if best_series_match:
                     is_new = insert_or_update_audiobook(
-                        asin=result['asin'],
-                        title=result['title'],
-                        author=result['author'],
-                        narrator=result['narrator'],
-                        publisher=result['publisher'],
-                        series=result['series'],
-                        series_number=result['series_number'],
-                        release_date=result['release_date']
+                        asin=best_series_match['asin'],
+                        title=best_series_match['title'],
+                        author=best_series_match['author'],
+                        narrator=best_series_match['narrator'],
+                        publisher=best_series_match['publisher'],
+                        series=best_series_match['series'],
+                        series_number=best_series_match['series_number'],
+                        release_date=best_series_match['release_date']
                     )
+                    
+                    if best_series_match.get('needs_review', False):
+                        needs_review_books.append({
+                            'book': best_series_match,
+                            'wanted': wanted_info,
+                            'confidence': best_series_match.get('confidence_score', 0)
+                        })
+                    
                     if is_new:
-                        logging.debug(f"Inserted new: {result['title']} (ASIN: {result['asin']}) by {result['author']} (confidence={score})")
-                        all_new.append(result)
+                        logging.debug(f"Inserted new: {best_series_match['title']} (ASIN: {best_series_match['asin']}) by {best_series_match['author']} (confidence={best_series_match.get('confidence_score', 0):.2f})")
+                        all_new.append(best_series_match)
                     else:
-                        logging.debug(f"Updated existing: {result['title']} (ASIN: {result['asin']}) by {result['author']} (confidence={score})")
+                        logging.debug(f"Updated existing: {best_series_match['title']} (ASIN: {best_series_match['asin']}) by {best_series_match['author']} (confidence={best_series_match.get('confidence_score', 0):.2f})")
+    
+    # Log summary of books needing review
+    if needs_review_books:
+        logging.warning(f"Found {len(needs_review_books)} books that need manual review:")
+        for item in needs_review_books:
+            book = item['book']
+            confidence = item['confidence']
+            logging.warning(f"  REVIEW: {book['title']} by {book['author']} (confidence: {confidence:.2f})")
+    
     logging.info(f"Inserted/updated {len(all_new)} future audiobooks in total.")
     
     # Export iCal files for new audiobooks first

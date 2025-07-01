@@ -7,8 +7,9 @@ import hashlib
 from datetime import datetime, timedelta
 from threading import Lock
 from difflib import SequenceMatcher
+from decimal import Decimal
 import re
-from .utils import retry_with_exponential_backoff
+from .utils import retry_with_exponential_backoff, normalize_string, normalize_list, fuzzy_ratio
 from typing import Dict, List, Any, Optional
 
 # Global rate limit state
@@ -19,6 +20,9 @@ _api_min_interval = 6  # default: 10 calls/minute = 6s between calls
 # Cache settings
 _cache_dir = os.path.join(os.path.dirname(__file__), 'data', 'cache')
 _cache_ttl = 24 * 60 * 60  # 24 hours in seconds
+
+# Language filtering
+_default_language = "english"  # default language for filtering results
 
 def set_audible_rate_limit(calls_per_minute: int) -> None:
     """
@@ -39,6 +43,16 @@ def set_cache_ttl(hours: int) -> None:
     """
     global _cache_ttl
     _cache_ttl = hours * 60 * 60
+
+def set_language_filter(language: str) -> None:
+    """
+    Set the language filter for Audible API results
+    
+    Args:
+        language: Language to filter results by (e.g., "english", "spanish", "french")
+    """
+    global _default_language
+    _default_language = language.lower()
 
 def _get_cache_key(query: str, search_field: str, page: int, results_per_page: int) -> str:
     """
@@ -159,7 +173,7 @@ def _fetch_audible_page(query: str, search_field: str, page: int, results_per_pa
         search_field: query,
         'num_results': results_per_page,
         'products_sort_by': '-ReleaseDate',
-        'response_groups': 'product_desc,media,contributors,series',
+        'response_groups': 'product_desc,media,contributors,series,product_attrs,relationships,product_extended_attrs,category_ladders',
         'marketplace': 'US',  # Ensure consistent US marketplace
     }
     
@@ -178,57 +192,21 @@ def _fetch_audible_page(query: str, search_field: str, page: int, results_per_pa
     normalized = []
     
     for product in products:
-        asin = product.get('asin', '')
-        title = product.get('title', '')
+        # Language filtering - skip non-matching languages
+        product_language = product.get('language', '').lower()
+        if product_language and product_language != _default_language:
+            logging.debug(f"Skipping book '{product.get('title', '')}' due to language mismatch: {product_language} != {_default_language}")
+            continue
         
-        # Author processing
-        authors = []
-        for author in product.get('authors', []):
-            authors.append(author.get('name', ''))
-        author_str = ', '.join(authors) if authors else ''
+        # Skip podcasts and other non-audiobook content
+        content_type = product.get('content_type', '').lower()
+        if content_type and content_type == 'podcast':
+            logging.debug(f"Skipping podcast: {product.get('title', '')}")
+            continue
         
-        # Narrator processing
-        narrators = []
-        for narrator in product.get('narrators', []):
-            narrators.append(narrator.get('name', ''))
-        narrator_str = ', '.join(narrators) if narrators else ''
-        
-        # Publisher
-        publisher = product.get('publisher_name', '')
-        
-        # Series information
-        series_name = ''
-        series_position = ''
-        series_info = product.get('series', [])
-        if series_info:
-            # Use the first series entry
-            series = series_info[0]
-            series_name = series.get('title', '')
-            sequence = series.get('sequence', '')
-            if sequence and isinstance(sequence, str) and sequence.replace('.', '', 1).isdigit():
-                series_position = sequence
-        
-        # Get release date from the most reliable source
-        release_date = ''
-        if 'release_date' in product:
-            release_date = product['release_date']
-        elif 'issue_date' in product:
-            release_date = product['issue_date']
-        
-        # Product URL
-        url = f"https://www.audible.com/pd/{asin}"
-        
-        normalized.append({
-            'asin': asin,
-            'title': title,
-            'author': author_str,
-            'narrator': narrator_str,
-            'publisher': publisher,
-            'series': series_name,
-            'series_number': series_position,
-            'release_date': release_date,
-            'link': url
-        })
+        # Process the product using the shared function
+        normalized_product = _process_product(product)
+        normalized.append(normalized_product)
     
     return normalized
 
@@ -303,32 +281,6 @@ def search_audible(query: str, search_field: str = "title", max_pages: int = 4, 
     
     return all_results
 
-def normalize_string(s):
-    """Normalize a string for comparison by removing punctuation, extra spaces, and lowercasing"""
-    if not s:
-        return ""
-    # Convert to lowercase
-    s = s.lower()
-    # Remove punctuation and extra spaces
-    s = re.sub(r'[^\w\s]', '', s)
-    # Replace multiple spaces with single space
-    s = re.sub(r'\s+', ' ', s)
-    # Remove leading/trailing whitespace
-    s = s.strip()
-    return s
-
-def normalize_list(items):
-    """Normalize a list of strings for comparison"""
-    if not items:
-        return []
-    return [normalize_string(item) for item in items if item]
-
-def fuzzy_ratio(s1, s2):
-    """Calculate fuzzy match ratio between two strings"""
-    if not s1 or not s2:
-        return 0.0
-    return SequenceMatcher(None, normalize_string(s1), normalize_string(s2)).ratio()
-
 def narrator_match(narrators_result, narrators_wanted):
     """Check if any narrator in the result matches any in the wanted list"""
     if not narrators_result or not narrators_wanted:
@@ -358,27 +310,36 @@ def confidence(result, wanted):
     """
     Calculate a confidence score for how well a search result matches wanted criteria
     
-    The confidence score is calculated based on the following weights:
-    - Title: 40% (0.4)
-    - Author: 20% (0.2)
-    - Series: 20% (0.2)
-    - Publisher: 10% (0.1)
-    - Narrator: 10% (0.1)
+    The confidence score uses a fuzzy-friendly approach where core fields (title, author, series)
+    are required for a good match, while optional fields (publisher, narrator) only boost scores.
+    
+    Core weights:
+    - Title: 50% (0.5) - most important
+    - Author: 30% (0.3) - very important  
+    - Series: 20% (0.2) - important for series books
+    
+    Boost weights (additive, can exceed 1.0):
+    - Publisher: +0.1 bonus if matches
+    - Narrator: +0.1 bonus if matches
     
     Args:
         result: Dictionary containing audiobook data from Audible API
         wanted: Dictionary containing the desired audiobook criteria
         
     Returns:
-        float: Confidence score between 0 and 1
+        float: Confidence score between 0 and 1+ (can exceed 1.0 with bonuses)
     """
-    # Define weights and thresholds for different fields
-    weights = {
-        'title': 0.4,
-        'series': 0.2,
-        'author': 0.2,
-        'publisher': 0.1,
-        'narrator': 0.1
+    # Define core weights (must sum to 1.0)
+    core_weights = {
+        'title': 0.5,   # Increased from 0.4
+        'author': 0.3,  # Increased from 0.2  
+        'series': 0.2,  # Same
+    }
+    
+    # Bonus weights (additive)
+    bonus_weights = {
+        'publisher': 0.1,  # Bonus for publisher match
+        'narrator': 0.1,   # Bonus for narrator match
     }
     
     thresholds = {
@@ -406,12 +367,12 @@ def confidence(result, wanted):
     
     if norm_title_result and norm_title_wanted:
         if norm_title_result == norm_title_wanted:
-            score += weights['title'] * credit['exact']
+            score += core_weights['title'] * credit['exact']
         elif title_ratio >= thresholds['title']['high']:
-            score += weights['title'] * credit['high']
+            score += core_weights['title'] * credit['high']
             log_parts.append(f"Fuzzy title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
         elif title_ratio >= thresholds['title']['medium']:
-            score += weights['title'] * credit['medium']
+            score += core_weights['title'] * credit['medium']
             log_parts.append(f"Partial title match: '{norm_title_result}' ~ '{norm_title_wanted}' ({title_ratio:.2f})")
         else:
             log_parts.append(f"Title mismatch: '{norm_title_result}' vs '{norm_title_wanted}' ({title_ratio:.2f})")
@@ -423,12 +384,12 @@ def confidence(result, wanted):
     
     if norm_series_result and norm_series_wanted:
         if norm_series_result == norm_series_wanted:
-            score += weights['series'] * credit['exact']
+            score += core_weights['series'] * credit['exact']
         elif series_ratio >= thresholds['series']['high']:
-            score += weights['series'] * credit['high']
+            score += core_weights['series'] * credit['high']
             log_parts.append(f"Fuzzy series match: '{norm_series_result}' ~ '{norm_series_wanted}' ({series_ratio:.2f})")
         elif series_ratio >= thresholds['series']['medium']:
-            score += weights['series'] * credit['medium']
+            score += core_weights['series'] * credit['medium']
             log_parts.append(f"Partial series match: '{norm_series_result}' ~ '{norm_series_wanted}' ({series_ratio:.2f})")
         else:
             log_parts.append(f"Series mismatch: '{norm_series_result}' vs '{norm_series_wanted}' ({series_ratio:.2f})")
@@ -448,38 +409,35 @@ def confidence(result, wanted):
     
     if norm_author_result and norm_author_wanted:
         if norm_author_result == norm_author_wanted:
-            score += weights['author'] * credit['exact']
+            score += core_weights['author'] * credit['exact']
         elif best_author_ratio >= thresholds['author']['high']:
-            score += weights['author'] * credit['high']
+            score += core_weights['author'] * credit['high']
             log_parts.append(f"Fuzzy author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({best_author_ratio:.2f})")
         elif best_author_ratio >= thresholds['author']['medium']:
-            score += weights['author'] * credit['medium']
+            score += core_weights['author'] * credit['medium']
             log_parts.append(f"Partial author match: '{norm_author_result}' ~ '{norm_author_wanted}' ({best_author_ratio:.2f})")
         else:
             log_parts.append(f"Author mismatch: '{norm_author_result}' vs '{norm_author_wanted}' ({best_author_ratio:.2f})")
     
-    # Publisher matching
+    # Publisher matching (BONUS - only adds, never subtracts)
     norm_publisher_result = normalize_string(result['publisher'])
     norm_publisher_wanted = normalize_string(wanted.get('publisher', ''))
-    publisher_ratio = fuzzy_ratio(result['publisher'], wanted.get('publisher', ''))
     
     if norm_publisher_result and norm_publisher_wanted:
-        if norm_publisher_result == norm_publisher_wanted:
-            score += weights['publisher'] * credit['exact']
-        elif publisher_ratio >= thresholds['publisher']['high']:
-            score += weights['publisher'] * credit['high']
-            log_parts.append(f"Fuzzy publisher match: '{norm_publisher_result}' ~ '{norm_publisher_wanted}' ({publisher_ratio:.2f})")
-        else:
-            log_parts.append(f"Publisher mismatch: '{norm_publisher_result}' vs '{norm_publisher_wanted}' ({publisher_ratio:.2f})")
+        if (norm_publisher_wanted in norm_publisher_result or 
+            norm_publisher_result in norm_publisher_wanted or 
+            fuzzy_ratio(result['publisher'], wanted.get('publisher', '')) >= 0.8):
+            score += bonus_weights['publisher']
+            log_parts.append(f"Publisher bonus: '{norm_publisher_result}' matches '{norm_publisher_wanted}'")
     
-    # Narrator matching - special case since it's an array comparison
+    # Narrator matching (BONUS - only adds, never subtracts)
     narrators_result = [result['narrator']] if isinstance(result['narrator'], str) else (result['narrator'] or [])
     narrators_wanted = wanted.get('narrator', [])
     
-    if narrator_match(narrators_result, narrators_wanted):
-        score += weights['narrator'] * credit['exact']
-    else:
-        log_parts.append(f"Narrator mismatch: {normalize_list(narrators_result)} vs {normalize_list(narrators_wanted)}")
+    if narrators_wanted and narrators_result:
+        if narrator_match(narrators_result, narrators_wanted):
+            score += bonus_weights['narrator']
+            log_parts.append(f"Narrator bonus: matches found")
     
     # Log detailed match information for debugging
     if log_parts:
@@ -487,6 +445,333 @@ def confidence(result, wanted):
         logging.log(log_level, f"Match score: {score:.2f}; " + "; ".join(log_parts))
     
     return score
+
+@audible_rate_limited
+@retry_with_exponential_backoff(max_retries=3, retry_on_exceptions=(requests.RequestException, requests.HTTPError, requests.Timeout))
+def get_book_by_asin(asin: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a specific audiobook by ASIN
+    
+    Args:
+        asin: The Amazon Standard Identification Number for the book
+        
+    Returns:
+        Optional[Dict[str, Any]]: Normalized book data or None if not found
+    """
+    if not asin:
+        return None
+    
+    # Check cache first
+    cache_key = hashlib.md5(f"asin:{asin}".encode('utf-8')).hexdigest()
+    cached_result = _get_cached_results(cache_key)
+    if cached_result:
+        logging.debug(f"Using cached result for ASIN {asin}")
+        return cached_result[0] if cached_result else None
+    
+    base_url = f"https://api.audible.com/1.0/catalog/products/{asin}"
+    base_params = {
+        'response_groups': 'product_desc,media,contributors,series,product_attrs,relationships,product_extended_attrs,category_ladders',
+        'marketplace': 'US',
+    }
+    
+    headers = {
+        'User-Agent': 'curl/8.5.0',
+    }
+    
+    try:
+        response = requests.get(base_url, params=base_params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        product = data.get('product')
+        if not product:
+            return None
+        
+        # Apply the same filtering and processing as in _fetch_audible_page
+        # Language filtering
+        product_language = product.get('language', '').lower()
+        if product_language and product_language != _default_language:
+            logging.debug(f"Skipping book '{product.get('title', '')}' due to language mismatch: {product_language} != {_default_language}")
+            return None
+        
+        # Skip podcasts
+        content_type = product.get('content_type', '').lower()
+        if content_type and content_type == 'podcast':
+            logging.debug(f"Skipping podcast: {product.get('title', '')}")
+            return None
+        
+        # Process the product using the same logic as _fetch_audible_page
+        normalized = _process_product(product)
+        
+        # Cache the result
+        if normalized:
+            _cache_results(cache_key, [normalized])
+        
+        return normalized
+        
+    except Exception as e:
+        logging.error(f"Failed to fetch book by ASIN {asin}: {e}")
+        return None
+
+def _process_product(product: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Process a single product from Audible API into normalized format
+    
+    Args:
+        product: Raw product data from Audible API
+        
+    Returns:
+        Dict[str, Any]: Normalized product data
+    """
+    asin = product.get('asin', '')
+    title = product.get('title', '')
+    
+    # Author processing - filter out illustrators, translators, etc.
+    authors = []
+    for author in product.get('authors', []):
+        name = author.get('name', '')
+        # Skip illustrators, translators, editors, and other non-primary authors
+        if name and not any(role in name.lower() for role in [
+            '- illustrator', 'illustrator', 
+            '- translator', 'translator', 'translated by',
+            '- editor', 'editor', 'edited by',
+            'foreword', 'afterword',
+            'introduction', 'preface',
+            'contributor', 'adapter', 'adaptor',
+            'compiler', 'compiled by',
+            'cover designer', 'cover artist',
+            'commentary', 'annotated by',
+            'revised by', 'reviser'
+        ]):
+            authors.append(name)
+    author_str = ', '.join(authors) if authors else ''
+    
+    # Narrator processing
+    narrators = []
+    for narrator in product.get('narrators', []):
+        narrators.append(narrator.get('name', ''))
+    narrator_str = ', '.join(narrators) if narrators else ''
+    
+    # Publisher
+    publisher = product.get('publisher_name', '')
+    
+    # Series information
+    series_name = ''
+    series_position = ''
+    series_info = product.get('series', [])
+    if series_info:
+        # Use the first series entry
+        series = series_info[0]
+        series_name = series.get('title', '')
+        sequence = series.get('sequence', '')
+        if sequence and isinstance(sequence, str) and sequence.replace('.', '', 1).isdigit():
+            series_position = sequence
+    
+    # Get release date from the most reliable source
+    release_date = ''
+    if 'release_date' in product:
+        release_date = product['release_date']
+    elif 'issue_date' in product:
+        release_date = product['issue_date']
+    
+    # Additional fields inspired by their implementation
+    subtitle = product.get('subtitle', '')
+    description = product.get('publisher_summary', '')
+    runtime_minutes = product.get('runtime_length_min', 0)
+    
+    # Extract genres and tags from category_ladders
+    genres = []
+    tags = []
+    if 'category_ladders' in product:
+        for ladder in product['category_ladders']:
+            for i, item in enumerate(ladder.get('ladder', [])):
+                # First item is genre, rest are tags
+                if i == 0:
+                    genres.append(item.get('name', ''))
+                else:
+                    tags.append(item.get('name', ''))
+    
+    # Product URL
+    url = f"https://www.audible.com/pd/{asin}"
+    
+    return {
+        'asin': asin,
+        'title': title,
+        'subtitle': subtitle,
+        'author': author_str,
+        'narrator': narrator_str,
+        'publisher': publisher,
+        'series': series_name,
+        'series_number': series_position,
+        'release_date': release_date,
+        'description': description,
+        'runtime_minutes': runtime_minutes,
+        'genres': genres,
+        'tags': tags,
+        'link': url
+    }
+
+def extract_volume_number(title: str) -> Optional[Decimal]:
+    """
+    Extract and normalize volume numbers from book titles with decimal support
+    
+    This function has been moved to utils.py for shared use.
+    Importing here for backwards compatibility.
+    """
+    from .utils import extract_volume_number as utils_extract_volume_number
+    return utils_extract_volume_number(title)
+
+def get_title_volume_key(title: str) -> str:
+    """
+    Generate a standardized key for title matching that removes volume variations
+    
+    Args:
+        title: Book title
+        
+    Returns:
+        str: Normalized title key for matching
+    """
+    if not title:
+        return ""
+    
+    title_lower = title.lower().strip()
+    
+    # Remove common volume indicators and normalize
+    volume_removals = [
+        r'\s*vol\.?\s*\d+.*$',           # Remove "Vol. 14" and everything after
+        r'\s*volume\s*\d+.*$',           # Remove "Volume 14" and everything after  
+        r'\s*book\s*\d+.*$',             # Remove "Book 14" and everything after
+        r'\s*\d+\s*\(light novel\).*$',  # Remove "14 (Light Novel)" and after
+        r'\s*\d+\s*\(ln\).*$',           # Remove "14 (LN)" and after
+        r',\s*vol\.?\s*\d+.*$',          # Remove ", Vol. 14" and after
+        r':\s*volume\s*\d+.*$',          # Remove ": Volume 14" and after
+        r'\s+\d+$',                      # Remove " 14" at end
+    ]
+    
+    normalized = title_lower
+    for pattern in volume_removals:
+        normalized = re.sub(pattern, '', normalized)
+    
+    # Clean up extra spaces and punctuation
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    normalized = re.sub(r'[^\w\s]', '', normalized)
+    
+    return normalized
+
+def find_best_match_with_review(results: List[Dict[str, Any]], wanted: Dict[str, Any], 
+                                min_confidence: float = 0.5, 
+                                preferred_confidence: float = 0.7) -> Optional[Dict[str, Any]]:
+    """
+    Find the best match with dynamic confidence floor and review flagging
+    
+    Args:
+        results: List of search results
+        wanted: Wanted book criteria
+        min_confidence: Minimum acceptable confidence (default 0.5)
+        preferred_confidence: Preferred confidence level (default 0.7)
+        
+    Returns:
+        Optional[Dict[str, Any]]: Best match with added 'needs_review' flag, or None
+    """
+    if not results:
+        return None
+    
+    # Score all results
+    scored_results = []
+    for result in results:
+        score = confidence(result, wanted)
+        scored_results.append((score, result))
+    
+    # Sort by confidence score (highest first)
+    scored_results.sort(key=lambda x: x[0], reverse=True)
+    
+    if not scored_results:
+        return None
+    
+    best_score, best_result = scored_results[0]
+    
+    # Check if any result meets the preferred threshold
+    if best_score >= preferred_confidence:
+        best_result['needs_review'] = False
+        best_result['confidence_score'] = best_score
+        logging.info(f"High confidence match ({best_score:.2f}): {best_result['title']}")
+        return best_result
+    
+    # Check if the best result meets minimum threshold
+    if best_score >= min_confidence:
+        best_result['needs_review'] = True
+        best_result['confidence_score'] = best_score
+        logging.warning(f"Low confidence match ({best_score:.2f}) - needs review: {best_result['title']}")
+        return best_result
+    
+    # No acceptable matches found
+    logging.info(f"No matches above minimum confidence ({min_confidence}). Best was {best_score:.2f}")
+    return None
+
+def check_for_volume_duplicates(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Remove duplicate volumes of the same series/title using proper decimal comparison
+    
+    Args:
+        results: List of search results
+        
+    Returns:
+        List[Dict[str, Any]]: Deduplicated results
+    """
+    if not results:
+        return results
+    
+    seen_series = {}
+    deduplicated = []
+    
+    for result in results:
+        title = result.get('title', '')
+        series = result.get('series', '')
+        
+        # Generate series key for grouping
+        series_key = normalize_string(series) if series else get_title_volume_key(title)
+        volume_num = extract_volume_number(title)
+        
+        if not series_key:
+            # No series info, add as-is
+            deduplicated.append(result)
+            continue
+        
+        # Create the deduplication key
+        if volume_num is not None:
+            # Use the exact decimal volume as string for key
+            volume_key = str(volume_num)
+            dedupe_key = (series_key, volume_key)
+        else:
+            # Non-numbered title
+            dedupe_key = (series_key, "base")
+        
+        # Track this series/volume combination
+        if dedupe_key not in seen_series:
+            # First time seeing this series/volume combination
+            seen_series[dedupe_key] = result
+            result['extracted_volume'] = volume_num
+            deduplicated.append(result)
+        else:
+            # We've seen this series/volume before - compare to decide which to keep
+            existing = seen_series[dedupe_key]
+            
+            # For exact volume matches, prefer more recent release date
+            current_date = result.get('release_date', '')
+            existing_date = existing.get('release_date', '')
+            
+            if current_date > existing_date:
+                # Replace with more recent
+                seen_series[dedupe_key] = result
+                result['extracted_volume'] = volume_num
+                # Remove the old one and add the new one
+                if existing in deduplicated:
+                    deduplicated.remove(existing)
+                deduplicated.append(result)
+            # Otherwise skip this duplicate
+    
+    logging.info(f"Deduplication: {len(results)} → {len(deduplicated)} results")
+    return deduplicated
 
 if __name__ == "__main__":
     import sys

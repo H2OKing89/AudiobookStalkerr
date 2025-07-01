@@ -5,19 +5,12 @@ import logging
 import json
 import time
 import random
+import re
+from difflib import SequenceMatcher
 from functools import wraps
 from typing import Callable, Any, Optional
+from decimal import Decimal
 import requests
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
-AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.yaml')
-
-REQUIRED_CONFIG_KEYS = [
-    'cron_settings', 'max_results', 'log_level', 'log_format', 'pushover', 'rate_limits', 'ical'
-]
-REQUIRED_PUSHOVER_KEYS = ['enabled', 'sound', 'priority', 'device']
-REQUIRED_ICAL_KEYS = ['enabled', 'batch']
-REQUIRED_ICAL_BATCH_KEYS = ['enabled', 'max_books', 'file_path']
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
@@ -199,6 +192,102 @@ def safe_execute(func: Callable, *args, **kwargs) -> tuple[bool, Any, Optional[E
     except Exception as e:
         logging.error(f"Safe execution of {func.__name__} failed: {e}")
         return False, None, e
+
+def normalize_string(s):
+    """Normalize a string for comparison by removing punctuation, extra spaces, and lowercasing"""
+    if not s:
+        return ""
+    # Convert to lowercase
+    s = s.lower()
+    # Remove punctuation and extra spaces
+    s = re.sub(r'[^\w\s]', '', s)
+    # Replace multiple spaces with single space
+    s = re.sub(r'\s+', ' ', s)
+    # Remove leading/trailing whitespace
+    s = s.strip()
+    return s
+
+def normalize_list(items):
+    """Normalize a list of strings for comparison"""
+    if not items:
+        return []
+    return [normalize_string(item) for item in items if item]
+
+def fuzzy_ratio(s1, s2):
+    """Calculate fuzzy match ratio between two strings"""
+    if not s1 or not s2:
+        return 0.0
+    return SequenceMatcher(None, normalize_string(s1), normalize_string(s2)).ratio()
+
+def set_language_filter(language: str) -> None:
+    """
+    Set the language filter for Audible API results
+    
+    Args:
+        language: Language to filter results by (e.g., "english", "spanish", "french")
+    """
+    # Import here to avoid circular imports
+    from .audible import set_language_filter as set_audible_language_filter
+    set_audible_language_filter(language)
+
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
+AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.yaml')
+
+REQUIRED_CONFIG_KEYS = [
+    'cron_settings', 'max_results', 'log_level', 'log_format', 'pushover', 'rate_limits', 'ical'
+]
+REQUIRED_PUSHOVER_KEYS = ['enabled', 'sound', 'priority', 'device']
+REQUIRED_ICAL_KEYS = ['enabled', 'batch']
+REQUIRED_ICAL_BATCH_KEYS = ['enabled', 'max_books', 'file_path']
+
+# Volume number extraction with decimal support
+VOL_RE = re.compile(
+    r"""\b            # word-boundary
+        (?:vol(?:ume)?\.?\s*)?   # "vol"/"volume"/"vol." (optional)
+        (\d+(?:\.\d+)?)          # 3  |  3.5  | 10.25  etc.
+    \b""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+def extract_volume_number(title: str) -> Optional[Decimal]:
+    """
+    Extract and normalize volume numbers from book titles with decimal support
+    
+    Handles various formats:
+    - "Vol. 14", "Volume 14.5", "14 (Light Novel)", "Book 4.25", etc.
+    
+    Args:
+        title: Book title
+        
+    Returns:
+        Optional[Decimal]: Exact volume number as Decimal or None if not found
+    """
+    if not title:
+        return None
+    
+    title_lower = title.lower()
+    
+    # Common volume patterns with decimal support
+    volume_patterns = [
+        r'vol\.?\s*(\d+(?:\.\d+)?)',           # "Vol. 14", "Vol 14.5"
+        r'volume\s*(\d+(?:\.\d+)?)',           # "Volume 14", "Volume 14.5"
+        r'book\s*(\d+(?:\.\d+)?)',             # "Book 14", "Book 14.5"
+        r'(\d+(?:\.\d+)?)\s*\(light novel\)', # "14 (Light Novel)", "14.5 (Light Novel)"
+        r'(\d+(?:\.\d+)?)\s*\(ln\)',          # "14 (LN)", "14.5 (LN)"
+        r',\s*vol\.?\s*(\d+(?:\.\d+)?)',      # ", Vol. 14", ", Vol. 14.5"
+        r':\s*volume\s*(\d+(?:\.\d+)?)',      # ": Volume 14", ": Volume 14.5"
+        r'\s+(\d+(?:\.\d+)?)$',               # " 14" or " 14.5" at end of title
+    ]
+    
+    for pattern in volume_patterns:
+        match = re.search(pattern, title_lower)
+        if match:
+            try:
+                return Decimal(match.group(1))
+            except (ValueError, TypeError):
+                continue
+    
+    return None
 
 if __name__ == "__main__":
     try:
