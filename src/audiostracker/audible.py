@@ -84,13 +84,19 @@ def search_audible(query, search_field="title", max_pages=4, results_per_page=50
                 logging.debug(f"Filtered out podcast: {prod.get('title', 'N/A')} (ASIN: {prod.get('asin', 'N/A')})")
                 continue
             # Normalize fields to match jq output exactly
-            # Extract all authors (excluding translators) and join them
+            # Extract all authors (excluding translators, illustrators, etc.) and join them
             authors = prod.get('authors') or []
             author_names = []
             for author in authors:
                 name = author.get('name', '')
-                # Skip translators and other non-primary authors
-                if name and not any(role in name.lower() for role in ['translator', 'editor', 'foreword', 'afterword']):
+                # Skip translators, illustrators, editors, and other non-primary authors
+                if name and not any(role in name.lower() for role in [
+                    'translator', 'translated by', '- translator', 
+                    'illustrator', '- illustrator', 
+                    'editor', '- editor',
+                    'foreword', 'afterword',
+                    'introduction', 'preface'
+                ]):
                     author_names.append(name)
             
             # Use primary author or join multiple authors
@@ -101,6 +107,22 @@ def search_audible(query, search_field="title", max_pages=4, results_per_page=50
             else:
                 author_str = 'N/A'
             
+            # Extract all narrators and join them
+            narrators = prod.get('narrators') or []
+            narrator_names = []
+            for narrator in narrators:
+                name = narrator.get('name', '')
+                if name:
+                    narrator_names.append(name)
+            
+            # Use primary narrator or join multiple narrators
+            if len(narrator_names) == 1:
+                narrator_str = narrator_names[0]
+            elif len(narrator_names) > 1:
+                narrator_str = ', '.join(narrator_names)  # Join multiple narrators
+            else:
+                narrator_str = 'N/A'
+            
             book = {
                 'asin': prod.get('asin'),
                 'title': prod.get('title', 'N/A'),
@@ -108,7 +130,7 @@ def search_audible(query, search_field="title", max_pages=4, results_per_page=50
                 'series': (prod.get('series') or [{}])[0].get('title', 'N/A'),
                 'series_number': (prod.get('series') or [{}])[0].get('sequence', 'N/A'),
                 'release_date': prod.get('release_date', 'N/A'),
-                'narrator': (prod.get('narrators') or [{}])[0].get('name', 'N/A'),
+                'narrator': narrator_str,
                 'publisher': prod.get('publisher_name', 'N/A'),
                 'link': f"https://www.audible.com/pd/{prod.get('asin', '')}"
             }
