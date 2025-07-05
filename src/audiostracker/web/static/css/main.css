@@ -1,0 +1,608 @@
+/* AudioStacker - Main Styles */
+
+:root {
+    /* Color Palette */
+    --primary-color: #667eea;
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-color: #10b981;
+    --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --warning-color: #f59e0b;
+    --warning-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --danger-color: #ef4444;
+    --danger-gradient: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --info-color: #3b82f6;
+    --info-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    
+    /* Author Colors */
+    --author-color-1: #ff6b6b;
+    --author-color-2: #4ecdc4;
+    --author-color-3: #45b7d1;
+    --author-color-4: #96ceb4;
+    --author-color-5: #feca57;
+    --author-color-6: #48dbfb;
+    --author-color-7: #ff9ff3;
+    --author-color-8: #54a0ff;
+    
+    /* Spacing */
+    --border-radius: 12px;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f8f9fa;
+    transition: all var(--transition-normal);
+}
+
+.container-fluid {
+    max-width: 1400px;
+}
+
+/* Control Panel */
+.control-panel {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+}
+
+.search-box .input-group-text {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+}
+
+/* Statistics Cards */
+.stat-card {
+    background: var(--primary-gradient);
+    color: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+.stat-card.success {
+    background: var(--success-gradient);
+}
+
+.stat-card.warning {
+    background: var(--warning-gradient);
+}
+
+.stat-card.danger {
+    background: var(--danger-gradient);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-right: 1rem;
+    opacity: 0.8;
+}
+
+.stat-info h3 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+}
+
+.stat-info p {
+    margin: 0;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* Authors Container */
+.authors-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.authors-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Author Cards */
+.author-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.author-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--author-gradient);
+    transition: width var(--transition-normal);
+}
+
+.author-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.author-card:hover::before {
+    width: 8px;
+}
+
+/* Author color coding */
+.author-card:nth-child(8n+1) { --author-gradient: var(--author-color-1); }
+.author-card:nth-child(8n+2) { --author-gradient: var(--author-color-2); }
+.author-card:nth-child(8n+3) { --author-gradient: var(--author-color-3); }
+.author-card:nth-child(8n+4) { --author-gradient: var(--author-color-4); }
+.author-card:nth-child(8n+5) { --author-gradient: var(--author-color-5); }
+.author-card:nth-child(8n+6) { --author-gradient: var(--author-color-6); }
+.author-card:nth-child(8n+7) { --author-gradient: var(--author-color-7); }
+.author-card:nth-child(8n) { --author-gradient: var(--author-color-8); }
+
+.author-header {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.author-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--author-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+}
+
+.author-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: #2d3748;
+}
+
+.author-stats {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.author-stats .badge {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+}
+
+.author-books {
+    padding: 1.5rem;
+}
+
+/* Book Cards */
+.books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1rem;
+}
+
+.books-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.book-card {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+.book-card:hover {
+    border-color: var(--author-gradient);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.book-card.complete {
+    border-color: var(--success-color);
+    background: #f0f9ff;
+}
+
+.book-card.incomplete {
+    border-color: var(--warning-color);
+    background: #fffbeb;
+}
+
+.book-status {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.book-status.complete {
+    background: var(--success-color);
+    color: white;
+}
+
+.book-status.incomplete {
+    background: var(--warning-color);
+    color: white;
+}
+
+.book-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.book-number {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.book-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.book-field {
+    margin-bottom: 1rem;
+}
+
+.book-field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.book-field .form-control {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    transition: all var(--transition-fast);
+    font-size: 0.9rem;
+}
+
+.book-field .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Narrator Management */
+.narrator-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.narrator-item {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-fast);
+}
+
+.narrator-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.narrator-item input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.85rem;
+    min-width: 100px;
+}
+
+.narrator-remove {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.8rem;
+}
+
+.add-narrator-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.add-narrator-btn:hover {
+    background: #5a67d8;
+    transform: translateY(-1px);
+}
+
+/* Publisher Badge */
+.publisher-badge {
+    display: inline-block;
+    background: var(--info-gradient);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left var(--transition-normal);
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border: none;
+}
+
+.btn-success {
+    background: var(--success-gradient);
+    border: none;
+}
+
+.btn-warning {
+    background: var(--warning-gradient);
+    border: none;
+}
+
+.btn-danger {
+    background: var(--danger-gradient);
+    border: none;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    z-index: 1000;
+}
+
+.fab:hover {
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+/* Form Styles */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    transition: all var(--transition-fast);
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-select {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    transition: all var(--transition-fast);
+}
+
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .control-panel .row > div {
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .books-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .fab {
+        bottom: 1rem;
+        right: 1rem;
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .author-header {
+        padding: 1rem;
+    }
+    
+    .author-books {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .control-panel {
+        padding: 1rem;
+    }
+    
+    .book-card {
+        padding: 1rem;
+    }
+    
+    .stat-info h3 {
+        font-size: 1.8rem;
+    }
+    
+    .stat-icon {
+        font-size: 2rem;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn var(--transition-normal) ease;
+}
+
+.slide-up {
+    animation: slideUp var(--transition-normal) ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* Utility Classes */
+.text-gradient {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.shadow-custom {
+    box-shadow: var(--shadow-md);
+}
+
+.border-custom {
+    border-radius: var(--border-radius);
+}

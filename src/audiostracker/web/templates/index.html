@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioStacker - Audiobook Collection Manager</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/static/css/themes.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-headphones text-primary me-2"></i>
+                <strong>AudioStacker</strong>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="fas fa-home me-1"></i>Collection
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showStatsModal()">
+                            <i class="fas fa-chart-bar me-1"></i>Statistics
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="navbar-nav">
+                    <button class="btn btn-outline-primary me-2" onclick="exportCollection()">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                    <button class="btn btn-outline-secondary me-2" onclick="showImportModal()">
+                        <i class="fas fa-upload me-1"></i>Import
+                    </button>
+                    <button class="btn btn-link" onclick="toggleTheme()" id="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <!-- Control Panel -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="control-panel">
+                    <!-- Search and Filters -->
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <div class="search-box">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="search-input" 
+                                           placeholder="Search books, authors, series...">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="filter-controls">
+                                <select class="form-select" id="filter-select" onchange="applyFilter()">
+                                    <option value="all">All Books</option>
+                                    <option value="complete">Complete Info</option>
+                                    <option value="incomplete">Missing Info</option>
+                                    <option value="publisher">By Publisher</option>
+                                    <option value="narrator">By Narrator</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="view-controls">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary active" 
+                                            id="grid-view-btn" onclick="setViewMode('grid')">
+                                        <i class="fas fa-th"></i> Grid
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" 
+                                            id="list-view-btn" onclick="setViewMode('list')">
+                                        <i class="fas fa-list"></i> List
+                                    </button>
+                                </div>
+                                <button class="btn btn-primary ms-2" onclick="showAddAuthorModal()">
+                                    <i class="fas fa-plus me-1"></i>Add Author
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4" id="stats-cards">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="total-books">{{ stats.total_books }}</h3>
+                        <p>Total Books</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-edit"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="total-authors">{{ stats.total_authors }}</h3>
+                        <p>Authors</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="complete-books">{{ stats.complete_books }}</h3>
+                        <p>Complete</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="incomplete-books">{{ stats.incomplete_books }}</h3>
+                        <p>Incomplete</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Authors and Books Container -->
+        <div id="authors-container" class="authors-grid">
+            <!-- Authors will be dynamically loaded here -->
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="showQuickAddModal()" title="Quick Add Book">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modals-container">
+        <!-- Modals will be dynamically loaded here -->
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notification-toast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                <strong class="me-auto">AudioStacker</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-message">
+                <!-- Toast message will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Core Application Modules -->
+    <script src="/static/js/core/api.js"></script>
+    <script src="/static/js/core/utils.js"></script>
+    <script src="/static/js/core/state.js"></script>
+    
+    <!-- UI Modules -->
+    <script src="/static/js/modules/search.js"></script>
+    <script src="/static/js/modules/filters.js"></script>
+    <script src="/static/js/modules/modals.js"></script>
+    <script src="/static/js/modules/toast.js"></script>
+    <script src="/static/js/modules/theme.js"></script>
+    
+    <!-- Component Modules -->
+    <!-- Component functionality is integrated into modules -->
+    
+    <!-- Main Application -->
+    <script src="/static/js/app.js"></script>
+
+    <!-- Initialize app data -->
+    <script>
+        // Pass initial data from server
+        window.initialData = JSON.parse('{{ audiobooks|tojson|safe }}');
+        window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
+    </script>
+</body>
+</html>

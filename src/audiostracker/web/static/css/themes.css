@@ -1,0 +1,252 @@
+/* AudioStacker - Theme Styles */
+
+/* Dark Theme */
+body.dark-theme {
+    background-color: #0f0f0f;
+    color: #e2e8f0;
+}
+
+body.dark-theme .control-panel {
+    background: #1a1a1a;
+    border: 1px solid #2d3748;
+}
+
+body.dark-theme .author-card {
+    background: #1a1a1a;
+    border: 1px solid #2d3748;
+}
+
+body.dark-theme .author-header {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-bottom-color: #4a5568;
+}
+
+body.dark-theme .book-card {
+    background: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-theme .book-card.complete {
+    background: #1a2e05;
+    border-color: var(--success-color);
+}
+
+body.dark-theme .book-card.incomplete {
+    background: #2d1b07;
+    border-color: var(--warning-color);
+}
+
+body.dark-theme .form-control {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-theme .form-control:focus {
+    background: #374151;
+    color: #f9fafb;
+    border-color: var(--primary-color);
+}
+
+body.dark-theme .form-select {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-theme .narrator-item {
+    background: #374151;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-theme .navbar-light {
+    background: #1a1a1a !important;
+    border-bottom: 1px solid #2d3748;
+}
+
+body.dark-theme .navbar-light .navbar-brand,
+body.dark-theme .navbar-light .nav-link {
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .input-group-text {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-theme .toast {
+    background: #1a1a1a;
+    border: 1px solid #2d3748;
+    color: #e2e8f0;
+}
+
+body.dark-theme .modal-content {
+    background: #1a1a1a;
+    border: 1px solid #2d3748;
+    color: #e2e8f0;
+}
+
+body.dark-theme .modal-header {
+    border-bottom-color: #2d3748;
+}
+
+body.dark-theme .modal-footer {
+    border-top-color: #2d3748;
+}
+
+body.dark-theme .btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+body.dark-theme .btn-outline-primary:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+body.dark-theme .btn-outline-secondary {
+    color: #6b7280;
+    border-color: #6b7280;
+}
+
+body.dark-theme .btn-outline-secondary:hover {
+    background: #6b7280;
+    color: white;
+}
+
+/* Light Theme (default) */
+body.light-theme {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+/* Theme Transition */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* High Contrast Theme */
+body.high-contrast-theme {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+body.high-contrast-theme .control-panel {
+    background: #1a1a1a;
+    border: 2px solid #ffffff;
+}
+
+body.high-contrast-theme .author-card {
+    background: #1a1a1a;
+    border: 2px solid #ffffff;
+}
+
+body.high-contrast-theme .book-card {
+    background: #000000;
+    border: 2px solid #ffffff;
+}
+
+body.high-contrast-theme .form-control {
+    background: #000000;
+    border: 2px solid #ffffff;
+    color: #ffffff;
+}
+
+body.high-contrast-theme .btn {
+    border: 2px solid #ffffff;
+    color: #ffffff;
+}
+
+/* Colorblind-friendly Theme */
+body.colorblind-theme {
+    /* Use colorblind-safe color palette */
+    --bs-primary: #0173b2;
+    --bs-secondary: #6c757d;
+    --bs-success: #029e73;
+    --bs-warning: #de8f05;
+    --bs-danger: #cc78bc;
+    --bs-info: #56b4e9;
+}
+
+body.colorblind-theme .stat-card.success {
+    background: linear-gradient(135deg, #0173b2 0%, #029e73 100%);
+}
+
+body.colorblind-theme .stat-card.warning {
+    background: linear-gradient(135deg, #cc78bc 0%, #ca9161 100%);
+}
+
+body.colorblind-theme .stat-card.danger {
+    background: linear-gradient(135deg, #de8f05 0%, #cc78bc 100%);
+}
+
+/* Large Text Theme */
+body.large-text-theme {
+    font-size: 1.2rem;
+}
+
+body.large-text-theme .stat-info h3 {
+    font-size: 2.6rem;
+}
+
+body.large-text-theme .author-name {
+    font-size: 1.5rem;
+}
+
+body.large-text-theme .book-field label {
+    font-size: 1rem;
+}
+
+body.large-text-theme .form-control {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+}
+
+/* Reduced Motion Theme */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    body.reduced-motion-theme * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .fab,
+    .btn,
+    .navbar,
+    .control-panel,
+    #loading-overlay {
+        display: none !important;
+    }
+    
+    .author-card,
+    .book-card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+    
+    .stat-card {
+        border: 1px solid #000 !important;
+        background: white !important;
+        color: black !important;
+    }
+}

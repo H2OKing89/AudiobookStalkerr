@@ -5,6 +5,7 @@ __pycache__/
 config/*.secret.yaml
 .env
 audiobooks.yaml
+audiobooks.json
 config.yaml
 *.db
 *.sqlite3
