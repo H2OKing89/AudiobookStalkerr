@@ -29,7 +29,10 @@ class Audiobook(BaseModel):
     series: str
     series_number: str
     release_date: str = Field(..., description="Release date in YYYY-MM-DD format")
-    link: str
+    link: Optional[str] = None
+    image_url: Optional[str] = None
+    merchandising_summary: Optional[str] = None
+    publisher_name: Optional[str] = None
     last_checked: Optional[datetime] = None
     notified_channels: Optional[Dict[str, bool]] = Field(default_factory=dict)
     

@@ -270,6 +270,21 @@ class UpcomingApp {
             urgencyText = '<span class="badge bg-warning">This Month</span>';
         }
         
+        // Handle image with fallback
+        const imageUrl = book.image_url || '/static/images/book-placeholder.png';
+        const imageTag = book.image_url ? 
+            `<img src="${this.escapeHtml(book.image_url)}" alt="Book cover" class="book-cover-img" onerror="this.src='/static/images/book-placeholder.png'">` : 
+            `<div class="book-cover-placeholder"><i class="fas fa-book"></i></div>`;
+        
+        // Handle description with truncation
+        const description = book.merchandising_summary || '';
+        const cleanDescription = this.stripHtml(description);
+        const truncatedDescription = cleanDescription.length > 150 ? 
+            cleanDescription.substring(0, 150) + '...' : cleanDescription;
+        
+        // Use publisher_name if available, fallback to publisher
+        const publisherName = book.publisher_name || book.publisher || 'Unknown Publisher';
+        
         col.innerHTML = `
             <div class="card h-100 audiobook-card ${urgencyClass}">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -277,10 +292,25 @@ class UpcomingApp {
                     ${urgencyText}
                 </div>
                 <div class="card-body">
-                    <h5 class="card-title">${this.escapeHtml(book.title)}</h5>
-                    ${book.series ? `<p class="text-muted mb-2"><i class="fas fa-list me-1"></i>${this.escapeHtml(book.series)} ${book.series_number ? `#${book.series_number}` : ''}</p>` : ''}
-                    <p class="text-muted mb-2"><i class="fas fa-microphone me-1"></i>${this.escapeHtml(book.narrator)}</p>
-                    <p class="text-muted mb-3"><i class="fas fa-building me-1"></i>${this.escapeHtml(book.publisher)}</p>
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="book-cover mb-3">
+                                ${imageTag}
+                            </div>
+                        </div>
+                        <div class="col-8">
+                            <h5 class="card-title">${this.escapeHtml(book.title)}</h5>
+                            ${book.series ? `<p class="text-muted mb-2"><i class="fas fa-list me-1"></i>${this.escapeHtml(book.series)} ${book.series_number ? `#${book.series_number}` : ''}</p>` : ''}
+                            <p class="text-muted mb-2"><i class="fas fa-microphone me-1"></i>${this.escapeHtml(book.narrator)}</p>
+                            <p class="text-muted mb-3"><i class="fas fa-building me-1"></i>${this.escapeHtml(publisherName)}</p>
+                        </div>
+                    </div>
+                    
+                    ${truncatedDescription ? `
+                        <div class="book-description mb-3">
+                            <p class="text-muted small">${this.escapeHtml(truncatedDescription)}</p>
+                        </div>
+                    ` : ''}
                     
                     <div class="release-info">
                         <div class="d-flex align-items-center mb-2">
@@ -294,10 +324,21 @@ class UpcomingApp {
                     </div>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <small class="text-muted">
-                        <i class="fas fa-tag me-1"></i>ASIN: ${book.asin}
-                        ${book.last_checked ? ` • Updated: ${new Date(book.last_checked).toLocaleDateString()}` : ''}
-                    </small>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-tag me-1"></i>ASIN: ${book.asin}
+                        </small>
+                        ${book.link ? `
+                            <a href="${this.escapeHtml(book.link)}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>View on Audible
+                            </a>
+                        ` : ''}
+                    </div>
+                    ${book.last_checked ? `
+                        <small class="text-muted d-block mt-1">
+                            <i class="fas fa-sync me-1"></i>Updated: ${new Date(book.last_checked).toLocaleDateString()}
+                        </small>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -310,6 +351,14 @@ class UpcomingApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    stripHtml(html) {
+        if (!html) return '';
+        // Create a temporary div to parse HTML and extract text content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        return tempDiv.textContent || tempDiv.innerText || '';
     }
 
     async refresh() {

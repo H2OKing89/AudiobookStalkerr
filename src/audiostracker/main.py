@@ -106,7 +106,11 @@ def main():
                     publisher=best_match['publisher'],
                     series=best_match['series'],
                     series_number=best_match['series_number'],
-                    release_date=best_match['release_date']
+                    release_date=best_match['release_date'],
+                    link=best_match.get('link'),
+                    image_url=best_match.get('image_url'),
+                    merchandising_summary=best_match.get('merchandising_summary'),
+                    publisher_name=best_match.get('publisher_name')
                 )
                 
                 if best_match.get('needs_review', False):
@@ -164,7 +168,11 @@ def main():
                         publisher=best_series_match['publisher'],
                         series=best_series_match['series'],
                         series_number=best_series_match['series_number'],
-                        release_date=best_series_match['release_date']
+                        release_date=best_series_match['release_date'],
+                        link=best_series_match.get('link'),
+                        image_url=best_series_match.get('image_url'),
+                        merchandising_summary=best_series_match.get('merchandising_summary'),
+                        publisher_name=best_series_match.get('publisher_name')
                     )
                     
                     if best_series_match.get('needs_review', False):

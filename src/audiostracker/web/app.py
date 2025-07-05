@@ -169,7 +169,8 @@ def get_upcoming_audiobooks() -> List[dict]:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT asin, title, author, narrator, publisher, series, series_number, 
-                       release_date, last_checked, notified_channels
+                       release_date, link, image_url, merchandising_summary, publisher_name,
+                       last_checked, notified_channels
                 FROM audiobooks 
                 WHERE release_date >= date('now')
                 ORDER BY release_date ASC, author ASC, series ASC, series_number ASC
@@ -186,6 +187,10 @@ def get_upcoming_audiobooks() -> List[dict]:
                     "series": row["series"],
                     "series_number": row["series_number"],
                     "release_date": row["release_date"],
+                    "link": row["link"],
+                    "image_url": row["image_url"],
+                    "merchandising_summary": row["merchandising_summary"],
+                    "publisher_name": row["publisher_name"],
                     "last_checked": row["last_checked"],
                     "notified_channels": json.loads(row["notified_channels"]) if row["notified_channels"] else {}
                 }

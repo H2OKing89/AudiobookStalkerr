@@ -847,10 +847,27 @@ def _process_product(product: Dict[str, Any]) -> Dict[str, Any]:
     elif 'issue_date' in product:
         release_date = product['issue_date']
     
-    # Additional fields inspired by their implementation
+    # Additional fields for upcoming audiobook monitor
     subtitle = product.get('subtitle', '')
     description = product.get('publisher_summary', '')
+    merchandising_summary = product.get('merchandising_summary', '')
     runtime_minutes = product.get('runtime_length_min', 0)
+    
+    # Get publisher name (may be different from publisher field)
+    publisher_name = product.get('publisher_name', publisher)
+    
+    # Get image URL
+    image_url = ''
+    if 'product_images' in product:
+        # Try to get the highest quality image available
+        if '500' in product['product_images']:
+            image_url = product['product_images']['500']
+        elif '300' in product['product_images']:
+            image_url = product['product_images']['300']
+        elif '200' in product['product_images']:
+            image_url = product['product_images']['200']
+        elif '100' in product['product_images']:
+            image_url = product['product_images']['100']
     
     # Extract genres and tags from category_ladders
     genres = []
@@ -874,14 +891,17 @@ def _process_product(product: Dict[str, Any]) -> Dict[str, Any]:
         'author': author_str,
         'narrator': narrator_str,
         'publisher': publisher,
+        'publisher_name': publisher_name,
         'series': series_name,
         'series_number': series_position,
         'release_date': release_date,
         'description': description,
+        'merchandising_summary': merchandising_summary,
         'runtime_minutes': runtime_minutes,
         'genres': genres,
         'tags': tags,
-        'link': url
+        'link': url,
+        'image_url': image_url
     }
 
 def extract_volume_number(title: str) -> Optional[Decimal]:
