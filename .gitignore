@@ -18,3 +18,4 @@ data/
 *.db-journal
 .pytest_cache/
 .last_vacuum
+src/audiostracker/config/*.json
