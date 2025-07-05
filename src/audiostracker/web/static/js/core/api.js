@@ -128,13 +128,16 @@ class AudioStackerAPI {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
             }
+            
             // Get filename from Content-Disposition header
             const disposition = response.headers.get('Content-Disposition');
             let filename = 'audiobooks_export.json';
             if (disposition && disposition.includes('filename=')) {
                 filename = disposition.split('filename=')[1].replace(/"/g, '');
             }
+            
             const blob = await response.blob();
+            
             // Download the file
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -144,6 +147,7 @@ class AudioStackerAPI {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
+            
             showToast('Collection exported successfully', 'success');
             return { success: true };
         } catch (error) {
@@ -216,4 +220,38 @@ class AudioStackerAPI {
 }
 
 // Create global API instance
+console.log('Initializing API...');
 window.api = new AudioStackerAPI();
+console.log('API initialized:', !!window.api);
+
+// Register this module as loaded
+if (window.moduleStatus && typeof window.moduleStatus.modules === 'object') {
+    window.moduleStatus.modules['api'] = {
+        loaded: true,
+        timestamp: new Date().getTime()
+    };
+    console.log('API module registered');
+} else {
+    console.log('moduleStatus not available, API module loaded but not registered');
+}
+
+// Add a global backup export function that doesn't rely on the app object
+window.directExport = async function() {
+    console.log('Direct export called');
+    try {
+        if (!window.api) {
+            console.error('API not available for direct export');
+            alert('API not available. Please refresh the page.');
+            return;
+        }
+        
+        showLoading(true);
+        await window.api.exportCollection();
+        console.log('Direct export completed successfully');
+    } catch (error) {
+        console.error('Direct export error:', error);
+        // Error already handled in exportCollection
+    } finally {
+        showLoading(false);
+    }
+};

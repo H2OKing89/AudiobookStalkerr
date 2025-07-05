@@ -331,7 +331,6 @@ async def export_collection():
         data = load_audiobooks()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"audiobooks_export_{timestamp}.json"
-        import json
         json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
         return StreamingResponse(
             iter([json_bytes]),

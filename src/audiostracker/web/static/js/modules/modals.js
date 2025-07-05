@@ -2,7 +2,7 @@
  * Modals Module
  * Handles all modal dialogs in the application
  */
-
+//
 class ModalsModule {
     constructor() {
         this.activeModals = new Map();

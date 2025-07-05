@@ -511,16 +511,60 @@ class AudioStackerApp {
 
     // Export/Import functions
     async exportCollection() {
-        try {
-            const result = await api.exportCollection();
-            if (result.success) {
-                const dataStr = JSON.stringify(result.data, null, 2);
-                downloadFile(dataStr, result.filename, 'application/json');
-                showToast('Collection exported successfully', 'success');
+        console.log('App exportCollection called'); // Debug log
+        console.log('API available:', !!window.api); // Debug log
+        
+        // If API is not defined, try to recover by recreating it
+        if (!window.api && typeof AudioStackerAPI === 'function') {
+            console.log('Attempting to recover API in app.exportCollection...');
+            try {
+                window.api = new AudioStackerAPI();
+                console.log('API recovery result in app.exportCollection:', !!window.api);
+            } catch (e) {
+                console.error('Failed to recover API in app.exportCollection:', e);
             }
+        }
+        
+        if (!window.api) {
+            console.error('window.api is still not available after recovery attempt');
+            showToast('API not available. Trying direct export...', 'warning');
+            
+            // Fall back to direct export implementation
+            try {
+                console.log('Using direct export implementation');
+                const response = await fetch('/api/export', { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'audiobooks_export.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Collection exported successfully', 'success');
+                console.log('Direct export completed successfully');
+            } catch (directError) {
+                console.error('Direct export failed:', directError);
+                showToast(`Export failed: ${directError.message}`, 'error');
+            }
+            return;
+        }
+        
+        try {
+            console.log('Calling window.api.exportCollection()'); // Debug log
+            await window.api.exportCollection();
+            console.log('Export completed successfully'); // Debug log
+            // The api.exportCollection now handles the download and shows success toast
         } catch (error) {
             console.error('Export failed:', error);
-            showToast('Failed to export collection', 'error');
+            showToast(`Export failed: ${error.message}`, 'error');
+            // Error toast is already shown in api.exportCollection
         }
     }
 
@@ -689,9 +733,73 @@ function toggleAuthorCollapse(authorId) {
 
 // Global app functions
 function exportCollection() {
-    if (window.app) {
-        window.app.exportCollection();
+    console.log('Export button clicked'); // Debug log
+    console.log('Checking API availability at export time:', !!window.api);
+    console.log('Checking App availability at export time:', !!window.app);
+    
+    // If API is not defined, try to recover by recreating it
+    if (!window.api && typeof AudioStackerAPI === 'function') {
+        console.log('Attempting to recover API...');
+        try {
+            window.api = new AudioStackerAPI();
+            console.log('API recovery result:', !!window.api);
+        } catch (e) {
+            console.error('Failed to recover API:', e);
+        }
     }
+    
+    // Check if API is available after recovery attempt
+    if (!window.api) {
+        console.error('window.api is not available');
+        showToast('API not ready. Please refresh the page.', 'error');
+        return false;
+    }
+    
+    if (window.app) {
+        console.log('Calling app.exportCollection()'); // Debug log
+        window.app.exportCollection();
+    } else {
+        console.log('App not available, using API directly'); // Debug log
+        // Fallback to direct API call if app object is not ready
+        (async function() {
+            try {
+                console.log('Using direct API call for export');
+                showLoading(true);
+                const response = await fetch('/api/export', { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Get filename from Content-Disposition header
+                const disposition = response.headers.get('Content-Disposition');
+                let filename = 'audiobooks_export.json';
+                if (disposition && disposition.includes('filename=')) {
+                    filename = disposition.split('filename=')[1].replace(/"/g, '');
+                }
+                
+                const blob = await response.blob();
+                
+                // Download the file
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Collection exported successfully', 'success');
+            } catch (error) {
+                console.error('Export failed:', error);
+                showToast(`Export failed: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        })();
+    }
+    
+    return false; // Prevent default behavior
 }
 
 function showImportModal() {
