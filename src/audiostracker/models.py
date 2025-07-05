@@ -5,7 +5,7 @@ import re
 import logging
 
 class AudiobookEntry(BaseModel):
-    """Represents a wanted audiobook entry from audiobooks.yaml"""
+    """Represents a wanted audiobook entry from audiobooks configuration"""
     title: Optional[str] = None
     series: Optional[str] = None
     publisher: Optional[str] = None

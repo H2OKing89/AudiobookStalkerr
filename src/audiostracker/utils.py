@@ -68,6 +68,11 @@ def load_yaml(path):
     with open(path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
+# Load JSON config
+def load_json(path):
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 # Validate config.yaml
 def validate_config(cfg):
     missing = [k for k in REQUIRED_CONFIG_KEYS if k not in cfg]
@@ -96,10 +101,10 @@ def validate_config(cfg):
         raise ValueError("max_results must be an integer between 1 and 50")
     return True
 
-# Validate audiobooks.yaml (basic)
+# Validate audiobooks config (basic)
 def validate_audiobooks(data):
     if 'audiobooks' not in data:
-        raise ValueError("audiobooks.yaml missing 'audiobooks' root key")
+        raise ValueError("audiobooks config missing 'audiobooks' root key")
     if not isinstance(data['audiobooks'], dict):
         raise ValueError("'audiobooks' must be a dict")
     return True
@@ -231,7 +236,7 @@ def set_language_filter(language: str) -> None:
     set_audible_language_filter(language)
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
-AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.yaml')
+AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.json')
 
 REQUIRED_CONFIG_KEYS = [
     'cron_settings', 'max_results', 'log_level', 'log_format', 'pushover', 'rate_limits', 'ical'
@@ -294,9 +299,9 @@ if __name__ == "__main__":
         user_key, api_token = load_env()
         config = load_yaml(CONFIG_PATH)
         validate_config(config)
-        audiobooks = load_yaml(AUDIOBOOKS_PATH)
+        audiobooks = load_json(AUDIOBOOKS_PATH)
         validate_audiobooks(audiobooks)
         setup_logging(config)
-        print("Config and audiobooks.yaml loaded and validated successfully.")
+        print("Config and audiobooks.json loaded and validated successfully.")
     except Exception as e:
         print(f"Config validation failed: {e}")

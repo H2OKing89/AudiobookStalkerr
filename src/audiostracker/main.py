@@ -1,5 +1,5 @@
 import logging
-from .utils import load_yaml, validate_config, validate_audiobooks, setup_logging, merge_env_config
+from .utils import load_yaml, load_json, validate_config, validate_audiobooks, setup_logging, merge_env_config
 from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
 from .audible import search_audible, search_audible_parallel, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, find_all_good_matches
 from .notify.notify import create_dispatcher
@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
-AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.yaml')
+AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.json')
 ENV_PATH = os.path.join(os.path.dirname(__file__), 'config', '.env')
 
 def main():
@@ -22,7 +22,7 @@ def main():
     setup_logging(config)
     set_audible_rate_limit(config.get('rate_limits', {}).get('audible_api_per_minute', 10))
     set_language_filter(config.get('language', 'english'))  # Set language filter from config
-    wanted = load_yaml(AUDIOBOOKS_PATH)
+    wanted = load_json(AUDIOBOOKS_PATH)
     validate_audiobooks(wanted)
     # Init DB
     init_db()

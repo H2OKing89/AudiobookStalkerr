@@ -23,7 +23,7 @@ A tool for tracking and notifying users about upcoming audiobook releases from A
 
 3. Configure your settings in `src/audiostracker/config/config.yaml`
 
-4. Set up your audiobook tracking preferences in `src/audiostracker/config/audiobooks.yaml`
+4. Set up your audiobook tracking preferences in `src/audiostracker/config/audiobooks.json`
 
 5. Create a `.env` file in the `src/audiostracker/config` directory with your API keys and credentials
 
@@ -58,17 +58,25 @@ EMAIL_TO=recipient1@example.com,recipient2@example.com
 
 #### Audiobook Configuration
 
-Edit the `src/audiostracker/config/audiobooks.yaml` file to specify which authors and series you want to track:
+Edit the `src/audiostracker/config/audiobooks.json` file to specify which authors and series you want to track:
 
-```yaml
-audiobooks:
-  author:
-    "Author Name":
-      - title: "Book Title"
-        series: "Series Name"
-        publisher: "Publisher Name"
-        narrator:
-          - "Narrator Name"
+```json
+{
+  "audiobooks": {
+    "author": {
+      "Author Name": [
+        {
+          "title": "Book Title",
+          "series": "Series Name",
+          "publisher": "Publisher Name",
+          "narrator": [
+            "Narrator Name"
+          ]
+        }
+      ]
+    }
+  }
+}
 ```
 
 #### Database Configuration
