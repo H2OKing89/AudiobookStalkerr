@@ -519,343 +519,162 @@ body {
     transform: translateY(-1px);
 }
 
-/* Statistics Cards - Premium redesign */
-.stat-card {
+/* Enhanced dropdown styling for dark mode */
+.filter-select option {
     background: var(--bg-primary);
-    border: 1px solid var(--border-light);
-    border-radius: 1.25rem;
-    padding: 2rem;
-    box-shadow: var(--shadow-base);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--accent-color, var(--primary-500));
-}
-
-.stat-card.info {
-    --accent-color: var(--accent-teal);
-}
-
-.stat-card.success {
-    --accent-color: var(--accent-emerald);
-}
-
-.stat-card.warning {
-    --accent-color: var(--accent-amber);
-}
-
-.stat-card.danger {
-    --accent-color: var(--accent-rose);
-}
-
-.stat-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: var(--shadow-xl);
-}
-
-.stat-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-    margin-bottom: 1.5rem;
-    background: linear-gradient(135deg, var(--accent-color, var(--primary-500)), rgba(var(--accent-color, var(--primary-500)), 0.8));
-    color: white;
-    box-shadow: var(--shadow-md);
-}
-
-.stat-info h3 {
-    font-size: 2.75rem;
-    font-weight: 800;
-    margin: 0;
     color: var(--text-primary);
-    line-height: 1;
-    letter-spacing: -0.02em;
+    padding: 0.5rem;
 }
 
-.stat-info p {
-    margin: 0.5rem 0 0 0;
-    color: var(--text-muted);
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-/* Empty State - Enhanced */
-.empty-state {
-    padding: 5rem 2rem;
-    text-align: center;
-}
-
-.empty-state i {
-    font-size: 5rem;
-    color: var(--text-light);
-    margin-bottom: 2rem;
-    opacity: 0.6;
-}
-
-.empty-state h3 {
-    color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-    font-weight: 600;
-    font-size: 1.5rem;
-}
-
-.empty-state p {
-    color: var(--text-muted);
-    font-size: 1.1rem;
-    margin-bottom: 2rem;
-}
-
-/* Search Results Header - Modern */
-.search-results-header {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-    border-radius: 0.75rem;
-    padding: 1.25rem;
-    margin-bottom: 2rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.search-results-count {
-    font-weight: 700;
-    color: var(--primary-600);
-    font-size: 1.1rem;
-}
-
-.sort-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.sort-label {
-    font-weight: 600;
-    margin: 0;
-    white-space: nowrap;
-    color: var(--text-secondary);
-}
-
-.sort-select {
-    min-width: 160px;
-}
-
-/* Loading Overlay - Enhanced */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(var(--bg-primary), 0.95);
-    backdrop-filter: blur(8px);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.loading-overlay .spinner-border {
-    width: 3rem;
-    height: 3rem;
-    color: var(--primary-500);
-}
-
-/* Enhanced Responsive Design */
-@media (max-width: 768px) {
+/* Dark mode specific fixes for dropdowns */
+@media (prefers-color-scheme: dark) {
+    .filter-select {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--border-light);
+    }
+    
+    .filter-select option {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+    }
+    
+    .filter-select option:hover,
+    .filter-select option:focus,
+    .filter-select option:checked {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+    
+    /* Search input dark mode improvements */
+    .search-input {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--border-light);
+    }
+    
+    .search-input::placeholder {
+        color: var(--text-muted);
+    }
+    
+    /* Control panel background in dark mode */
     .control-panel {
-        padding: 1.5rem;
+        background: var(--bg-secondary);
+        border-color: var(--border-light);
     }
     
-    .month-title {
-        font-size: 1.75rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
+    /* Form controls comprehensive dark mode fixes */
+    .form-control,
+    .form-select,
+    .filter-select,
+    .search-input,
+    select {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-light) !important;
     }
     
-    .search-results-header .d-flex {
-        flex-direction: column;
-        gap: 1rem;
+    .form-control:focus,
+    .form-select:focus,
+    .filter-select:focus,
+    .search-input:focus {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--primary-400) !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
     }
     
-    .sort-controls {
-        justify-content: flex-start;
+    /* Dropdown option styling - force override */
+    select option,
+    .filter-select option,
+    .form-select option {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
     }
     
-    .audiobook-card .card-body {
-        padding: 1.25rem;
-    }
-    
-    .stat-card {
-        padding: 1.5rem;
-        text-align: center;
-    }
-    
-    .stat-info h3 {
-        font-size: 2.25rem;
-    }
-    
-    .audiobook-card .row {
-        flex-direction: column;
-    }
-    
-    .audiobook-card .col-4,
-    .audiobook-card .col-8 {
-        max-width: 100%;
-        flex: 0 0 100%;
-    }
-    
-    .book-cover {
-        height: 200px;
-        max-width: 200px;
-        margin: 0 auto 1.5rem auto;
-    }
-    
-    .audiobook-card .card-title {
-        font-size: 1.1rem;
-        text-align: center;
-    }
-    
-    .audiobook-card .text-muted {
-        text-align: center;
+    select option:hover,
+    select option:focus,
+    .filter-select option:hover,
+    .filter-select option:focus {
+        background-color: var(--primary-500) !important;
+        color: white !important;
     }
 }
 
-@media (max-width: 576px) {
-    .month-title {
-        font-size: 1.5rem;
+/* WebKit specific dropdown fixes for dark mode */
+@media (prefers-color-scheme: dark) {
+    /* Fix for WebKit browsers (Chrome, Safari, Edge) */
+    .filter-select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6,9 12,15 18,9'></polyline></svg>");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1rem;
+        padding-right: 3rem;
     }
     
-    .audiobook-card .card-title {
-        font-size: 1rem;
+    /* Force dropdown option styling */
+    select.filter-select option {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
     }
     
-    .release-info {
-        padding: 1rem;
+    select.filter-select option:checked {
+        background-color: var(--primary-500) !important;
+        color: white !important;
     }
     
-    .stat-icon {
-        width: 56px;
-        height: 56px;
-        font-size: 1.5rem;
+    /* Firefox specific fixes */
+    @-moz-document url-prefix() {
+        .filter-select option {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+    }
+}
+
+/* Specific fixes for author and date filter dropdowns */
+@media (prefers-color-scheme: dark) {
+    #author-filter,
+    #date-filter {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border: 2px solid var(--border-light) !important;
     }
     
-    .stat-info h3 {
-        font-size: 2rem;
+    #author-filter option,
+    #date-filter option {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        padding: 0.5rem !important;
     }
     
-    .audiobook-card .card-body {
-        padding: 1rem;
-    }
-    
-    .book-cover {
-        height: 160px;
-        max-width: 160px;
-        margin: 0 auto 1rem auto;
-    }
-    
-    .audiobook-card .card-title {
-        font-size: 0.95rem;
-        -webkit-line-clamp: 3;
-        line-clamp: 3;
-        text-align: center;
-    }
-    
-    .release-info {
-        padding: 1rem;
-    }
-    
-    .book-description {
-        padding: 0.75rem;
-        margin: 0.75rem 0;
+    #author-filter:focus,
+    #date-filter:focus {
+        background: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--primary-400) !important;
     }
 }
 
-/* Accessibility Improvements */
-.book-cover:focus,
-.audiobook-card:focus {
-    outline: 3px solid var(--primary-400);
-    outline-offset: 2px;
+/* Universal select styling using color-scheme for better browser support */
+.filter-select,
+.form-select,
+#author-filter,
+#date-filter {
+    color-scheme: dark;
 }
 
-.search-input:focus,
-.filter-select:focus {
-    outline: none;
-}
-
-/* Enhanced button styles */
-.btn-outline-primary {
-    color: var(--primary-600);
-    border-color: var(--primary-400);
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.btn-outline-primary:hover {
-    background-color: var(--primary-500);
-    border-color: var(--primary-500);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-/* Smooth animations */
-@keyframes slideInFromBottom {
-    from {
-        opacity: 0;
-        transform: translateY(40px) scale(0.95);
+@media (prefers-color-scheme: dark) {
+    .filter-select,
+    .form-select,
+    #author-filter,
+    #date-filter {
+        color-scheme: dark;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--border-light);
     }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.audiobook-card {
-    animation: slideInFromBottom 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.month-section {
-    animation: fadeIn 0.8s ease-out;
-}
-
-/* Stagger animation for multiple cards */
-.audiobook-card:nth-child(1) { animation-delay: 0.1s; }
-.audiobook-card:nth-child(2) { animation-delay: 0.15s; }
-.audiobook-card:nth-child(3) { animation-delay: 0.2s; }
-.audiobook-card:nth-child(4) { animation-delay: 0.25s; }
-.audiobook-card:nth-child(5) { animation-delay: 0.3s; }
-.audiobook-card:nth-child(6) { animation-delay: 0.35s; }
-
-/* Scroll behavior */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Focus styles for better accessibility */
-.nav-link:focus,
-.navbar-brand:focus {
-    outline: 2px solid var(--primary-400);
-    outline-offset: 2px;
-    border-radius: 0.25rem;
 }
