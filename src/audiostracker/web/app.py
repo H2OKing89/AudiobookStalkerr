@@ -17,6 +17,12 @@ import os
 import shutil
 from datetime import datetime
 import yaml
+import sqlite3
+import sys
+
+# Add the parent directory to the path so we can import from audiostracker
+sys.path.append(str(Path(__file__).parent.parent))
+from database import get_connection, init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -126,7 +132,7 @@ def save_audiobooks(data: dict) -> bool:
         return False
 
 def get_stats(data: dict) -> dict:
-    """Calculate collection statistics"""
+    """Calculate collection statistics for configuration"""
     authors = data.get("audiobooks", {}).get("author", {})
     total_books = sum(len(books) for books in authors.values())
     total_authors = len(authors)
@@ -163,17 +169,130 @@ def get_stats(data: dict) -> dict:
         "narrators": sorted(list(all_narrators))
     }
 
+def get_upcoming_audiobooks() -> List[dict]:
+    """Get upcoming audiobooks from the database"""
+    try:
+        # Initialize database if it doesn't exist
+        init_db()
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT asin, title, author, narrator, publisher, series, series_number, 
+                       release_date, last_checked, notified_channels
+                FROM audiobooks 
+                WHERE release_date >= date('now')
+                ORDER BY release_date ASC, author ASC, series ASC, series_number ASC
+            """)
+            
+            audiobooks = []
+            for row in cursor.fetchall():
+                audiobook = {
+                    "asin": row["asin"],
+                    "title": row["title"],
+                    "author": row["author"],
+                    "narrator": row["narrator"],
+                    "publisher": row["publisher"],
+                    "series": row["series"],
+                    "series_number": row["series_number"],
+                    "release_date": row["release_date"],
+                    "last_checked": row["last_checked"],
+                    "notified_channels": json.loads(row["notified_channels"]) if row["notified_channels"] else {}
+                }
+                audiobooks.append(audiobook)
+            
+            return audiobooks
+    except Exception as e:
+        logger.error(f"Error getting upcoming audiobooks: {e}")
+        return []
+
+def get_database_stats() -> dict:
+    """Get statistics from the database"""
+    try:
+        init_db()
+        
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Total upcoming books
+            cursor.execute("SELECT COUNT(*) FROM audiobooks WHERE release_date >= date('now')")
+            upcoming_books = cursor.fetchone()[0]
+            
+            # Total authors
+            cursor.execute("SELECT COUNT(DISTINCT author) FROM audiobooks WHERE release_date >= date('now')")
+            total_authors = cursor.fetchone()[0]
+            
+            # Total publishers
+            cursor.execute("SELECT COUNT(DISTINCT publisher) FROM audiobooks WHERE release_date >= date('now')")
+            total_publishers = cursor.fetchone()[0]
+            
+            # Books by month
+            cursor.execute("""
+                SELECT strftime('%Y-%m', release_date) as month, COUNT(*) as count
+                FROM audiobooks 
+                WHERE release_date >= date('now')
+                GROUP BY strftime('%Y-%m', release_date)
+                ORDER BY month
+                LIMIT 12
+            """)
+            monthly_releases = [{"month": row[0], "count": row[1]} for row in cursor.fetchall()]
+            
+            # Recent additions (books added to DB in last 7 days)
+            cursor.execute("""
+                SELECT COUNT(*) FROM audiobooks 
+                WHERE last_checked >= datetime('now', '-7 days')
+            """)
+            recent_additions = cursor.fetchone()[0]
+            
+            return {
+                "upcoming_books": upcoming_books,
+                "total_authors": total_authors,
+                "total_publishers": total_publishers,
+                "monthly_releases": monthly_releases,
+                "recent_additions": recent_additions
+            }
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}")
+        return {
+            "upcoming_books": 0,
+            "total_authors": 0,
+            "total_publishers": 0,
+            "monthly_releases": [],
+            "recent_additions": 0
+        }
+
 # API Routes
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Main page with audiobook collection"""
+    """Main page with upcoming audiobooks from database"""
+    upcoming_audiobooks = get_upcoming_audiobooks()
+    stats = get_database_stats()
+    return templates.TemplateResponse("upcoming.html", {
+        "request": request,
+        "upcoming_audiobooks": upcoming_audiobooks,
+        "stats": stats
+    })
+
+@app.get("/config", response_class=HTMLResponse)
+async def config_page(request: Request):
+    """Configuration page for managing JSON watchlist"""
     data = load_audiobooks()
     stats = get_stats(data)
-    return templates.TemplateResponse("index.html", {
+    return templates.TemplateResponse("config.html", {
         "request": request,
         "audiobooks": data,
         "stats": stats
     })
+
+@app.get("/api/upcoming")
+async def get_upcoming():
+    """Get upcoming audiobooks from database"""
+    return get_upcoming_audiobooks()
+
+@app.get("/api/database/stats")
+async def get_database_stats_api():
+    """Get database statistics"""
+    return get_database_stats()
 
 @app.get("/api/audiobooks")
 async def get_audiobooks():
