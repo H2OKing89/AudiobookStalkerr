@@ -9,6 +9,39 @@ class AudioStackerAPI {
         this.defaultHeaders = {
             'Content-Type': 'application/json'
         };
+        
+        // Initialize a simple fallback for debouncedSave
+        // Will be replaced with proper debounced version when available
+        this.debouncedSave = async (data) => {
+            try {
+                await this.saveAudiobooks(data);
+                showToast('Changes saved successfully', 'success');
+            } catch (error) {
+                showToast('Failed to save changes', 'error');
+            }
+        };
+        
+        // Try to initialize debounced version after a short delay
+        setTimeout(() => this.initializeDebouncedSave(), 100);
+    }
+    
+    /**
+     * Initialize the debounced save function
+     */
+    initializeDebouncedSave() {
+        if (typeof debounce === 'function') {
+            this.debouncedSave = debounce(async (data) => {
+                try {
+                    await this.saveAudiobooks(data);
+                    showToast('Changes saved successfully', 'success');
+                } catch (error) {
+                    showToast('Failed to save changes', 'error');
+                }
+            }, 1000);
+            console.log('API: Debounced save function initialized');
+        } else {
+            console.log('API: debounce function not available, using fallback');
+        }
     }
 
     /**
@@ -205,18 +238,6 @@ class AudioStackerAPI {
 
         return results;
     }
-
-    /**
-     * Debounced save function for frequent updates
-     */
-    debouncedSave = debounce(async (data) => {
-        try {
-            await this.saveAudiobooks(data);
-            showToast('Changes saved successfully', 'success');
-        } catch (error) {
-            showToast('Failed to save changes', 'error');
-        }
-    }, 1000);
 }
 
 // Create global API instance

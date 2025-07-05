@@ -53,9 +53,20 @@ function escapeHtml(text) {
 
 /**
  * Sanitize string for use as HTML ID or class name
+ * Creates a unique ID by combining sanitized text with a hash
  */
 function sanitizeId(str) {
-    return String(str).replace(/[^a-zA-Z0-9]/g, '');
+    const sanitized = String(str).replace(/[^a-zA-Z0-9]/g, '');
+    // Create a simple hash to ensure uniqueness
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Use absolute value and convert to base 36 for shorter ID
+    const hashStr = Math.abs(hash).toString(36);
+    return sanitized + '_' + hashStr;
 }
 
 /**
@@ -63,6 +74,31 @@ function sanitizeId(str) {
  */
 function generateId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Generate a unique ID for an author that's consistent across renders
+ * but truly unique for different authors
+ */
+function generateAuthorId(authorName) {
+    // Create a hash-based ID that's consistent for the same author name
+    // but unique enough to avoid collisions
+    let hash = 0;
+    const str = 'author_' + authorName; // Add prefix to avoid collisions with other elements
+    
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Use absolute value and convert to base 36, with additional suffix for uniqueness
+    const baseId = 'author_' + Math.abs(hash).toString(36);
+    
+    // Add length as extra uniqueness factor
+    const lengthSuffix = authorName.length.toString(36);
+    
+    return baseId + '_' + lengthSuffix;
 }
 
 /**
@@ -361,6 +397,7 @@ window.utils = {
     escapeHtml,
     sanitizeId,
     generateId,
+    generateAuthorId,
     deepClone,
     isEmpty,
     formatDate,

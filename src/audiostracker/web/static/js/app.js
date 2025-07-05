@@ -61,12 +61,27 @@ class AudioStackerApp {
             }
         });
 
-        // Auto-save when user stops typing
-        document.addEventListener('input', debounce((e) => {
+        // Auto-save when user stops typing - use a fallback if debounce isn't available
+        const autoSaveHandler = (e) => {
             if (e.target.matches('input[data-auto-save], textarea[data-auto-save]')) {
                 this.handleAutoSave(e.target);
             }
-        }, 1000));
+        };
+        
+        // Use debounce if available, otherwise use a simple timeout-based approach
+        let debouncedHandler;
+        if (typeof debounce === 'function') {
+            debouncedHandler = debounce(autoSaveHandler, 1000);
+        } else {
+            // Fallback implementation if debounce isn't loaded yet
+            let timeout;
+            debouncedHandler = (e) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => autoSaveHandler(e), 1000);
+            };
+        }
+        
+        document.addEventListener('input', debouncedHandler);
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -186,11 +201,14 @@ class AudioStackerApp {
     }
 
     createAuthorCard(authorName, books) {
-        const authorId = sanitizeId(authorName);
+        const authorId = generateAuthorId(authorName);
         const bookCount = books.length;
         const completeCount = books.filter(isBookComplete).length;
         const completionPercentage = bookCount > 0 ? Math.round((completeCount / bookCount) * 100) : 0;
         const initials = getInitials(authorName);
+        
+        // Debug logging
+        console.log('Creating author card for:', authorName, 'with ID:', authorId);
         
         const narratorSet = new Set();
         const publisherSet = new Set();
@@ -205,7 +223,7 @@ class AudioStackerApp {
         });
 
         return `
-            <div class="author-card" data-author="${escapeHtml(authorName)}">
+            <div class="author-card" data-author="${escapeHtml(authorName)}" data-author-id="${authorId}">
                 <div class="author-header">
                     <div class="author-info">
                         <div class="author-avatar">
@@ -231,7 +249,8 @@ class AudioStackerApp {
                         </div>
                         <button class="collapse-toggle" 
                                 onclick="toggleAuthorCollapse('${authorId}')" 
-                                title="Toggle Books View">
+                                title="Toggle Books View"
+                                data-author-id="${authorId}">
                             <i class="fas fa-chevron-down" id="collapse-icon-${authorId}"></i>
                         </button>
                     </div>
@@ -745,24 +764,57 @@ async function deleteAuthor(authorName) {
 }
 
 function toggleAuthorCollapse(authorId) {
+    console.log('toggleAuthorCollapse called with ID:', authorId);
+    
+    // Find elements using the specific authorId
     const booksContainer = document.getElementById(`books-${authorId}`);
     const icon = document.getElementById(`collapse-icon-${authorId}`);
     const toggle = icon?.closest('.collapse-toggle');
     
-    if (booksContainer && icon && toggle) {
-        const isExpanded = booksContainer.classList.contains('expanded');
-        
-        if (isExpanded) {
-            // Collapse
-            booksContainer.classList.remove('expanded');
-            icon.className = 'fas fa-chevron-down';
-            toggle.classList.remove('expanded');
-        } else {
-            // Expand
-            booksContainer.classList.add('expanded');
-            icon.className = 'fas fa-chevron-up';
-            toggle.classList.add('expanded');
-        }
+    console.log('Elements found:', {
+        booksContainer: !!booksContainer,
+        booksContainerId: booksContainer?.id,
+        icon: !!icon,
+        iconId: icon?.id,
+        toggle: !!toggle
+    });
+    
+    if (!booksContainer) {
+        console.error('Books container not found for ID:', `books-${authorId}`);
+        console.log('Available book containers:', 
+            Array.from(document.querySelectorAll('[id^="books-"]')).map(el => el.id)
+        );
+        return;
+    }
+    
+    if (!icon) {
+        console.error('Icon not found for ID:', `collapse-icon-${authorId}`);
+        console.log('Available collapse icons:', 
+            Array.from(document.querySelectorAll('[id^="collapse-icon-"]')).map(el => el.id)
+        );
+        return;
+    }
+    
+    if (!toggle) {
+        console.error('Toggle button not found');
+        return;
+    }
+    
+    const isExpanded = booksContainer.classList.contains('expanded');
+    console.log('Current state - expanded:', isExpanded);
+    
+    if (isExpanded) {
+        // Collapse
+        booksContainer.classList.remove('expanded');
+        icon.className = 'fas fa-chevron-down';
+        toggle.classList.remove('expanded');
+        console.log('Collapsed author:', authorId);
+    } else {
+        // Expand
+        booksContainer.classList.add('expanded');
+        icon.className = 'fas fa-chevron-up';
+        toggle.classList.add('expanded');
+        console.log('Expanded author:', authorId);
     }
 }
 

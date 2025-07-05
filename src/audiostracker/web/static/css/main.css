@@ -527,10 +527,6 @@ body {
     margin-top: 0.2rem;
 }
 
-.author-books {
-    padding: 1.5rem;
-}
-
 /* Book Cards */
 .books-grid {
     display: grid;
