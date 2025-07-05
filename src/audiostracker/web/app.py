@@ -137,20 +137,12 @@ def get_stats(data: dict) -> dict:
     total_books = sum(len(books) for books in authors.values())
     total_authors = len(authors)
     
-    # Calculate completion stats
-    complete_books = 0
-    incomplete_books = 0
+    # Calculate publisher and narrator stats for reference
     all_publishers = set()
     all_narrators = set()
     
     for author_books in authors.values():
         for book in author_books:
-            if (book.get("title") and book.get("series") and 
-                book.get("publisher") and book.get("narrator")):
-                complete_books += 1
-            else:
-                incomplete_books += 1
-            
             if book.get("publisher"):
                 all_publishers.add(book["publisher"])
             if book.get("narrator"):
@@ -161,8 +153,6 @@ def get_stats(data: dict) -> dict:
     return {
         "total_books": total_books,
         "total_authors": total_authors,
-        "complete_books": complete_books,
-        "incomplete_books": incomplete_books,
         "total_publishers": len(all_publishers),
         "total_narrators": len(all_narrators),
         "publishers": sorted(list(all_publishers)),

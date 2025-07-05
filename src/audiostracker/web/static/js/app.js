@@ -203,8 +203,6 @@ class AudioStackerApp {
     createAuthorCard(authorName, books) {
         const authorId = generateAuthorId(authorName);
         const bookCount = books.length;
-        const completeCount = books.filter(isBookComplete).length;
-        const completionPercentage = bookCount > 0 ? Math.round((completeCount / bookCount) * 100) : 0;
         const initials = getInitials(authorName);
         
         // Debug logging
@@ -239,11 +237,7 @@ class AudioStackerApp {
                             <div class="author-meta">
                                 <div class="meta-item">
                                     <i class="fas fa-calendar"></i>
-                                    <span>Active Collection</span>
-                                </div>
-                                <div class="meta-item">
-                                    <i class="fas fa-chart-line"></i>
-                                    <span>${completionPercentage}% Complete</span>
+                                    <span>Watch List</span>
                                 </div>
                             </div>
                         </div>
@@ -258,11 +252,7 @@ class AudioStackerApp {
                     <div class="author-stats">
                         <div class="stat-badge">
                             <span class="stat-number">${bookCount}</span>
-                            <span class="stat-label">${bookCount === 1 ? 'Book' : 'Books'}</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-number">${completeCount}</span>
-                            <span class="stat-label">Complete</span>
+                            <span class="stat-label">${bookCount === 1 ? 'Entry' : 'Entries'}</span>
                         </div>
                         <div class="stat-badge">
                             <span class="stat-number">${narratorSet.size}</span>
@@ -271,16 +261,6 @@ class AudioStackerApp {
                         <div class="stat-badge">
                             <span class="stat-number">${publisherSet.size}</span>
                             <span class="stat-label">Publishers</span>
-                        </div>
-                    </div>
-                    
-                    <div class="author-progress">
-                        <div class="progress-label">
-                            <span>Collection Progress</span>
-                            <span>${completionPercentage}%</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${completionPercentage}%"></div>
                         </div>
                     </div>
                     
@@ -320,14 +300,13 @@ class AudioStackerApp {
 
     createBookCard(authorName, book, index) {
         const bookId = `book-${sanitizeId(authorName)}-${index}`;
-        const isComplete = isBookComplete(book);
         
         if (this.viewMode === 'list') {
-            return this.createBookListItem(authorName, book, index, bookId, isComplete);
+            return this.createBookListItem(authorName, book, index, bookId);
         }
         
         return `
-            <div class="book-card ${isComplete ? 'complete' : 'incomplete'}" id="${bookId}">
+            <div class="book-card" id="${bookId}">
                 <div class="book-header">
                     <div class="book-title">
                         <input type="text" class="form-control" 
@@ -336,8 +315,6 @@ class AudioStackerApp {
                                onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'title', this.value)"
                                data-auto-save="true">
                     </div>
-                    <div class="book-status-indicator ${isComplete ? 'complete' : 'incomplete'}" 
-                         title="${isComplete ? 'Complete Information' : 'Missing Information'}"></div>
                 </div>
 
                 <div class="book-series mb-2">
@@ -398,7 +375,7 @@ class AudioStackerApp {
         `;
     }
 
-    createBookListItem(authorName, book, index, bookId, isComplete) {
+    createBookListItem(authorName, book, index, bookId) {
         return `
             <div class="book-list-item d-flex align-items-center p-3 border rounded mb-2 ${isComplete ? 'border-success' : 'border-warning'}" 
                  id="${bookId}">
@@ -487,8 +464,8 @@ class AudioStackerApp {
         const elements = {
             'total-books': stats.total_books || 0,
             'total-authors': stats.total_authors || 0,
-            'complete-books': stats.complete_books || 0,
-            'incomplete-books': stats.incomplete_books || 0
+            'total-publishers': stats.total_publishers || 0,
+            'total-narrators': stats.total_narrators || 0
         };
 
         Object.entries(elements).forEach(([id, value]) => {

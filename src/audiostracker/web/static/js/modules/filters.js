@@ -8,8 +8,6 @@ class FiltersModule {
         this.filterSelect = null;
         this.availableFilters = {
             all: 'All Books',
-            complete: 'Complete Info',
-            incomplete: 'Missing Info',
             publisher: 'By Publisher',
             narrator: 'By Narrator'
         };

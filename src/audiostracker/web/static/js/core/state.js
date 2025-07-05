@@ -148,8 +148,6 @@ class AudioStackerState {
         const stats = {
             total_books: 0,
             total_authors: Object.keys(authors).length,
-            complete_books: 0,
-            incomplete_books: 0,
             total_publishers: 0,
             total_narrators: 0,
             publishers: new Set(),
@@ -160,12 +158,6 @@ class AudioStackerState {
             stats.total_books += authorBooks.length;
             
             for (const book of authorBooks) {
-                if (isBookComplete(book)) {
-                    stats.complete_books++;
-                } else {
-                    stats.incomplete_books++;
-                }
-                
                 if (book.publisher) {
                     stats.publishers.add(book.publisher);
                 }

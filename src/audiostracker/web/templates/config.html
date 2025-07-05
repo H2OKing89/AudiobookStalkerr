@@ -60,10 +60,8 @@
                         </div>
                         <div class="col-lg-3">
                             <div class="filter-group">
-                                <select id="status-filter" class="filter-select form-select">
-                                    <option value="all">All Entries</option>
-                                    <option value="complete">Complete</option>
-                                    <option value="incomplete">Incomplete</option>
+                                <select id="publisher-filter" class="filter-select form-select">
+                                    <option value="all">All Publishers</option>
                                 </select>
                             </div>
                         </div>
@@ -111,7 +109,7 @@
             <div class="col-lg-3 col-md-6 mb-3">
                 <div class="stat-card info">
                     <div class="stat-icon">
-                        <i class="fas fa-book"></i>
+                        <i class="fas fa-list"></i>
                     </div>
                     <div class="stat-info">
                         <h3 id="total-books">{{ stats.total_books }}</h3>
@@ -120,24 +118,24 @@
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card success">
+                <div class="stat-card warning">
                     <div class="stat-icon">
-                        <i class="fas fa-check-circle"></i>
+                        <i class="fas fa-building"></i>
                     </div>
                     <div class="stat-info">
-                        <h3 id="complete-books">{{ stats.complete_books }}</h3>
-                        <p>Complete</p>
+                        <h3 id="total-publishers">{{ stats.total_publishers }}</h3>
+                        <p>Publishers</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card warning">
+                <div class="stat-card danger">
                     <div class="stat-icon">
-                        <i class="fas fa-exclamation-circle"></i>
+                        <i class="fas fa-microphone"></i>
                     </div>
                     <div class="stat-info">
-                        <h3 id="incomplete-books">{{ stats.incomplete_books }}</h3>
-                        <p>Incomplete</p>
+                        <h3 id="total-narrators">{{ stats.total_narrators }}</h3>
+                        <p>Narrators</p>
                     </div>
                 </div>
             </div>
@@ -224,6 +222,27 @@
                 console.log('Using simpleExport as fallback');
             }
         }
+        
+        // Initialize publisher filter once the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const publisherFilter = document.getElementById('publisher-filter');
+                const stats = window.initialStats;
+                
+                if (publisherFilter && stats && stats.publishers) {
+                    // Clear existing options except "All Publishers"
+                    publisherFilter.innerHTML = '<option value="all">All Publishers</option>';
+                    
+                    // Add publisher options
+                    stats.publishers.forEach(publisher => {
+                        const option = document.createElement('option');
+                        option.value = publisher;
+                        option.textContent = publisher;
+                        publisherFilter.appendChild(option);
+                    });
+                }
+            }, 500); // Give time for other scripts to load
+        });
         
         // Global debug helper function
         window.debug = function() {
