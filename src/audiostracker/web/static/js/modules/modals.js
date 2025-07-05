@@ -84,11 +84,13 @@ class ModalsModule {
                     </div>
                 </div>
                 <div class="mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="add-sample-book">
-                        <label class="form-check-label" for="add-sample-book">
-                            Add a sample book to get started
-                        </label>
+                    <label for="book-name" class="form-label">
+                        <i class="fas fa-book me-2"></i>Book Name
+                    </label>
+                    <input type="text" class="form-control" id="book-name" 
+                           placeholder="Enter a book title..." required>
+                    <div class="form-text">
+                        Enter at least one book title for this author
                     </div>
                 </div>
             </form>
@@ -115,10 +117,15 @@ class ModalsModule {
             const form = document.getElementById('add-author-form');
             const formData = new FormData(form);
             const authorName = formData.get('author-name') || document.getElementById('author-name').value;
-            const addSampleBook = document.getElementById('add-sample-book').checked;
+            const bookName = formData.get('book-name') || document.getElementById('book-name').value;
 
             if (!authorName.trim()) {
                 showToast('Please enter an author name', 'warning');
+                return;
+            }
+
+            if (!bookName.trim()) {
+                showToast('Please enter a book name', 'warning');
                 return;
             }
 
@@ -132,15 +139,13 @@ class ModalsModule {
                 // Add author
                 audiobooks.audiobooks.author[authorName] = [];
 
-                // Add sample book if requested
-                if (addSampleBook) {
-                    audiobooks.audiobooks.author[authorName].push({
-                        title: '',
-                        series: '',
-                        publisher: '',
-                        narrator: ['']
-                    });
-                }
+                // Always add the book with the provided name
+                audiobooks.audiobooks.author[authorName].push({
+                    title: bookName,
+                    series: '',
+                    publisher: '',
+                    narrator: ['']
+                });
 
                 state.setAudiobooks(audiobooks);
                 bsModal.hide();
@@ -157,9 +162,11 @@ class ModalsModule {
 
         // Handle enter key
         modal.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.target.id === 'author-name') {
-                e.preventDefault();
-                window.submitAddAuthor();
+            if (e.key === 'Enter') {
+                if (e.target.id === 'author-name' || e.target.id === 'book-name') {
+                    e.preventDefault();
+                    window.submitAddAuthor();
+                }
             }
         });
 

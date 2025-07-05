@@ -363,8 +363,7 @@ window.ConfigApp = ConfigApp;
 
 // Global stub functions for modal functionality (to be implemented)
 window.showAddAuthorModal = function() {
-    console.log('Add Author modal - to be implemented');
-    // TODO: Implement add author modal
+    window.modals.showAddAuthorModal();
 };
 
 window.showEditAuthorModal = function(authorName) {
