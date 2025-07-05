@@ -143,6 +143,42 @@
     }
 }
 
+/* --- Toast Notification Dark Mode Fixes --- */
+@media (prefers-color-scheme: dark) {
+  .toast, .toast-header {
+    background-color: #232946 !important;
+    color: #f1f5f9 !important;
+    border-color: var(--border-light) !important;
+  }
+  .toast .toast-body {
+    color: #f1f5f9 !important;
+  }
+  .toast .btn-close {
+    filter: invert(1) grayscale(1);
+  }
+}
+
+/* --- Modal Input Placeholder and Help Text Fixes --- */
+.modal-body input::placeholder,
+input.form-control::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+@media (prefers-color-scheme: dark) {
+  .modal-body input::placeholder,
+  input.form-control::placeholder {
+    color: #cbd5e1;
+    opacity: 1;
+  }
+  .modal-body .form-text,
+  .modal-body .help-block,
+  .modal-body .form-helper,
+  .modal-body small,
+  .modal-body .text-muted {
+    color: #cbd5e1 !important;
+  }
+}
+
 /* Base typography and layout */
 * {
     box-sizing: border-box;
