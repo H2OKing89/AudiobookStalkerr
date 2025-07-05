@@ -72,50 +72,69 @@
             <div class="col-12">
                 <div class="control-panel">
                     <!-- Search and Filters -->
-                    <div class="row align-items-center">
-                        <div class="col-md-4">
-                            <div class="search-box">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <input type="text" class="form-control" id="search-input" 
-                                           placeholder="Search books, authors, series...">
-                                </div>
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-5">
+                            <div class="search-container">
+                                <input type="text" class="search-input" id="search-input" 
+                                       placeholder="Search books, authors, series...">
+                                <i class="fas fa-search search-icon"></i>
                             </div>
                         </div>
                         
                         <div class="col-md-4">
-                            <div class="filter-controls">
-                                <select class="form-select" id="filter-select" onchange="applyFilter()">
+                            <div class="filter-group">
+                                <select class="filter-select" id="status-filter" onchange="applyFilters()">
                                     <option value="all">All Books</option>
                                     <option value="complete">Complete Info</option>
                                     <option value="incomplete">Missing Info</option>
-                                    <option value="publisher">By Publisher</option>
-                                    <option value="narrator">By Narrator</option>
+                                </select>
+                                <select class="filter-select" id="publisher-filter" onchange="applyFilters()">
+                                    <option value="">All Publishers</option>
                                 </select>
                             </div>
                         </div>
                         
-                        <div class="col-md-4">
-                            <div class="view-controls">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-outline-primary active" 
+                        <div class="col-md-3">
+                            <div class="d-flex justify-content-end gap-2">
+                                <div class="view-toggle">
+                                    <button type="button" class="view-btn active" 
                                             id="grid-view-btn" onclick="setViewMode('grid')">
-                                        <i class="fas fa-th"></i> Grid
+                                        <i class="fas fa-th me-1"></i>Grid
                                     </button>
-                                    <button type="button" class="btn btn-outline-primary" 
+                                    <button type="button" class="view-btn" 
                                             id="list-view-btn" onclick="setViewMode('list')">
-                                        <i class="fas fa-list"></i> List
+                                        <i class="fas fa-list me-1"></i>List
                                     </button>
                                 </div>
-                                <button class="btn btn-primary ms-2" onclick="showAddAuthorModal()">
+                                <button class="btn-author-action" onclick="showAddAuthorModal()">
                                     <i class="fas fa-plus me-1"></i>Add Author
                                 </button>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Active Filters Display -->
+                    <div class="active-filters" id="active-filters" style="display: none;">
+                        <!-- Active filter tags will be inserted here -->
+                    </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Search Results Header -->
+        <div class="search-results-header" id="search-results-header" style="display: none;">
+            <div class="search-results-count" id="search-results-count">
+                Showing <span class="highlight">0</span> results
+            </div>
+            <div class="sort-controls">
+                <span class="sort-label">Sort by:</span>
+                <select class="sort-select" id="sort-select" onchange="applySorting()">
+                    <option value="author-asc">Author (A-Z)</option>
+                    <option value="author-desc">Author (Z-A)</option>
+                    <option value="books-desc">Most Books</option>
+                    <option value="books-asc">Fewest Books</option>
+                    <option value="complete-desc">Most Complete</option>
+                </select>
             </div>
         </div>
 

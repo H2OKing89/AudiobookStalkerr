@@ -189,6 +189,7 @@ class AudioStackerApp {
         const authorId = sanitizeId(authorName);
         const bookCount = books.length;
         const completeCount = books.filter(isBookComplete).length;
+        const completionPercentage = bookCount > 0 ? Math.round((completeCount / bookCount) * 100) : 0;
         const initials = getInitials(authorName);
         
         const narratorSet = new Set();
@@ -206,49 +207,75 @@ class AudioStackerApp {
         return `
             <div class="author-card" data-author="${escapeHtml(authorName)}">
                 <div class="author-header">
-                    <div class="d-flex align-items-center">
-                        <div class="author-avatar me-3">
+                    <div class="author-info">
+                        <div class="author-avatar">
                             ${escapeHtml(initials)}
                         </div>
-                        <div class="flex-grow-1">
-                            <h5 class="author-name mb-1">
+                        <div class="author-details">
+                            <h3 class="author-name">
                                 <input type="text" class="form-control author-name-input" 
                                        value="${escapeHtml(authorName)}" 
                                        onchange="updateAuthorName('${escapeHtml(authorName)}', this.value)"
                                        data-auto-save="true">
-                            </h5>
-                            <div class="author-stats">
-                                <span class="badge bg-primary">
-                                    <i class="fas fa-book me-1"></i>${bookCount} ${bookCount === 1 ? 'book' : 'books'}
-                                </span>
-                                <span class="badge bg-success">
-                                    <i class="fas fa-check me-1"></i>${completeCount} complete
-                                </span>
-                                <span class="badge bg-info">
-                                    <i class="fas fa-microphone me-1"></i>${narratorSet.size} narrators
-                                </span>
-                                <span class="badge bg-secondary">
-                                    <i class="fas fa-building me-1"></i>${publisherSet.size} publishers
-                                </span>
+                            </h3>
+                            <div class="author-meta">
+                                <div class="meta-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>Active Collection</span>
+                                </div>
+                                <div class="meta-item">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>${completionPercentage}% Complete</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="author-actions">
-                            <button class="btn btn-sm btn-outline-primary" 
-                                    onclick="addBook('${escapeHtml(authorName)}')" 
-                                    title="Add Book">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-warning" 
-                                    onclick="toggleAuthorCollapse('${authorId}')" 
-                                    title="Toggle Collapse">
-                                <i class="fas fa-chevron-up" id="collapse-icon-${authorId}"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" 
-                                    onclick="deleteAuthor('${escapeHtml(authorName)}')" 
-                                    title="Delete Author">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <button class="collapse-toggle" 
+                                onclick="toggleAuthorCollapse('${authorId}')" 
+                                title="Toggle Books View">
+                            <i class="fas fa-chevron-down" id="collapse-icon-${authorId}"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="author-stats">
+                        <div class="stat-badge">
+                            <span class="stat-number">${bookCount}</span>
+                            <span class="stat-label">${bookCount === 1 ? 'Book' : 'Books'}</span>
                         </div>
+                        <div class="stat-badge">
+                            <span class="stat-number">${completeCount}</span>
+                            <span class="stat-label">Complete</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-number">${narratorSet.size}</span>
+                            <span class="stat-label">Narrators</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-number">${publisherSet.size}</span>
+                            <span class="stat-label">Publishers</span>
+                        </div>
+                    </div>
+                    
+                    <div class="author-progress">
+                        <div class="progress-label">
+                            <span>Collection Progress</span>
+                            <span>${completionPercentage}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${completionPercentage}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="author-actions mt-3">
+                        <button class="btn-author-action me-2" 
+                                onclick="addBook('${escapeHtml(authorName)}')" 
+                                title="Add New Book">
+                            <i class="fas fa-plus me-1"></i>Add Book
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteAuthor('${escapeHtml(authorName)}')" 
+                                title="Delete Author">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="author-books" id="books-${authorId}">
@@ -282,74 +309,71 @@ class AudioStackerApp {
         
         return `
             <div class="book-card ${isComplete ? 'complete' : 'incomplete'}" id="${bookId}">
-                <div class="book-status ${isComplete ? 'complete' : 'incomplete'}">
-                    ${isComplete ? 'Complete' : 'Incomplete'}
-                </div>
-                
                 <div class="book-header">
-                    <div class="book-number">Book #${index + 1}</div>
-                    <div class="book-actions">
-                        <button class="btn btn-sm btn-outline-danger" 
-                                onclick="deleteBook('${escapeHtml(authorName)}', ${index})" 
-                                title="Delete Book">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <div class="book-title">
+                        <input type="text" class="form-control" 
+                               value="${escapeHtml(book.title || '')}" 
+                               placeholder="Enter book title..."
+                               onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'title', this.value)"
+                               data-auto-save="true">
                     </div>
+                    <div class="book-status-indicator ${isComplete ? 'complete' : 'incomplete'}" 
+                         title="${isComplete ? 'Complete Information' : 'Missing Information'}"></div>
                 </div>
 
-                <div class="book-field">
-                    <label><i class="fas fa-book me-1"></i>Title</label>
-                    <input type="text" class="form-control" 
-                           value="${escapeHtml(book.title || '')}" 
-                           placeholder="Enter book title..."
-                           onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'title', this.value)"
-                           data-auto-save="true">
-                </div>
-
-                <div class="book-field">
-                    <label><i class="fas fa-layer-group me-1"></i>Series</label>
+                <div class="book-series mb-2">
                     <input type="text" class="form-control" 
                            value="${escapeHtml(book.series || '')}" 
-                           placeholder="Enter series name..."
+                           placeholder="Series name..."
                            onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'series', this.value)"
                            data-auto-save="true">
                 </div>
 
-                <div class="book-field">
-                    <label><i class="fas fa-building me-1"></i>Publisher</label>
-                    <input type="text" class="form-control" 
-                           value="${escapeHtml(book.publisher || '')}" 
-                           list="publishers-list"
-                           placeholder="Enter publisher..."
-                           onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'publisher', this.value)"
-                           data-auto-save="true">
-                    ${book.publisher ? `<div class="publisher-badge mt-1">${escapeHtml(book.publisher)}</div>` : ''}
-                </div>
-
-                <div class="book-field">
-                    <label><i class="fas fa-microphone me-1"></i>Narrators</label>
-                    <div class="narrator-list">
-                        ${(book.narrator || ['']).map((narrator, nIndex) => `
-                            <div class="narrator-item">
-                                <input type="text" value="${escapeHtml(narrator)}" 
-                                       list="narrators-list"
-                                       placeholder="Narrator name..."
-                                       onchange="updateNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value)"
-                                       data-auto-save="true">
-                                ${book.narrator.length > 1 ? `
-                                    <button type="button" class="narrator-remove" 
-                                            onclick="removeNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex})"
-                                            title="Remove narrator">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                ` : ''}
-                            </div>
-                        `).join('')}
-                        <button type="button" class="add-narrator-btn" 
-                                onclick="addNarrator('${escapeHtml(authorName)}', ${index})">
-                            <i class="fas fa-plus me-1"></i>Add Narrator
-                        </button>
+                <div class="book-details">
+                    <div class="book-detail-row">
+                        <i class="fas fa-building"></i>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="${escapeHtml(book.publisher || '')}" 
+                               list="publishers-list"
+                               placeholder="Publisher..."
+                               onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'publisher', this.value)"
+                               data-auto-save="true">
                     </div>
+                    
+                    <div class="book-detail-row">
+                        <i class="fas fa-microphone"></i>
+                        <div class="narrator-container flex-grow-1">
+                            ${(book.narrator || ['']).map((narrator, nIndex) => `
+                                <div class="narrator-input-group mb-1">
+                                    <input type="text" class="form-control form-control-sm" 
+                                           value="${escapeHtml(narrator)}" 
+                                           list="narrators-list"
+                                           placeholder="Narrator name..."
+                                           onchange="updateNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value)"
+                                           data-auto-save="true">
+                                    ${book.narrator && book.narrator.length > 1 ? `
+                                        <button type="button" class="btn btn-sm btn-outline-danger ms-1" 
+                                                onclick="removeNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex})"
+                                                title="Remove narrator">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" 
+                                    onclick="addNarrator('${escapeHtml(authorName)}', ${index})">
+                                <i class="fas fa-plus me-1"></i>Add Narrator
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="book-actions mt-3">
+                    <button class="btn btn-sm btn-outline-danger ms-auto" 
+                            onclick="deleteBook('${escapeHtml(authorName)}', ${index})" 
+                            title="Delete Book">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
                 </div>
             </div>
         `;
@@ -723,11 +747,22 @@ async function deleteAuthor(authorName) {
 function toggleAuthorCollapse(authorId) {
     const booksContainer = document.getElementById(`books-${authorId}`);
     const icon = document.getElementById(`collapse-icon-${authorId}`);
+    const toggle = icon?.closest('.collapse-toggle');
     
-    if (booksContainer && icon) {
-        const isCollapsed = booksContainer.style.display === 'none';
-        booksContainer.style.display = isCollapsed ? 'block' : 'none';
-        icon.className = isCollapsed ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+    if (booksContainer && icon && toggle) {
+        const isExpanded = booksContainer.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            booksContainer.classList.remove('expanded');
+            icon.className = 'fas fa-chevron-down';
+            toggle.classList.remove('expanded');
+        } else {
+            // Expand
+            booksContainer.classList.add('expanded');
+            icon.className = 'fas fa-chevron-up';
+            toggle.classList.add('expanded');
+        }
     }
 }
 
