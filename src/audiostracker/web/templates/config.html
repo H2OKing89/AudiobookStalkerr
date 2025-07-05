@@ -11,8 +11,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/main.css">
-    <!-- Theme CSS -->
-    <link rel="stylesheet" href="/static/css/themes.css">
+    <link rel="stylesheet" href="/static/css/config.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -20,15 +19,32 @@
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="fas fa-headphones text-primary me-2"></i>
-                AudioStacker
+                <strong>AudioStacker</strong>
             </a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="/">
-                    <i class="fas fa-calendar-alt me-2"></i>Upcoming Releases
-                </a>
-                <a class="nav-link active" href="/config">
-                    <i class="fas fa-cog me-2"></i>Configuration
-                </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-calendar-alt me-1"></i>Upcoming Releases
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/config">
+                            <i class="fas fa-cog me-1"></i>Configuration
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="navbar-nav">
+                    <button class="btn btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -50,7 +66,7 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="control-panel">
-                    <div class="row align-items-center">
+                    <div class="row align-items-center g-3">
                         <div class="col-lg-6">
                             <div class="search-container">
                                 <input type="text" id="search-input" class="search-input form-control" 
@@ -178,9 +194,6 @@
     </div>
 
     <!-- Scripts -->
-    <!-- Module Check (must be first) -->
-    <script src="/static/js/module-check.js"></script>
-    
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -208,57 +221,13 @@
         window.initialData = JSON.parse('{{ audiobooks|tojson|safe }}');
         window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
         
-        // Debug logging
-        console.log('Configuration page data initialization complete');
-        console.log('API available:', !!window.api);
-        console.log('App available:', !!window.app);
-        console.log('State available:', !!window.state);
-        
-        // Add a safety check to ensure API is available
-        if (!window.api) {
-            console.error('API not loaded! Trying fallback export...');
-            if (window.simpleExport) {
-                window.exportCollection = window.simpleExport;
-                console.log('Using simpleExport as fallback');
-            }
-        }
-        
-        // Initialize publisher filter once the page loads
+        // Initialize the configuration app
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const publisherFilter = document.getElementById('publisher-filter');
-                const stats = window.initialStats;
-                
-                if (publisherFilter && stats && stats.publishers) {
-                    // Clear existing options except "All Publishers"
-                    publisherFilter.innerHTML = '<option value="all">All Publishers</option>';
-                    
-                    // Add publisher options
-                    stats.publishers.forEach(publisher => {
-                        const option = document.createElement('option');
-                        option.value = publisher;
-                        option.textContent = publisher;
-                        publisherFilter.appendChild(option);
-                    });
-                }
-            }, 500); // Give time for other scripts to load
+            if (window.ConfigApp) {
+                window.configApp = new ConfigApp();
+                window.configApp.init();
+            }
         });
-        
-        // Global debug helper function
-        window.debug = function() {
-            console.log('=== DEBUG INFO ===');
-            console.log('window.api:', !!window.api);
-            console.log('window.app:', !!window.app);
-            console.log('window.state:', !!window.state);
-            console.log('window.toast:', !!window.toast);
-            console.log('window.modals:', !!window.modals);
-            console.log('Initial data keys:', Object.keys(window.initialData || {}));
-            console.log('Initial stats keys:', Object.keys(window.initialStats || {}));
-        };
-        
-        // Run debug check after a short delay
-        setTimeout(window.debug, 2000);
-    </script>
     </script>
 </body>
 </html>

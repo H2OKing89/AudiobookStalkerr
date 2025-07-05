@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Comparison Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 80vh;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        .label {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AudioStacker Theme Comparison</h1>
+    <p>Both pages should have identical modern theme, dark mode support, and styling:</p>
+    
+    <div class="comparison-container">
+        <div>
+            <div class="label">Upcoming Page</div>
+            <iframe src="http://127.0.0.1:5005/"></iframe>
+        </div>
+        <div>
+            <div class="label">Config Page</div>
+            <iframe src="http://127.0.0.1:5005/config"></iframe>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <h3>Expected Features:</h3>
+        <ul>
+            <li>✅ Modern Inter font</li>
+            <li>✅ Rich indigo color palette</li>
+            <li>✅ Auto dark mode based on system preference</li>
+            <li>✅ Improved dropdown/select styling in dark mode</li>
+            <li>✅ Enhanced text contrast</li>
+            <li>✅ Consistent navigation and layout</li>
+            <li>✅ Modern gradients and shadows</li>
+            <li>✅ Smooth transitions and animations</li>
+        </ul>
+    </div>
+</body>
+</html>
