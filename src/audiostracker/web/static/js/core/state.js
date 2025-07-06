@@ -6,7 +6,7 @@
 class AudioStackerState {
     constructor() {
         this.data = {
-            audiobooks: { audiobooks: { author: {} } },
+            audiobooks: {},  // Will contain authors directly: { "Author Name": [books...] }
             stats: {},
             filters: {
                 search: '',
@@ -262,7 +262,9 @@ class AudioStackerState {
      * Get filtered and sorted data
      */
     getFilteredData() {
-        const authors = this.data.audiobooks?.audiobooks?.author || {};
+        // The audiobooks data is now directly the authors object
+        let authors = this.data.audiobooks || {};
+        
         const filters = this.data.filters;
         const ui = this.data.ui;
         
@@ -270,17 +272,18 @@ class AudioStackerState {
         
         // Apply filters
         for (const [authorName, books] of Object.entries(authors)) {
-            let authorBooks = books;
+            // Ensure books is an array
+            let authorBooks = Array.isArray(books) ? books : [];
             
             // Search filter
             if (filters.search) {
                 const searchTerm = filters.search.trim().toLowerCase();
-                authorBooks = books.filter(book => 
+                authorBooks = authorBooks.filter(book => 
                     authorName.toLowerCase().includes(searchTerm) ||
                     book.title?.toLowerCase().includes(searchTerm) ||
                     book.series?.toLowerCase().includes(searchTerm) ||
                     book.publisher?.toLowerCase().includes(searchTerm) ||
-                    book.narrator?.some(n => n.toLowerCase().includes(searchTerm))
+                    (book.narrator && Array.isArray(book.narrator) && book.narrator.some(n => n.toLowerCase().includes(searchTerm)))
                 );
             }
             

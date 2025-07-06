@@ -279,7 +279,7 @@
 
         <!-- Authors and Books Container -->
         <div id="authors-container" class="authors-grid">
-            <!-- Content will be loaded by JavaScript -->
+            <p>Loading authors...</p>
         </div>
     </div>
 
@@ -420,14 +420,29 @@
     <!-- Initialize app data -->
     <script>
         // Pass initial data from server
+        // Initialize data
         window.initialData = JSON.parse('{{ audiobooks|tojson|safe }}');
         window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
         
-        // Initialize the configuration app
+        // Initialize the main application
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.ConfigApp) {
-                window.configApp = new ConfigApp();
-                window.configApp.init();
+            // Initialize global API
+            if (!window.api && typeof AudioStackerAPI === 'function') {
+                try {
+                    window.api = new AudioStackerAPI();
+                } catch (e) {
+                    console.error('API initialization failed:', e);
+                }
+            }
+            
+            if (window.AudioStackerApp) {
+                try {
+                    window.app = new AudioStackerApp();
+                } catch (e) {
+                    console.error('App initialization failed:', e);
+                }
+            } else {
+                console.error('AudioStackerApp not available');
             }
         });
     </script>

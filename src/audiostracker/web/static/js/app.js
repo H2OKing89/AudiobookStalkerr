@@ -7,9 +7,10 @@ class AudioStackerApp {
     constructor() {
         this.isInitialized = false;
         this.viewMode = 'grid';
-        this.unsavedChanges = false;
-        this.autoSaveEnabled = localStorage.getItem('autoSaveEnabled') !== 'false';
-        this.autoSaveTimeout = null;
+        this.hasUnsavedChanges = false;
+        this.autoSaveEnabled = localStorage.getItem('audioStacker_autoSave') === 'true';
+        this.autoSaveTimer = null;
+        this.autoSaveDelay = 5000; // 5 seconds
         this.realtimeValidation = localStorage.getItem('realtimeValidation') !== 'false';
         this.showCompletionStatus = localStorage.getItem('showCompletionStatus') !== 'false';
         this.settingsPanelOpen = false;
@@ -24,8 +25,19 @@ class AudioStackerApp {
             
             // Initialize with data from server
             if (window.initialData) {
-                state.setAudiobooks(window.initialData);
+                // The server passes { audiobooks: { author: {...} } }
+                // We need to extract the authors part for our state
+                if (window.initialData.audiobooks && window.initialData.audiobooks.author) {
+                    const authorsData = window.initialData.audiobooks.author;
+                    state.setAudiobooks(authorsData);
+                } else {
+                    console.warn('Unexpected data structure:', window.initialData);
+                    state.setAudiobooks({});
+                }
+            } else {
+                state.setAudiobooks({});
             }
+            
             if (window.initialStats) {
                 state.setStats(window.initialStats);
             }
@@ -41,10 +53,13 @@ class AudioStackerApp {
             this.setupEventListeners();
             
             // Set up keyboard shortcuts
-            this.setupKeyboardShortcuts();
+            this.initializeKeyboardShortcuts();
             
             // Initialize settings
             this.initializeSettings();
+            
+            // Initialize auto-refresh if enabled
+            this.initializeAutoRefresh();
             
             // Initial render
             this.renderAuthors();
@@ -64,6 +79,53 @@ class AudioStackerApp {
         } finally {
             showLoading(false);
         }
+    }
+
+    loadUserPreferences() {
+        // Load all user preferences from localStorage
+        this.autoSaveEnabled = localStorage.getItem('audioStacker_autoSave') === 'true';
+        this.realtimeValidation = localStorage.getItem('realtimeValidation') !== 'false';
+        this.showCompletionStatus = localStorage.getItem('showCompletionStatus') !== 'false';
+        
+        // Additional UI preferences
+        this.compactMode = localStorage.getItem('compactMode') === 'true';
+        this.cardsPerRow = parseInt(localStorage.getItem('cardsPerRow')) || 3;
+        this.darkMode = localStorage.getItem('darkMode') === 'true';
+        
+        // Apply UI preferences
+        if (this.compactMode) {
+            document.body.classList.add('compact-mode');
+        }
+        
+        if (this.darkMode) {
+            document.body.classList.add('dark-mode');
+        }
+        
+        // Update CSS custom property for cards per row
+        if (this.cardsPerRow) {
+            document.documentElement.style.setProperty('--cards-per-row', this.cardsPerRow);
+        }
+        
+        console.log('User preferences loaded:', {
+            autoSave: this.autoSaveEnabled,
+            realtimeValidation: this.realtimeValidation,
+            showCompletionStatus: this.showCompletionStatus,
+            compactMode: this.compactMode,
+            cardsPerRow: this.cardsPerRow,
+            darkMode: this.darkMode
+        });
+    }
+
+    saveUserPreferences() {
+        // Save all user preferences to localStorage
+        localStorage.setItem('audioStacker_autoSave', this.autoSaveEnabled.toString());
+        localStorage.setItem('realtimeValidation', this.realtimeValidation.toString());
+        localStorage.setItem('showCompletionStatus', this.showCompletionStatus.toString());
+        localStorage.setItem('compactMode', this.compactMode.toString());
+        localStorage.setItem('cardsPerRow', this.cardsPerRow.toString());
+        localStorage.setItem('darkMode', this.darkMode.toString());
+        
+        console.log('User preferences saved');
     }
 
     setupEventListeners() {
@@ -168,7 +230,10 @@ class AudioStackerApp {
 
     async renderAuthors() {
         const container = document.getElementById('authors-container');
-        if (!container) return;
+        if (!container) {
+            console.error('authors-container not found!');
+            return;
+        }
 
         const filteredData = state.getFilteredData();
         const authors = Object.keys(filteredData);
@@ -182,12 +247,22 @@ class AudioStackerApp {
         container.className = this.viewMode === 'grid' ? 'authors-grid' : 'authors-list';
 
         // Render authors
-        const authorsHtml = authors.map(authorName => {
-            const books = filteredData[authorName];
-            return this.createAuthorCard(authorName, books);
-        }).join('');
+        try {
+            const authorsHtml = authors.map(authorName => {
+                const books = filteredData[authorName];
+                return this.createEnhancedAuthorCard(authorName, books);
+            }).join('');
 
-        container.innerHTML = authorsHtml;
+            container.innerHTML = authorsHtml;
+        } catch (error) {
+            console.error('Error generating author cards:', error);
+            // Fallback to simple version
+            const authorsHtml = authors.map(authorName => {
+                const books = filteredData[authorName];
+                return this.createSimpleAuthorCard(authorName, books);
+            }).join('');
+            container.innerHTML = authorsHtml;
+        }
 
         // Initialize any new components
         this.initializeAuthorCards();
@@ -373,7 +448,7 @@ class AudioStackerApp {
         const hasChanges = this.fieldChangeTracking.has(bookId);
         
         if (this.viewMode === 'list') {
-            return this.createBookListItem(authorName, book, index, bookId);
+            return this.createBookListItem(authorName, book, index, bookId, isComplete);
         }
         
         return `
@@ -472,7 +547,7 @@ class AudioStackerApp {
         `;
     }
 
-    createBookListItem(authorName, book, index, bookId) {
+    createBookListItem(authorName, book, index, bookId, isComplete) {
         return `
             <div class="book-list-item d-flex align-items-center p-3 border rounded mb-2 ${isComplete ? 'border-success' : 'border-warning'}" 
                  id="${bookId}">
@@ -519,6 +594,195 @@ class AudioStackerApp {
                 </div>
             </div>
         `;
+    }
+
+    createSimpleAuthorCard(authorName, books) {
+        const bookCount = books.length;
+        const initials = getInitials(authorName);
+        
+        return `
+            <div class="card mb-3" style="border: 1px solid #dee2e6;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                             style="width: 40px; height: 40px; font-weight: bold;">
+                            ${escapeHtml(initials)}
+                        </div>
+                        <div>
+                            <h5 class="mb-0">${escapeHtml(authorName)}</h5>
+                            <small class="text-muted">${bookCount} book${bookCount !== 1 ? 's' : ''}</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Add book for ${escapeHtml(authorName)}')">
+                        <i class="fas fa-plus"></i> Add Book
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        ${books.map((book, index) => `
+                            <div class="col-12 mb-2">
+                                <div class="border rounded p-2 bg-light">
+                                    <strong>${escapeHtml(book.title || 'Untitled')}</strong>
+                                    ${book.series ? `<br><small>Series: ${escapeHtml(book.series)}</small>` : ''}
+                                    ${book.publisher ? `<br><small>Publisher: ${escapeHtml(book.publisher)}</small>` : ''}
+                                    ${book.narrator && book.narrator.length ? `<br><small>Narrator(s): ${book.narrator.map(n => escapeHtml(n)).join(', ')}</small>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createEnhancedAuthorCard(authorName, books) {
+        const authorId = generateAuthorId(authorName);
+        const bookCount = books.length;
+        const initials = getInitials(authorName);
+        
+        // Calculate statistics
+        const narratorSet = new Set();
+        const publisherSet = new Set();
+        
+        books.forEach(book => {
+            if (book.publisher) publisherSet.add(book.publisher);
+            if (book.narrator && Array.isArray(book.narrator)) {
+                book.narrator.forEach(n => {
+                    if (n.trim()) narratorSet.add(n.trim());
+                });
+            }
+        });
+
+        return `
+            <div class="author-card" data-author="${escapeHtml(authorName)}" data-author-id="${authorId}">
+                <div class="author-header">
+                    <div class="author-info">
+                        <div class="author-avatar">
+                            ${escapeHtml(initials)}
+                        </div>
+                        <div class="author-details">
+                            <h3 class="author-name">
+                                <input type="text" class="form-control author-name-input" 
+                                       value="${escapeHtml(authorName)}" 
+                                       onchange="updateAuthorName('${escapeHtml(authorName)}', this.value)"
+                                       data-field="true">
+                            </h3>
+                            <div class="author-meta">
+                                <span class="badge bg-primary me-2">${bookCount} book${bookCount !== 1 ? 's' : ''}</span>
+                                <span class="badge bg-secondary me-2">${narratorSet.size} narrator${narratorSet.size !== 1 ? 's' : ''}</span>
+                                <span class="badge bg-info">${publisherSet.size} publisher${publisherSet.size !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="author-actions">
+                        <button class="btn btn-sm btn-outline-primary me-2" 
+                                onclick="addBook('${escapeHtml(authorName)}')" 
+                                title="Add New Book">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" 
+                                onclick="toggleAuthorCollapse('${authorId}')" 
+                                title="Toggle Books View"
+                                data-author-id="${authorId}">
+                            <i class="fas fa-chevron-down" id="collapse-icon-${authorId}"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteAuthor('${escapeHtml(authorName)}')" 
+                                title="Delete Author">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="author-books" id="books-${authorId}">
+                    ${this.createBooksSection(authorName, books)}
+                </div>
+            </div>
+        `;
+    }
+
+    createBooksSection(authorName, books) {
+        return books.map((book, index) => `
+            <div class="book-item" data-book-index="${index}">
+                <div class="book-content">
+                    <div class="book-main">
+                        <div class="book-title">
+                            <input type="text" 
+                                   class="form-control ${this.getFieldClass(book.title, true)}" 
+                                   value="${escapeHtml(book.title || '')}" 
+                                   placeholder="Enter book title..."
+                                   data-field="title"
+                                   onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'title', this.value, this)"
+                                   oninput="validateFieldRealtime(this, true)">
+                        </div>
+                        <div class="book-series">
+                            <input type="text" 
+                                   class="form-control form-control-sm" 
+                                   value="${escapeHtml(book.series || '')}" 
+                                   placeholder="Series (optional)..."
+                                   data-field="series"
+                                   onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'series', this.value, this)">
+                        </div>
+                    </div>
+                    
+                    <div class="book-details">
+                        <div class="book-detail-group">
+                            <label class="book-detail-label">
+                                <i class="fas fa-building"></i> Publisher
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-sm" 
+                                   value="${escapeHtml(book.publisher || '')}" 
+                                   placeholder="Publisher..."
+                                   data-field="publisher"
+                                   list="publishers-list"
+                                   onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'publisher', this.value, this)">
+                        </div>
+                        
+                        <div class="book-detail-group">
+                            <label class="book-detail-label">
+                                <i class="fas fa-microphone"></i> Narrators
+                            </label>
+                            <div class="narrator-list">
+                                ${(book.narrator || ['']).map((narrator, nIndex) => `
+                                    <div class="narrator-input-group mb-1">
+                                        <input type="text" 
+                                               class="form-control form-control-sm" 
+                                               value="${escapeHtml(narrator)}" 
+                                               placeholder="Narrator name..."
+                                               data-field="narrator"
+                                               list="narrators-list"
+                                               onchange="updateNarratorEnhanced('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value, this)">
+                                        ${book.narrator && book.narrator.length > 1 ? `
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger ms-1" 
+                                                    onclick="removeNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex})"
+                                                    title="Remove narrator">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-primary mt-1" 
+                                        onclick="addNarrator('${escapeHtml(authorName)}', ${index})">
+                                    <i class="fas fa-plus me-1"></i>Add Narrator
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="book-actions">
+                        <button class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteBook('${escapeHtml(authorName)}', ${index})" 
+                                title="Delete Book">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
     }
 
     initializeAuthorCards() {
@@ -584,92 +848,127 @@ class AudioStackerApp {
     }
 
     async saveChanges() {
-        if (!this.unsavedChanges) {
+        if (!this.hasUnsavedChanges) {
             showToast('No changes to save', 'info', 2000);
             return;
         }
 
         try {
+            // Show progress indicators
+            const bookCards = document.querySelectorAll('.book-card.has-changes');
+            bookCards.forEach(card => this.showProgressOverlay(card));
+            
             showToast('Saving changes...', 'info');
             
             const result = await api.saveAudiobooks(state.get('audiobooks'));
             if (result.success) {
-                this.unsavedChanges = false;
+                this.hasUnsavedChanges = false;
                 
-                // Update save buttons to saved state WITHOUT re-rendering
-                const globalSaveBtn = document.querySelector('.control-panel .save-changes-btn');
-                if (globalSaveBtn) {
-                    globalSaveBtn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
-                    globalSaveBtn.classList.remove('btn-warning');
-                    globalSaveBtn.classList.add('btn-success');
-                    globalSaveBtn.disabled = true;
+                // Clear auto-save timer
+                if (this.autoSaveTimer) {
+                    clearTimeout(this.autoSaveTimer);
+                    this.autoSaveTimer = null;
                 }
                 
-                const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
-                authorSaveBtns.forEach(btn => {
-                    if (btn !== globalSaveBtn) {
-                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
-                        btn.classList.remove('btn-warning');
-                        btn.classList.add('btn-success');
-                        btn.disabled = true;
-                    }
-                });
+                // Update save buttons to saved state
+                this.updateSaveButtonStates();
                 
-                // Clear unsaved changes indicator
-                this.updateUnsavedIndicator();
+                // Hide unsaved changes indicator
+                const indicator = document.getElementById('unsaved-indicator');
+                if (indicator) {
+                    indicator.classList.remove('show');
+                }
                 
-                // Clear field change tracking and show visual feedback
-                this.fieldChangeTracking.forEach((fields, bookId) => {
-                    this.clearFieldChanges(bookId);
-                });
-                this.fieldChangeTracking.clear();
+                // Clear all field change tracking and show visual feedback
+                this.clearAllFieldChanges();
+                
+                // Hide progress indicators
+                bookCards.forEach(card => this.hideProgressOverlay(card));
                 
                 // Update stats if provided
                 if (result.stats) {
                     state.setStats(result.stats);
+                    this.updateStats();
                 }
                 
                 showToast('Changes saved successfully', 'success');
             }
         } catch (error) {
             console.error('Failed to save changes:', error);
+            // Hide progress indicators on error
+            const bookCards = document.querySelectorAll('.book-card.has-changes');
+            bookCards.forEach(card => this.hideProgressOverlay(card));
             showToast('Failed to save changes', 'error');
         }
     }
 
     markUnsavedChanges() {
-        // Mark that there are unsaved changes without auto-saving
-        this.unsavedChanges = true;
+        this.hasUnsavedChanges = true;
         
-        // Update save button states WITHOUT re-rendering the entire page
+        // Update save button states
         this.updateSaveButtonStates();
         
-        // Update unsaved changes indicator
-        this.updateUnsavedIndicator();
+        // Show unsaved indicator
+        const indicator = document.getElementById('unsaved-indicator');
+        if (indicator) {
+            indicator.classList.add('show');
+        }
         
-        // Schedule auto-save if enabled
-        this.scheduleAutoSave();
+        // Handle auto-save if enabled
+        if (this.autoSaveEnabled) {
+            // Clear existing timer
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+            }
+            
+            // Set new timer
+            this.autoSaveTimer = setTimeout(() => {
+                this.saveChanges();
+            }, this.autoSaveDelay);
+        }
     }
 
     updateSaveButtonStates() {
-        // Update global save button
         const globalSaveBtn = document.querySelector('.control-panel .save-changes-btn');
-        if (globalSaveBtn) {
-            globalSaveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
-            globalSaveBtn.className = 'btn save-changes-btn btn-warning';
-            globalSaveBtn.disabled = false;
-        }
         
-        // Update individual author save buttons
-        const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
-        authorSaveBtns.forEach(btn => {
-            if (btn !== globalSaveBtn) {
-                btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
-                btn.classList.remove('btn-success');
-                btn.classList.add('btn-warning');
-                btn.disabled = false;
+        if (this.hasUnsavedChanges) {
+            // Update global save button to show unsaved state
+            if (globalSaveBtn) {
+                globalSaveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
+                globalSaveBtn.className = 'btn save-changes-btn btn-warning';
+                globalSaveBtn.disabled = false;
             }
-        });
+            
+            // Update individual author save buttons
+            const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
+            authorSaveBtns.forEach(btn => {
+                if (btn !== globalSaveBtn) {
+                    btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-warning');
+                    btn.disabled = false;
+                }
+            });
+        } else {
+            // Update global save button to show saved state
+            if (globalSaveBtn) {
+                globalSaveBtn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
+                globalSaveBtn.classList.remove('btn-warning');
+                globalSaveBtn.classList.add('btn-success');
+                globalSaveBtn.disabled = true;
+            }
+            
+            // Update individual author save buttons
+            const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
+            authorSaveBtns.forEach(btn => {
+                if (btn !== globalSaveBtn) {
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
+                    btn.classList.remove('btn-warning');
+                    btn.classList.add('btn-success');
+                    btn.disabled = true;
+                }
+            });
+        }
     }
 
     // View mode functions
@@ -744,6 +1043,13 @@ class AudioStackerApp {
         }
     }
 
+    showStatsModal() {
+        // Implementation will be in modals.js
+        if (window.modals) {
+            window.modals.showStatsModal();
+        }
+    }
+
     showAddAuthorModal() {
         // Implementation will be in modals.js
         if (window.modals) {
@@ -758,44 +1064,540 @@ class AudioStackerApp {
         }
     }
 
-    showStatsModal() {
-        // Implementation will be in modals.js
-        if (window.modals) {
-            window.modals.showStatsModal();
-        } else {
-            // Fallback stats display
-            const stats = state.get('stats') || {};
-            const content = `
-                <div class="stats-summary">
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <div class="stat-item">
-                                <h3>${stats.total_authors || 0}</h3>
-                                <p>Authors</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-item">
-                                <h3>${stats.total_books || 0}</h3>
-                                <p>Books</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-item">
-                                <h3>${stats.total_publishers || 0}</h3>
-                                <p>Publishers</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-item">
-                                <h3>${stats.total_narrators || 0}</h3>
-                                <p>Narrators</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            // ...you may want to display 'content' in a modal or alert here...
+    showKeyboardShortcuts() {
+        const modal = document.getElementById('shortcuts-modal');
+        if (modal) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
         }
     }
+
+    initializeKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + S: Save changes
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (this.hasUnsavedChanges) {
+                    this.saveChanges();
+                }
+            }
+            
+            // Ctrl/Cmd + /: Show shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+                e.preventDefault();
+                this.showKeyboardShortcuts();
+            }
+            
+            // Escape: Close modals/panels
+            if (e.key === 'Escape') {
+                if (this.settingsPanelOpen) {
+                    this.closeSettingsPanel();
+                }
+                // Close any open modals
+                const modals = document.querySelectorAll('.modal.show');
+                modals.forEach(modal => {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) bsModal.hide();
+                });
+            }
+        });
+    }
+
+    // Auto-refresh data periodically if enabled
+    initializeAutoRefresh() {
+        if (localStorage.getItem('autoRefresh') === 'true') {
+            setInterval(() => {
+                if (!this.hasUnsavedChanges) {
+                    this.refreshData();
+                }
+            }, 300000); // 5 minutes
+        }
+    }
+
+    async refreshData() {
+        try {
+            showLoading(true);
+            const response = await fetch('/api/audiobooks');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.audiobooks && data.audiobooks.author) {
+                    state.setAudiobooks(data.audiobooks.author);
+                    this.refreshAuthorsDisplay();
+                    showToast('Data refreshed successfully', 'success');
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh data:', error);
+            showToast('Failed to refresh data', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    refreshAuthorsDisplay() {
+        if (this.isInitialized) {
+            this.renderAuthors();
+        }
+    }
+
+    renderAuthors() {
+        const filteredData = this.getFilteredData();
+        const authorsContainer = document.getElementById('authors-container');
+        
+        if (!authorsContainer) {
+            console.error('Authors container not found');
+            return;
+        }
+
+        if (Object.keys(filteredData).length === 0) {
+            authorsContainer.innerHTML = this.createEmptyState();
+            return;
+        }
+
+        const authorsHtml = Object.entries(filteredData)
+            .map(([authorName, books]) => this.createAuthorCard(authorName, books))
+            .join('');
+
+        authorsContainer.innerHTML = authorsHtml;
+        
+        // Update stats after rendering
+        this.updateStats();
+        
+        // Initialize any new components
+        this.initializeAuthorCards();
+    }
+
+    getFilteredData() {
+        const audiobooks = state.get('audiobooks') || {};
+        const searchTerm = state.get('filters.search', '').toLowerCase();
+        const statusFilter = state.get('filters.status', 'all');
+        
+        if (!searchTerm && statusFilter === 'all') {
+            return audiobooks;
+        }
+        
+        const filtered = {};
+        
+        for (const [authorName, books] of Object.entries(audiobooks)) {
+            if (!Array.isArray(books)) continue;
+            
+            let includeAuthor = false;
+            let filteredBooks = books;
+            
+            // Apply search filter
+            if (searchTerm) {
+                includeAuthor = authorName.toLowerCase().includes(searchTerm);
+                filteredBooks = books.filter(book => 
+                    includeAuthor || 
+                    (book.title && book.title.toLowerCase().includes(searchTerm)) ||
+                    (book.series && book.series.toLowerCase().includes(searchTerm))
+                );
+            }
+            
+            // Apply status filter
+            if (statusFilter !== 'all' && filteredBooks.length > 0) {
+                filteredBooks = filteredBooks.filter(book => {
+                    const isComplete = this.isBookComplete(book);
+                    return statusFilter === 'complete' ? isComplete : !isComplete;
+                });
+            }
+            
+            if (filteredBooks.length > 0) {
+                filtered[authorName] = filteredBooks;
+            }
+        }
+        
+        return filtered;
+    }
+
+    initializeSettings() {
+        // Initialize settings panel functionality
+        
+        // Set up toggle switches based on current preferences
+        const autoSaveToggle = document.querySelector('input[name="autoSave"]');
+        if (autoSaveToggle) {
+            autoSaveToggle.checked = this.autoSaveEnabled;
+        }
+        
+        const realtimeValidationToggle = document.querySelector('input[name="realtimeValidation"]');
+        if (realtimeValidationToggle) {
+            realtimeValidationToggle.checked = this.realtimeValidation;
+        }
+        
+        const showCompletionToggle = document.querySelector('input[name="showCompletionStatus"]');
+        if (showCompletionToggle) {
+            showCompletionToggle.checked = this.showCompletionStatus;
+        }
+        
+        const compactModeToggle = document.querySelector('input[name="compactMode"]');
+        if (compactModeToggle) {
+            compactModeToggle.checked = this.compactMode;
+        }
+        
+        // Set up cards per row slider
+        const cardsPerRowSlider = document.querySelector('input[name="cardsPerRow"]');
+        const cardsPerRowValue = document.querySelector('.range-value');
+        if (cardsPerRowSlider) {
+            cardsPerRowSlider.value = this.cardsPerRow;
+            if (cardsPerRowValue) {
+                cardsPerRowValue.textContent = this.cardsPerRow;
+            }
+        }
+        
+        console.log('Settings initialized');
+    }
+
+    // Book completion utility methods
+    isBookComplete(book) {
+        const requiredFields = ['title'];
+        const optionalFields = ['series', 'publisher', 'narrator'];
+        
+        // Check required fields
+        for (const field of requiredFields) {
+            if (!book[field] || !book[field].toString().trim()) {
+                return false;
+            }
+        }
+        
+        // Check if at least some optional fields are filled
+        let filledOptionalFields = 0;
+        for (const field of optionalFields) {
+            if (book[field] && book[field].toString().trim()) {
+                filledOptionalFields++;
+            }
+        }
+        
+        // Consider complete if title is present and at least one optional field is filled
+        return filledOptionalFields > 0;
+    }
+
+    getBookCompletionPercentage(book) {
+        const allFields = ['title', 'series', 'publisher', 'narrator'];
+        let filledFields = 0;
+        
+        for (const field of allFields) {
+            if (book[field] && book[field].toString().trim()) {
+                filledFields++;
+            }
+        }
+        
+        return Math.round((filledFields / allFields.length) * 100);
+    }
+
+    getFieldClass(fieldValue, isRequired = false) {
+        // Return CSS classes for form fields based on validation state
+        const classes = [];
+        
+        if (isRequired && (!fieldValue || !fieldValue.toString().trim())) {
+            classes.push('is-invalid');
+        } else if (fieldValue && fieldValue.toString().trim()) {
+            classes.push('is-valid');
+        }
+        
+        return classes.join(' ');
+    }
 }
+
+// Make AudioStackerApp available globally
+window.AudioStackerApp = AudioStackerApp;
+
+// ===================================
+// GLOBAL FUNCTIONS FOR HTML ONCLICK HANDLERS
+// ===================================
+
+// Enhanced field update with change tracking
+window.updateBookFieldEnhanced = function(authorName, bookIndex, field, value, element) {
+    // Get old value for change tracking
+    const audiobooks = state.get('audiobooks');
+    const oldValue = audiobooks[authorName] && audiobooks[authorName][bookIndex] 
+        ? audiobooks[authorName][bookIndex][field] 
+        : '';
+    
+    // Update the field using the standard function
+    window.updateBookField(authorName, bookIndex, field, value);
+    
+    // Track field change for visual feedback
+    if (window.app && element) {
+        const fieldId = `${sanitizeId(authorName)}-${bookIndex}-${field}`;
+        element.setAttribute('data-field-id', fieldId);
+        window.app.trackFieldChange(fieldId, oldValue, value);
+        
+        // Real-time validation if enabled
+        if (window.app.realtimeValidation) {
+            window.validateFieldRealtime(element, field === 'title');
+        }
+    }
+};
+
+window.updateNarratorEnhanced = function(authorName, bookIndex, narratorIndex, value, element) {
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName] && audiobooks[authorName][bookIndex] !== undefined) {
+        const oldValue = audiobooks[authorName][bookIndex].narrator && audiobooks[authorName][bookIndex].narrator[narratorIndex] 
+            ? audiobooks[authorName][bookIndex].narrator[narratorIndex] 
+            : '';
+            
+        if (!audiobooks[authorName][bookIndex].narrator) {
+            audiobooks[authorName][bookIndex].narrator = [];
+        }
+        audiobooks[authorName][bookIndex].narrator[narratorIndex] = value;
+        state.setAudiobooks(audiobooks);
+        
+        // Track field change for visual feedback
+        if (window.app && element) {
+            const fieldId = `${sanitizeId(authorName)}-${bookIndex}-narrator-${narratorIndex}`;
+            element.setAttribute('data-field-id', fieldId);
+            window.app.trackFieldChange(fieldId, oldValue, value);
+        }
+        
+        if (window.app) {
+            window.app.markUnsavedChanges();
+        }
+    }
+};
+
+window.updateBookField = function(authorName, bookIndex, field, value) {
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName] && audiobooks[authorName][bookIndex] !== undefined) {
+        audiobooks[authorName][bookIndex][field] = value;
+        state.setAudiobooks(audiobooks);
+        
+        if (window.app) {
+            window.app.markUnsavedChanges();
+        }
+    }
+};
+
+window.addNarrator = function(authorName, bookIndex) {
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName] && audiobooks[authorName][bookIndex] !== undefined) {
+        if (!audiobooks[authorName][bookIndex].narrator) {
+            audiobooks[authorName][bookIndex].narrator = [];
+        }
+        audiobooks[authorName][bookIndex].narrator.push('');
+        state.setAudiobooks(audiobooks);
+        
+        if (window.app) {
+            window.app.markUnsavedChanges();
+            window.app.refreshAuthorsDisplay();
+        }
+    }
+};
+
+window.removeNarrator = function(authorName, bookIndex, narratorIndex) {
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName] && audiobooks[authorName][bookIndex] !== undefined) {
+        if (audiobooks[authorName][bookIndex].narrator && audiobooks[authorName][bookIndex].narrator.length > narratorIndex) {
+            audiobooks[authorName][bookIndex].narrator.splice(narratorIndex, 1);
+            if (audiobooks[authorName][bookIndex].narrator.length === 0) {
+                audiobooks[authorName][bookIndex].narrator = [''];
+            }
+            state.setAudiobooks(audiobooks);
+            
+            if (window.app) {
+                window.app.markUnsavedChanges();
+                window.app.refreshAuthorsDisplay();
+            }
+        }
+    }
+};
+
+window.validateFieldRealtime = function(element, isRequired = false) {
+    if (!element) return;
+    
+    const value = element.value.trim();
+    const errorMessage = element.parentNode.querySelector('.field-error-message');
+    
+    if (isRequired && !value) {
+        element.classList.add('is-invalid');
+        element.classList.remove('is-valid');
+        if (errorMessage) errorMessage.style.display = 'block';
+    } else if (value) {
+        element.classList.add('is-valid');
+        element.classList.remove('is-invalid');
+        if (errorMessage) errorMessage.style.display = 'none';
+    } else {
+        element.classList.remove('is-valid', 'is-invalid');
+        if (errorMessage) errorMessage.style.display = 'none';
+    }
+};
+
+window.addBook = function(authorName) {
+    const audiobooks = state.get('audiobooks');
+    if (!audiobooks[authorName]) {
+        audiobooks[authorName] = [];
+    }
+    
+    audiobooks[authorName].push({
+        title: '',
+        series: '',
+        publisher: '',
+        narrator: ['']
+    });
+    
+    state.setAudiobooks(audiobooks);
+    
+    if (window.app) {
+        window.app.markUnsavedChanges();
+        window.app.refreshAuthorsDisplay();
+    }
+};
+
+window.deleteBook = function(authorName, bookIndex) {
+    if (!confirm('Are you sure you want to delete this book?')) {
+        return;
+    }
+    
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName] && audiobooks[authorName][bookIndex] !== undefined) {
+        audiobooks[authorName].splice(bookIndex, 1);
+        
+        // Remove author if no books left
+        if (audiobooks[authorName].length === 0) {
+            delete audiobooks[authorName];
+        }
+        
+        state.setAudiobooks(audiobooks);
+        
+        if (window.app) {
+            window.app.markUnsavedChanges();
+            window.app.refreshAuthorsDisplay();
+        }
+    }
+};
+
+window.addAuthor = function() {
+    const modal = document.getElementById('addAuthorModal');
+    if (modal) {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    }
+};
+
+window.submitNewAuthor = function() {
+    const input = document.getElementById('newAuthorName');
+    const authorName = input.value.trim();
+    
+    if (!authorName) {
+        showToast('Please enter an author name', 'error');
+        return;
+    }
+    
+    const audiobooks = state.get('audiobooks');
+    if (audiobooks[authorName]) {
+        showToast('Author already exists', 'error');
+        return;
+    }
+    
+    audiobooks[authorName] = [{
+        title: '',
+        series: '',
+        publisher: '',
+        narrator: ['']
+    }];
+    
+    state.setAudiobooks(audiobooks);
+    
+    if (window.app) {
+        window.app.markUnsavedChanges();
+        window.app.refreshAuthorsDisplay();
+    }
+    
+    input.value = '';
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addAuthorModal'));
+    if (modal) modal.hide();
+    
+    showToast(`Author "${authorName}" added successfully`, 'success');
+};
+
+window.deleteAuthor = function(authorName) {
+    if (!confirm(`Are you sure you want to delete the author "${authorName}" and all their books?`)) {
+        return;
+    }
+    
+    const audiobooks = state.get('audiobooks');
+    delete audiobooks[authorName];
+    state.setAudiobooks(audiobooks);
+    
+    if (window.app) {
+        window.app.markUnsavedChanges();
+        window.app.refreshAuthorsDisplay();
+    }
+    
+    showToast(`Author "${authorName}" deleted successfully`, 'success');
+};
+
+window.setViewMode = function(mode) {
+    if (window.app) {
+        window.app.setViewMode(mode);
+    }
+};
+
+window.toggleAutoSave = function(enabled) {
+    if (window.app) {
+        window.app.updateSettingValue('audioSave', enabled);
+    }
+};
+
+window.toggleRealtimeValidation = function(enabled) {
+    if (window.app) {
+        window.app.updateSettingValue('realtimeValidation', enabled);
+    }
+};
+
+window.toggleCompletionStatus = function(enabled) {
+    if (window.app) {
+        window.app.updateSettingValue('showCompletionStatus', enabled);
+    }
+};
+
+window.toggleSettingsPanel = function() {
+    if (window.app) {
+        window.app.toggleSettingsPanel();
+    }
+};
+
+window.closeSettingsPanel = function() {
+    if (window.app) {
+        window.app.closeSettingsPanel();
+    }
+};
+
+window.refreshData = function() {
+    if (window.app) {
+        window.app.refreshData();
+    }
+};
+
+window.saveChanges = function() {
+    if (window.app) {
+        window.app.saveChanges();
+    }
+};
+
+// Global wrapper for showImportModal
+window.showImportModal = function() {
+    if (window.modals) {
+        window.modals.showImportModal();
+    }
+};
+
+// Global wrapper for showStatsModal
+window.showStatsModal = function() {
+    if (window.modals) {
+        window.modals.showStatsModal();
+    }
+};
+
+// Global wrapper for showQuickAddModal
+window.showQuickAddModal = function() {
+    if (window.modals) {
+        window.modals.showQuickAddModal();
+    }
+};
+
+// Global wrapper for showKeyboardShortcuts
+window.showKeyboardShortcuts = function() {
+    if (window.app) {
+        window.app.showKeyboardShortcuts();
+    }
+};

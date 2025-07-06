@@ -509,17 +509,56 @@ async def import_collection(import_data: dict):
         logger.error(f"Error importing collection: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
+@app.get("/debug")
+async def debug_endpoint():
+    """Debug endpoint to check data"""
+    data = load_audiobooks()
+    stats = get_stats(data)
     
-    logger.info(f"Starting AudioStacker Web UI on {WEB_HOST}:{WEB_PORT}")
-    logger.info(f"Configuration loaded from {CONFIG_FILE}")
-    logger.info(f"Reload mode: {WEB_RELOAD}")
+    return {
+        "data_structure": {
+            "type": type(data).__name__,
+            "keys": list(data.keys()) if isinstance(data, dict) else "not_dict",
+            "audiobooks_keys": list(data.get("audiobooks", {}).keys()) if "audiobooks" in data else "no_audiobooks_key",
+            "author_count": len(data.get("audiobooks", {}).get("author", {})) if "audiobooks" in data else 0
+        },
+        "first_author": list(data.get("audiobooks", {}).get("author", {}).keys())[:1] if "audiobooks" in data else [],
+        "stats": stats
+    }
+
+@app.get("/debug/template")
+async def debug_template():
+    """Debug what gets passed to template"""
+    data = load_audiobooks()
+    stats = get_stats(data)
     
-    uvicorn.run(
-        "app:app",  # Use string import for proper reload support
-        host=WEB_HOST,
-        port=WEB_PORT,
-        reload=WEB_RELOAD,
-        log_level="info"
-    )
+    return HTMLResponse(f"""
+    <html>
+    <head><title>Template Debug</title></head>
+    <body>
+        <h1>Template Debug</h1>
+        <h2>Raw Data</h2>
+        <pre>{json.dumps(data, indent=2)}</pre>
+        
+        <h2>Stats</h2>
+        <pre>{json.dumps(stats, indent=2)}</pre>
+        
+        <script>
+            console.log('Data:', {json.dumps(data)});
+            console.log('Stats:', {json.dumps(stats)});
+            
+            window.initialData = {json.dumps(data)};
+            window.initialStats = {json.dumps(stats)};
+            
+            console.log('Authors count:', Object.keys(window.initialData.audiobooks.author).length);
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.get("/test")
+async def test_page():
+    """Simple test page"""
+    with open(BASE_DIR.parent.parent / "test_minimal.html", "r") as f:
+        content = f.read()
+    return HTMLResponse(content)
