@@ -131,11 +131,13 @@ body.dark-theme .modal-body .text-muted {
     color: var(--text-muted, #718096);
 }
 
-body.dark-theme .btn-close {
+body.dark-theme .btn-close,
+body.dark-theme .modal-header .btn-close {
     color: var(--text-muted, #718096);
 }
 
-body.dark-theme .btn-close:hover {
+body.dark-theme .btn-close:hover,
+body.dark-theme .modal-header .btn-close:hover {
     background: var(--danger-color, #ef4444);
     color: white;
 }
