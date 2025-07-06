@@ -3,7 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AudioStacker - Upcoming Releases</title>
+    <title>Audiobook Stalkerr - Upcoming Releases</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Track upcoming audiobook releases from your favorite authors. Never miss a new audiobook with Audiobook Stalkerr's release calendar and notifications.">
+    <meta name="keywords" content="audiobooks, upcoming releases, audiobook tracker, release calendar, audible, book notifications">
+    <meta name="author" content="Audiobook Stalkerr">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="Audiobook Stalkerr - Upcoming Audiobook Releases">
+    <meta property="og:description" content="Track upcoming audiobook releases from your favorite authors. Never miss a new audiobook with Audiobook Stalkerr's release calendar and notifications.">
+    <meta property="og:image" content="{{ request.url_for('static', path='images/og-image.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Audiobook Stalkerr">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:title" content="Audiobook Stalkerr - Upcoming Audiobook Releases">
+    <meta property="twitter:description" content="Track upcoming audiobook releases from your favorite authors. Never miss a new audiobook with Audiobook Stalkerr's release calendar and notifications.">
+    <meta property="twitter:image" content="{{ request.url_for('static', path='images/twitter-card.png') }}">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="msapplication-TileColor" content="#6366f1">
+    <meta name="msapplication-config" content="/static/browserconfig.xml">
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -19,7 +54,7 @@
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="fas fa-headphones text-primary me-2"></i>
-                <strong>AudioStacker</strong>
+                <strong>Audiobook Stalkerr</strong>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -189,7 +224,7 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         <div id="notification-toast" class="toast" role="alert">
             <div class="toast-header">
-                <strong class="me-auto">AudioStacker</strong>
+                <strong class="me-auto">Audiobook Stalkerr</strong>
                 <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
             </div>
             <div class="toast-body" id="toast-message">

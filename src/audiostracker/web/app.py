@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AudioStacker Web UI - FastAPI Application
+Audiobook Stalkerr Web UI - FastAPI Application
 A modern, modular web interface for managing new audiobook feeds.
 """
 
@@ -97,7 +97,7 @@ def create_simple_ical_event(audiobook: dict) -> str:
     
     # Generate unique ID
     from datetime import datetime
-    uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@audiostacker"
+    uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@audiobookstalkerr"
     
     # Create timestamp
     timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -123,11 +123,11 @@ END:VTIMEZONE"""
     
     ical_content = f"""BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//AudioStacker//AudioStacker//EN
+PRODID:-//Audiobook Stalkerr//Audiobook Stalkerr//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:AudioStacker - New Releases
-X-WR-CALDESC:New audiobook releases tracked by AudioStacker
+X-WR-CALNAME:Audiobook Stalkerr - New Releases
+X-WR-CALDESC:New audiobook releases tracked by Audiobook Stalkerr
 {vtimezone}
 BEGIN:VEVENT
 UID:{uid}
@@ -146,7 +146,7 @@ END:VCALENDAR"""
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="AudioStacker Web UI",
+    title="Audiobook Stalkerr Web UI",
     description="A modern web interface for managing audiobook collections",
     version="1.0.0"
 )

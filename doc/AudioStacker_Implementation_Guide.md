@@ -1,8 +1,8 @@
-# AudioStacker Implementation Guide
+# Audiobook Stalkerr Implementation Guide
 
 ## Project Overview
 
-AudioStacker is a utility that tracks audiobook releases on Audible based on your configured preferences. It stores information about upcoming audiobooks in a local database, can notify you through multiple channels when new releases are detected, and provides calendar exports for scheduling.
+Audiobook Stalkerr is a utility that tracks audiobook releases on Audible based on your configured preferences. It stores information about upcoming audiobooks in a local database, can notify you through multiple channels when new releases are detected, and provides calendar exports for scheduling.
 
 ## Architecture
 
@@ -83,7 +83,7 @@ pushover:
 discord:
   enabled: false
   webhook_url: ""
-  username: "AudioStacker"
+  username: "Audiobook Stalkerr"
   avatar_url: ""
   color: "0x1F8B4C"
 

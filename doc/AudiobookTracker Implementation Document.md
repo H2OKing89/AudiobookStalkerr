@@ -1,4 +1,4 @@
-# AudioStacker **Implementation Document**
+# Audiobook Stalkerr **Implementation Document**
 
 ---
 
@@ -97,11 +97,11 @@ audiobooks:
 │   └── scripts/                # CLI helpers & cron wrappers
 ├── doc/                        # Markdown docs (this file + API cheat‑sheet)
 ├── logs/
-│   └── audiostacker.log        # JSON run‑time logs
+│   └── audiobookstalkerr.log        # JSON run‑time logs
 ├── pytest.ini
 ├── requirements.txt
 ├── src/
-│   └── audiostracker/
+│   └── audiobookstalkerr/
 │       ├── __init__.py
 │       ├── main.py             # orchestrator / CLI
 │       ├── models.py           # Audiobook dataclass / Pydantic model
@@ -213,7 +213,7 @@ pushover:
 discord:
   enabled: false
   webhook_url: ""  # From .env
-  username: "AudioStacker"
+  username: "Audiobook Stalkerr"
   color: "0x1F8B4C"
 
 email:
@@ -319,7 +319,7 @@ CREATE TABLE audiobooks (
 ### File Structure Updates
 
 ``` tree
-src/audiostracker/
+src/audiobookstalkerr/
 ├── main.py              # Updated with multi-channel notifications
 ├── audible.py           # Enhanced with retry logic
 ├── database.py          # Multi-channel schema and operations

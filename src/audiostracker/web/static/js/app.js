@@ -1,5 +1,5 @@
 /**
- * AudioStacker Main Application
+ * Audiobook Stalkerr Main Application
  * Coordinates all modules and handles the main application logic
  */
 

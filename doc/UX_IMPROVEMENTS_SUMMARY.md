@@ -1,4 +1,4 @@
-# AudioStacker UX Improvements Implementation Summary
+# Audiobook Stalkerr UX Improvements Implementation Summary
 
 ## ✅ Completed UX Enhancements
 
