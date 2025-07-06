@@ -264,12 +264,10 @@ class UpcomingApp {
         let urgencyText = '';
         if (daysUntilRelease <= 7) {
             urgencyClass = 'border-danger';
-            urgencyText = `<span class="badge bg-danger">Releases in ${daysUntilRelease} day${daysUntilRelease === 1 ? '' : 's'}</span>`;
+            urgencyText = '<span class="badge bg-danger">This Week</span>';
         } else if (daysUntilRelease <= 30) {
             urgencyClass = 'border-warning';
-            urgencyText = `<span class="badge bg-warning">Releases in ${daysUntilRelease} days</span>`;
-        } else {
-            urgencyText = `<span class="badge bg-primary">Releases in ${daysUntilRelease} days</span>`;
+            urgencyText = '<span class="badge bg-warning">This Month</span>';
         }
         
         // Handle image with fallback
@@ -288,10 +286,11 @@ class UpcomingApp {
         const publisherName = book.publisher_name || book.publisher || 'Unknown Publisher';
         
         col.innerHTML = `
-            <div class="audiobook-card card h-100 ${urgencyClass}">
+            <div class="card h-100 audiobook-card ${urgencyClass}">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">${this.escapeHtml(book.title)}</h5>
-                    <div class="d-flex gap-2">
+                    <h6 class="mb-0 text-primary">${this.escapeHtml(book.author)}</h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        ${urgencyText}
                         <button class="btn btn-sm btn-outline-primary" onclick="downloadIcal('${book.asin}')" title="Download calendar event (.ics file)">
                             <i class="fas fa-calendar-plus"></i>
                         </button>
@@ -300,51 +299,51 @@ class UpcomingApp {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-4">
-                            <div class="book-cover">
+                            <div class="book-cover mb-3">
                                 ${imageTag}
                             </div>
                         </div>
                         <div class="col-8">
-                            <div class="book-details">
-                                <p class="text-muted mb-1">
-                                    <i class="fas fa-user me-1"></i>
-                                    <strong>Author:</strong> ${this.escapeHtml(book.author)}
-                                </p>
-                                ${book.series ? `<p class="text-muted mb-1">
-                                    <i class="fas fa-list me-1"></i>
-                                    <strong>Series:</strong> ${this.escapeHtml(book.series)}${book.series_number ? ` #${book.series_number}` : ''}
-                                </p>` : ''}
-                                <p class="text-muted mb-1">
-                                    <i class="fas fa-microphone me-1"></i>
-                                    <strong>Narrator:</strong> ${this.escapeHtml(book.narrator || 'Unknown')}
-                                </p>
-                                <p class="text-muted mb-2">
-                                    <i class="fas fa-building me-1"></i>
-                                    <strong>Publisher:</strong> ${this.escapeHtml(publisherName)}
-                                </p>
-                                
-                                <div class="release-info mb-3">
-                                    <p class="fw-bold mb-1">
-                                        <i class="fas fa-calendar-alt me-1"></i>
-                                        Release Date: ${formattedDate}
-                                    </p>
-                                    ${urgencyText}
-                                </div>
-                                
-                                ${truncatedDescription ? `<div class="book-description">
-                                    <p class="small">${this.escapeHtml(truncatedDescription)}</p>
-                                </div>` : ''}
-                            </div>
+                            <h5 class="card-title">${this.escapeHtml(book.title)}</h5>
+                            ${book.series ? `<p class="text-muted mb-2"><i class="fas fa-list me-1"></i>${this.escapeHtml(book.series)} ${book.series_number ? `#${book.series_number}` : ''}</p>` : ''}
+                            <p class="text-muted mb-2"><i class="fas fa-microphone me-1"></i>${this.escapeHtml(book.narrator)}</p>
+                            <p class="text-muted mb-3"><i class="fas fa-building me-1"></i>${this.escapeHtml(publisherName)}</p>
+                        </div>
+                    </div>
+                    
+                    ${truncatedDescription ? `
+                        <div class="book-description mb-3">
+                            <p class="text-muted small">${this.escapeHtml(truncatedDescription)}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="release-info">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-calendar-day text-primary me-2"></i>
+                            <span class="fw-bold">${formattedDate}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock text-muted me-2"></i>
+                            <span class="text-muted">${daysUntilRelease} days from now</span>
                         </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="fas fa-barcode me-1"></i>
-                        ASIN: ${this.escapeHtml(book.asin)} | 
-                        <i class="fas fa-clock me-1"></i>
-                        Updated: ${book.updated_at ? new Date(book.updated_at).toLocaleDateString() : 'Unknown'}
-                    </small>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-tag me-1"></i>ASIN: ${book.asin}
+                        </small>
+                        ${book.link ? `
+                            <a href="${this.escapeHtml(book.link)}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>View on Audible
+                            </a>
+                        ` : ''}
+                    </div>
+                    ${book.last_checked ? `
+                        <small class="text-muted d-block mt-1">
+                            <i class="fas fa-sync me-1"></i>Updated: ${new Date(book.last_checked).toLocaleDateString()}
+                        </small>
+                    ` : ''}
                 </div>
             </div>
         `;
