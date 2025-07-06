@@ -390,6 +390,22 @@ window.addEventListener('unhandledrejection', function(event) {
     showToast('An unexpected error occurred', 'error');
 });
 
+/**
+ * Get audiobooks data with backwards compatibility
+ * Handles both old format (data.audiobooks.author) and new format (direct authors)
+ */
+function getAudiobooksData(data) {
+    if (!data) return {};
+    
+    // If data has audiobooks.author structure (old format), extract it
+    if (data.audiobooks && data.audiobooks.author) {
+        return data.audiobooks.author;
+    }
+    
+    // Otherwise assume it's the new direct format
+    return data;
+}
+
 // Export utilities to global scope
 window.utils = {
     debounce,
@@ -411,5 +427,13 @@ window.utils = {
     url,
     animate,
     validation,
-    showLoading
+    showLoading,
+    getAudiobooksData
 };
+
+// Export commonly used functions to global scope for backward compatibility
+window.escapeHtml = escapeHtml;
+window.isBookComplete = isBookComplete;
+window.generateId = generateId;
+window.deepClone = deepClone;
+window.getAudiobooksData = getAudiobooksData;

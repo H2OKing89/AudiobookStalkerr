@@ -182,7 +182,7 @@ class SearchModule {
 
     // Search suggestions
     generateSuggestions(query) {
-        const authors = Object.keys(state.get('audiobooks.audiobooks.author') || {});
+        const authors = Object.keys(state.get('audiobooks') || {});
         const stats = state.get('stats') || {};
         const suggestions = new Set();
         

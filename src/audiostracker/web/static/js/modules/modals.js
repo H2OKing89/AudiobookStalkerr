@@ -131,16 +131,16 @@ class ModalsModule {
 
             try {
                 const audiobooks = state.get('audiobooks');
-                if (audiobooks.audiobooks.author[authorName]) {
+                if (audiobooks[authorName]) {
                     showToast('Author already exists', 'warning');
                     return;
                 }
 
                 // Add author
-                audiobooks.audiobooks.author[authorName] = [];
+                audiobooks[authorName] = [];
 
                 // Always add the book with the provided name
-                audiobooks.audiobooks.author[authorName].push({
+                audiobooks[authorName].push({
                     title: bookName,
                     series: '',
                     publisher: '',
@@ -178,7 +178,7 @@ class ModalsModule {
     showQuickAddModal() {
         const modalId = generateId('modal');
         const stats = state.get('stats') || {};
-        const authors = Object.keys(state.get('audiobooks').audiobooks.author || {});
+        const authors = Object.keys(state.get('audiobooks') || {});
 
         const content = `
             <form id="quick-add-form">
@@ -287,12 +287,12 @@ class ModalsModule {
                 const audiobooks = state.get('audiobooks');
                 
                 // Ensure author exists
-                if (!audiobooks.audiobooks.author[authorName]) {
-                    audiobooks.audiobooks.author[authorName] = [];
+                if (!audiobooks[authorName]) {
+                    audiobooks[authorName] = [];
                 }
 
                 // Add book
-                audiobooks.audiobooks.author[authorName].push({
+                audiobooks[authorName].push({
                     title,
                     series,
                     publisher,
@@ -439,19 +439,19 @@ class ModalsModule {
                 let finalData;
 
                 if (mode === 'replace') {
-                    finalData = importData;
+                    finalData = window.utils.getAudiobooksData(importData);
                 } else {
                     // Merge mode
                     finalData = deepClone(currentData);
-                    const importAuthors = importData.audiobooks?.author || {};
+                    const importAuthors = window.utils.getAudiobooksData(importData);
                     
                     Object.entries(importAuthors).forEach(([authorName, books]) => {
-                        if (finalData.audiobooks.author[authorName]) {
+                        if (finalData[authorName]) {
                             // Merge books
-                            finalData.audiobooks.author[authorName].push(...books);
+                            finalData[authorName].push(...books);
                         } else {
                             // Add new author
-                            finalData.audiobooks.author[authorName] = books;
+                            finalData[authorName] = books;
                         }
                     });
                 }
@@ -485,18 +485,18 @@ class ModalsModule {
         }, 500));
 
         function validateImportData(data) {
-            return data && 
-                   data.audiobooks && 
-                   data.audiobooks.author && 
-                   typeof data.audiobooks.author === 'object';
+            // Use helper function for backwards compatibility
+            const audiobooks = window.utils.getAudiobooksData(data);
+            return audiobooks && typeof audiobooks === 'object' && Object.keys(audiobooks).length > 0;
         }
 
         function showFileInfo(file, data) {
             const info = modal.querySelector('#file-info');
             const details = modal.querySelector('#file-details');
             
-            const authorCount = Object.keys(data.audiobooks.author).length;
-            const bookCount = Object.values(data.audiobooks.author)
+            const authorsData = window.utils.getAudiobooksData(data);
+            const authorCount = Object.keys(authorsData).length;
+            const bookCount = Object.values(authorsData)
                 .reduce((sum, books) => sum + books.length, 0);
             
             details.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(1)}KB) - ${authorCount} authors, ${bookCount} books`;
@@ -506,9 +506,10 @@ class ModalsModule {
         function showImportPreview(data) {
             const preview = modal.querySelector('#import-preview');
             const tbody = modal.querySelector('#preview-body');
-            const currentAuthors = Object.keys(state.get('audiobooks').audiobooks.author);
+            const currentAuthors = Object.keys(state.get('audiobooks') || {});
             
-            const rows = Object.entries(data.audiobooks.author).map(([author, books]) => {
+            const authorsData = window.utils.getAudiobooksData(data);
+            const rows = Object.entries(authorsData).map(([author, books]) => {
                 const isExisting = currentAuthors.includes(author);
                 const status = isExisting ? 
                     `<span class="badge bg-warning">Will merge</span>` : 
@@ -537,32 +538,28 @@ class ModalsModule {
     showStatsModal() {
         const modalId = generateId('modal');
         const stats = state.get('stats') || {};
-        const audiobooks = state.get('audiobooks').audiobooks.author || {};
+        // Use the utility to get the correct structure
+        const audiobooks = window.utils.getAudiobooksData(state.get('audiobooks')) || {};
 
         // Calculate additional stats
         const authorStats = Object.entries(audiobooks).map(([author, books]) => {
             const complete = books.filter(isBookComplete).length;
             const narratorSet = new Set();
             const publisherSet = new Set();
-            
             books.forEach(book => {
                 if (book.publisher) publisherSet.add(book.publisher);
                 if (book.narrator) {
-                    book.narrator.forEach(n => {
-                        if (n.trim()) narratorSet.add(n.trim());
-                    });
+                    (Array.isArray(book.narrator) ? book.narrator : [book.narrator]).forEach(n => narratorSet.add(n));
                 }
             });
-
             return {
                 author,
-                bookCount: books.length,
-                completeCount: complete,
-                completionRate: books.length > 0 ? Math.round((complete / books.length) * 100) : 0,
-                narratorCount: narratorSet.size,
-                publisherCount: publisherSet.size
+                total: books.length,
+                complete,
+                publishers: publisherSet.size,
+                narrators: narratorSet.size
             };
-        }).sort((a, b) => b.bookCount - a.bookCount);
+        }).sort((a, b) => b.total - a.total);
 
         const content = `
             <div class="stats-dashboard">
@@ -644,7 +641,7 @@ class ModalsModule {
                                             <span class="badge bg-secondary me-2">#${index + 1}</span>
                                             <strong>${escapeHtml(author.author)}</strong>
                                         </div>
-                                        <span class="badge bg-primary">${author.bookCount} books</span>
+                                        <span class="badge bg-primary">${author.total} books</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -658,8 +655,8 @@ class ModalsModule {
                                 </h6>
                             </div>
                             <div class="card-body">
-                                ${authorStats.filter(a => a.bookCount >= 2)
-                                    .sort((a, b) => b.completionRate - a.completionRate)
+                                ${authorStats.filter(a => a.total >= 2)
+                                    .sort((a, b) => b.complete - a.complete)
                                     .slice(0, 5)
                                     .map((author, index) => `
                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -667,7 +664,7 @@ class ModalsModule {
                                             <span class="badge bg-secondary me-2">#${index + 1}</span>
                                             <strong>${escapeHtml(author.author)}</strong>
                                         </div>
-                                        <span class="badge bg-success">${author.completionRate}%</span>
+                                        <span class="badge bg-success">${Math.round((author.complete / author.total) * 100)}%</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -742,7 +739,7 @@ class ModalsModule {
     showDeleteAuthorModal(authorName) {
         const modalId = generateId('modal');
         const audiobooks = state.get('audiobooks');
-        const author = audiobooks.audiobooks.author[authorName];
+        const author = audiobooks[authorName];
         const bookCount = author ? author.length : 0;
         
         const content = `
@@ -785,7 +782,7 @@ class ModalsModule {
         window.confirmDeleteAuthor = async (authorName) => {
             try {
                 const audiobooks = state.get('audiobooks');
-                delete audiobooks.audiobooks.author[authorName];
+                delete audiobooks[authorName];
                 state.setAudiobooks(audiobooks);
                 
                 bsModal.hide();

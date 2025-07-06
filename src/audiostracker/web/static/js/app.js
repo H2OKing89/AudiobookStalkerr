@@ -861,7 +861,11 @@ class AudioStackerApp {
             showToast('Saving changes...', 'info');
             
             const result = await api.saveAudiobooks(state.get('audiobooks'));
-            if (result.success) {
+            
+            // Handle different response formats - some APIs return success flag, others just return data
+            const isSuccess = result.success === true || result.success === undefined;
+            
+            if (isSuccess) {
                 this.hasUnsavedChanges = false;
                 
                 // Clear auto-save timer
@@ -892,6 +896,8 @@ class AudioStackerApp {
                 }
                 
                 showToast('Changes saved successfully', 'success');
+            } else {
+                console.log('Save failed - unexpected result:', result);
             }
         } catch (error) {
             console.error('Failed to save changes:', error);
@@ -1601,3 +1607,44 @@ window.showKeyboardShortcuts = function() {
         window.app.showKeyboardShortcuts();
     }
 };
+
+// Global wrapper for exportCollection
+window.exportCollection = function() {
+    if (window.app && typeof window.app.exportCollection === 'function') {
+        return window.app.exportCollection();
+    } else {
+        console.error('Export functionality not available - app not initialized');
+        if (window.toast) {
+            window.toast.error('Export functionality is not available');
+        } else {
+            alert('Export functionality is not available');
+        }
+    }
+};
+
+// Global UI functions (called from HTML onclick handlers)
+function toggleAuthorCollapse(authorId) {
+    const booksList = document.querySelector(`#books-${authorId}`);
+    const collapseIcon = document.querySelector(`#collapse-icon-${authorId}`);
+    
+    if (!booksList) return;
+    
+    const isCollapsed = booksList.style.display === 'none';
+    
+    if (isCollapsed) {
+        booksList.style.display = 'block';
+        if (collapseIcon) {
+            collapseIcon.className = 'fas fa-chevron-down';
+        }
+    } else {
+        booksList.style.display = 'none';
+        if (collapseIcon) {
+            collapseIcon.className = 'fas fa-chevron-right';
+        }
+    }
+    
+    // Save collapsed state in localStorage
+    const collapsedAuthors = JSON.parse(localStorage.getItem('collapsedAuthors') || '{}');
+    collapsedAuthors[authorId] = !isCollapsed;
+    localStorage.setItem('collapsedAuthors', JSON.stringify(collapsedAuthors));
+}

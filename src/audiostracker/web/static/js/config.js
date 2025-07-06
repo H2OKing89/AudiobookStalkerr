@@ -396,6 +396,22 @@ window.showQuickAddModal = function() {
 };
 
 window.exportCollection = function() {
-    console.log('Export collection - to be implemented');
-    // TODO: Implement export functionality
+    console.log('Export collection called from config.js');
+    
+    // The global wrapper should be available from app.js
+    // If not, try fallback methods
+    if (window.app && typeof window.app.exportCollection === 'function') {
+        console.log('Using app.exportCollection');
+        return window.app.exportCollection();
+    } else if (typeof window.simpleExport === 'function') {
+        console.log('Using simpleExport fallback');
+        return window.simpleExport();
+    } else {
+        console.error('No export method available');
+        if (window.toast) {
+            window.toast.error('Export functionality is not available');
+        } else {
+            alert('Export functionality is not available');
+        }
+    }
 };

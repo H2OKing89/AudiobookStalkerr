@@ -842,6 +842,45 @@ body {
     display: flex;
 }
 
+/* Unsaved Changes Indicator */
+.unsaved-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: var(--warning-color);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1040;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+}
+
+.unsaved-indicator.show {
+    display: flex;
+    animation: slideInFromTop 0.3s ease;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.unsaved-indicator i {
+    font-size: 1rem;
+}
+
 /* Form Styles */
 .form-control {
     border-radius: 8px;
