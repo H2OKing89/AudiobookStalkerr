@@ -1,87 +1,106 @@
-# Audiobook Stalkerr
+<!-- Audiobook Stalkerr README (HTML version) -->
 
-Audiobook Stalkerr is a modern, open-source tool for tracking, visualizing, and getting notified about upcoming audiobook releases from Audible. It features a beautiful web UI, multi-channel notifications, calendar export, and powerful configuration for serious audiobook fans.
+<p align="center">
+  <img src="src/audiostracker/web/static/images/twitter-card.png" alt="Audiobook Stalkerr Logo" width="180" />
+</p>
 
----
+<h1 align="center">Audiobook Stalkerr</h1>
+<p align="center"><b>Track. Discover. Listen First.</b></p>
 
-## 🚀 Features
+<p align="center">
+  <i>
+    The open-source app that tracks, visualizes, and notifies you about new and upcoming audiobooks from Audible & your favorite authors—Radarr/Sonarr style.
+  </i>
+</p>
 
-- **Web Dashboard**: Browse, search, and filter upcoming releases in a responsive, mobile-friendly web UI
-- **Author & Series Tracking**: Automatically search Audible for new audiobooks by your favorite authors and series
-- **Multi-Match Processing**: Identifies and processes all matching audiobooks above a confidence threshold (multiple volumes, editions, etc.)
-- **Notifications**: Get notified via Pushover, Discord, and Email when new releases are found
-- **Calendar Integration**: Export upcoming releases as iCalendar (.ics) files for your calendar app
-- **Configurable**: YAML-based configuration with environment variable support for secrets and API keys
-- **Database Storage**: Local SQLite database tracks audiobooks, notification status, and cleans up released books automatically
-- **Batch & Manual Modes**: Run as a scheduled job or interactively via the web UI
-- **Dark Mode & Accessibility**: Fully accessible, dark mode ready, and keyboard navigable
+<hr/>
 
----
+<h2>🚀 Features</h2>
+<ul>
+  <li><b>Web Dashboard:</b> Browse, search, and filter upcoming releases in a responsive, mobile-friendly web UI</li>
+  <li><b>Author & Series Tracking:</b> Automatically search Audible for new audiobooks by your favorite authors and series</li>
+  <li><b>Multi-Match Processing:</b> Identifies and processes all matching audiobooks above a confidence threshold (multiple volumes, editions, etc.)</li>
+  <li><b>Notifications:</b> Get notified via Pushover, Discord, and Email when new releases are found</li>
+  <li><b>Calendar Integration:</b> Export upcoming releases as iCalendar (.ics) files for your calendar app</li>
+  <li><b>Configurable:</b> YAML-based configuration with environment variable support for secrets and API keys</li>
+  <li><b>Database Storage:</b> Local SQLite database tracks audiobooks, notification status, and cleans up released books automatically</li>
+  <li><b>Batch & Manual Modes:</b> Run as a scheduled job or interactively via the web UI</li>
+  <li><b>Dark Mode & Accessibility:</b> Fully accessible, dark mode ready, and keyboard navigable</li>
+</ul>
 
-## 🖥️ Web UI
+<hr/>
 
-- **Upcoming Releases**: See all tracked upcoming audiobooks, grouped by month, with cover art, series, narrator, publisher, and Audible links
-- **iCal Export**: Download a calendar event for any release (00:00 America/Los_Angeles)
-- **Search & Filter**: Instantly search by title, author, series, or narrator; filter by author or date
-- **Statistics**: See stats on authors, publishers, and recent additions
-- **Configuration Page**: Manage your tracked authors, series, and notification settings
-- **Mobile Friendly**: Works great on phones, tablets, and desktops
+<h2>📸 Live Demo</h2>
+<p align="center">
+  <img src="doc/assets/screencapture-Audiobook Stalkerr - Upcoming Releases.png" alt="Audiobook Stalkerr - Upcoming Releases Screenshot" width="375" />
+</p>
+<p align="center"><i>Browse and track all your upcoming audiobooks in a beautiful, mobile-friendly UI.</i></p>
 
----
+<hr/>
 
-## ⚙️ Installation
+<h2>🖥️ Web UI</h2>
+<ul>
+  <li><b>Upcoming Releases:</b> See all tracked upcoming audiobooks, grouped by month, with cover art, series, narrator, publisher, and Audible links</li>
+  <li><b>iCal Export:</b> Download a calendar event for any release (00:00 America/Los_Angeles)</li>
+  <li><b>Search & Filter:</b> Instantly search by title, author, series, or narrator; filter by author or date</li>
+  <li><b>Statistics:</b> See stats on authors, publishers, and recent additions</li>
+  <li><b>Configuration Page:</b> Manage your tracked authors, series, and notification settings</li>
+  <li><b>Mobile Friendly:</b> Works great on phones, tablets, and desktops</li>
+</ul>
 
-1. **Clone this repository**
+<hr/>
 
-2. **Install dependencies**:
+<h2>⚙️ Installation</h2>
+<ol>
+  <li><b>Clone this repository</b></li>
+  <li>
+    <b>Install dependencies:</b>
+    <pre><code>pip install -r requirements.txt</code></pre>
+  </li>
+  <li>
+    <b>Configure your settings:</b>
+    <ul>
+      <li>Edit <code>src/audiostracker/config/config.yaml</code> for global settings</li>
+      <li>Edit <code>src/audiostracker/config/audiobooks.json</code> to specify authors/series to track</li>
+      <li>Create a <code>.env</code> file in <code>src/audiostracker/config</code> with your API keys and credentials</li>
+    </ul>
+  </li>
+  <li>
+    <b>Run the web UI:</b>
+    <pre><code>python start_webui.py
+# or
+uvicorn src.audiostracker.web.app:app --reload</code></pre>
+    Then open <a href="http://127.0.0.1:5005/" target="_blank">http://127.0.0.1:5005/</a> in your browser.
+  </li>
+  <li>
+    <b>(Optional) Run the tracker as a script:</b>
+    <pre><code>python -m src.audiostracker.main</code></pre>
+  </li>
+</ol>
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+<hr/>
 
-3. **Configure your settings**:
-   - Edit `src/audiostracker/config/config.yaml` for global settings
-   - Edit `src/audiostracker/config/audiobooks.json` to specify authors/series to track
-   - Create a `.env` file in `src/audiostracker/config` with your API keys and credentials
+<h2>🔔 Notifications & Integrations</h2>
+<ul>
+  <li><b>Pushover:</b> Real-time push notifications to your phone</li>
+  <li><b>Discord:</b> Send new release alerts to your Discord server</li>
+  <li><b>Email:</b> Get email notifications for new audiobooks</li>
+  <li><b>Calendar:</b> Export .ics files for any release or batch</li>
+</ul>
 
-4. **Run the web UI**:
+<hr/>
 
-   ```bash
-   python start_webui.py
-   # or
-   uvicorn src.audiostracker.web.app:app --reload
-   ```
+<h2>🛠️ Configuration</h2>
+<ul>
+  <li><b>Environment Variables:</b> Store secrets in <code>.env</code> (see example below)</li>
+  <li><b>YAML &amp; JSON:</b> All settings and tracked books are editable as plain text</li>
+  <li><b>Database:</b> Uses SQLite for reliability and easy backup</li>
+</ul>
 
-   Then open [http://127.0.0.1:5005/](http://127.0.0.1:5005/) in your browser.
+<hr/>
 
-5. **(Optional) Run the tracker as a script**:
-
-   ```bash
-   python -m src.audiostracker.main
-   ```
-
----
-
-## 🔔 Notifications & Integrations
-
-- **Pushover**: Real-time push notifications to your phone
-- **Discord**: Send new release alerts to your Discord server
-- **Email**: Get email notifications for new audiobooks
-- **Calendar**: Export .ics files for any release or batch
-
----
-
-## 🛠️ Configuration
-
-- **Environment Variables**: Store secrets in `.env` (see example in `README.md`)
-- **YAML & JSON**: All settings and tracked books are editable as plain text
-- **Database**: Uses SQLite for reliability and easy backup
-
----
-
-## 📦 Project Structure
-
-``` tree
+<h2>📦 Project Structure</h2>
+<pre>
 ├── src/audiostracker/
 │   ├── web/                # Web UI (FastAPI, templates, static files)
 │   ├── config/             # YAML/JSON config files
@@ -93,31 +112,31 @@ Audiobook Stalkerr is a modern, open-source tool for tracking, visualizing, and 
 ├── requirements.txt
 ├── start_webui.py
 └── README.md
-```
+</pre>
 
----
+<hr/>
 
-## 📝 Example .env
-
-```env
+<h2>📝 Example .env</h2>
+<pre>
 PUSHOVER_API_TOKEN=your_pushover_api_token
 PUSHOVER_USER_KEY=your_pushover_user_key
 
 # Discord
+
 DISCORD_WEBHOOK_URL=your_discord_webhook_url
 
 # Email
-EMAIL_FROM=audiobook-stalker@domain.com
-EMAIL_TO=your_email@example.com
-EMAIL_USERNAME=your_email@example.com
+
+EMAIL_FROM=<audiobook-stalker@domain.com>
+EMAIL_TO=<your_email@example.com>
+EMAIL_USERNAME=<your_email@example.com>
 EMAIL_PASSWORD=your_email_password
-```
+</pre>
 
----
+<hr/>
 
-## 📝 Example config.yaml
-
-```yaml
+<h2>📝 Example config.yaml</h2>
+<pre>
 # global config
 cron_settings:
   enabled: true # enable cron job for periodic tasks
@@ -129,18 +148,21 @@ log_format: json # options: json, text
 language: "english" # default language for Audible searches (english, spanish, french, etc.)
 
 # Web UI Configuration
+
 web_ui:
   port: 5005 # port to run the web server on
   host: "0.0.0.0" # host to bind to (use 0.0.0.0 for all interfaces)
   reload: true # enable auto-reload for development
 
 # Notification channels
+
 pushover:
   enabled: true
   sound: "pushover" # default notification sound
   priority: 0 # -2 (lowest) to 2 (emergency)
   device: "" # optional: target a specific device
-  # user_key and api_token will be loaded from .env, not here
+
+# user_key and api_token will be loaded from .env, not here
 
 discord:
   enabled: false # set to true to enable Discord notifications
@@ -157,7 +179,8 @@ email:
   use_ssl: false # use SSL (alternative to TLS)
   from_email: "" # sender email (load from .env)
   to_emails: [] # list of recipient emails (load from .env)
-  # username and password will be loaded from .env, not here
+
+# username and password will be loaded from .env, not here
 
 rate_limits:
   audible_api_per_minute: 240 # 4 requests per second = 240 per minute (parallel async requests)
@@ -174,13 +197,12 @@ ical:
 database:
   cleanup_grace_period_days: 0 # 0 = remove books on their release date, >0 = keep for N days after release
   vacuum_interval_days: 7 # run VACUUM command every N days to optimize database size
-```
+</pre>
 
----
+<hr/>
 
-## 📝 Example audiobooks.json
-
-```json
+<h2>📝 Example audiobooks.json</h2>
+<pre>
 {
   "audiobooks": {
     "author": {
@@ -206,15 +228,14 @@ database:
           "series": "The Rising of the Shield Hero",
           "title": "The Rising of the Shield Hero"
         }
-      ],
+      ]
       // ... more authors ...
     }
   }
 }
-```
+</pre>
 
----
+<hr/>
 
-## 🏷️ License
-
-MIT
+<h2>🏷️ License</h2>
+<p>MIT</p>
