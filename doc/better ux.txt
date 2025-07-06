@@ -1,0 +1,696 @@
+Looking at your audiobook configuration page, I can see several opportunities to improve the user experience and ensure everything works smoothly end-to-end. Here are my recommendations:
+
+## 1. **Fix the Flickering/Collapsing Issue**
+The main UX problem you mentioned is still present. When editing fields, the cards collapse because of state management issues. Here's a comprehensive fix:
+
+````javascript
+// ...existing code...
+
+createBookCard(authorName, book, index) {
+    const bookId = `book-${sanitizeId(authorName)}-${index}`;
+    const isComplete = isBookComplete(book);
+    
+    return `
+        <div class="book-card ${isComplete ? 'complete' : 'incomplete'}" 
+             id="${bookId}" 
+             data-book-id="${authorName}-${index}">
+            <div class="book-header">
+                <div class="book-status ${isComplete ? 'complete' : 'incomplete'}">
+                    <i class="fas fa-${isComplete ? 'check-circle' : 'exclamation-circle'}"></i>
+                    ${isComplete ? 'Complete' : 'Incomplete'}
+                </div>
+                <div class="book-title">
+                    <input type="text" class="form-control" 
+                           value="${escapeHtml(book.title || '')}" 
+                           placeholder="Enter book title..."
+                           onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'title', this.value)"
+                           data-field="true">
+                </div>
+            </div>
+
+            <div class="book-series mb-2">
+                <label class="form-label small text-muted">Series</label>
+                <input type="text" class="form-control" 
+                       value="${escapeHtml(book.series || '')}" 
+                       placeholder="Series name..."
+                       onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'series', this.value)"
+                       data-field="true">
+            </div>
+
+            <div class="book-details">
+                <div class="book-detail-row">
+                    <label class="form-label small text-muted">
+                        <i class="fas fa-building me-1"></i>Publisher
+                    </label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="${escapeHtml(book.publisher || '')}" 
+                           list="publishers-list"
+                           placeholder="Publisher..."
+                           onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'publisher', this.value)"
+                           data-field="true">
+                </div>
+                
+                <div class="book-detail-row">
+                    <label class="form-label small text-muted">
+                        <i class="fas fa-microphone me-1"></i>Narrator(s)
+                    </label>
+                    <div class="narrator-container flex-grow-1">
+                        <div class="narrator-list" id="narrator-list-${authorName}-${index}">
+                            ${(book.narrator || ['']).map((narrator, nIndex) => `
+                                <div class="narrator-item">
+                                    <input type="text" class="form-control form-control-sm" 
+                                           value="${escapeHtml(narrator)}" 
+                                           list="narrators-list"
+                                           placeholder="Narrator name..."
+                                           onchange="updateNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value)"
+                                           data-field="true">
+                                    ${book.narrator && book.narrator.length > 1 ? `
+                                        <button type="button" class="narrator-remove" 
+                                                onclick="removeNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex})"
+                                                title="Remove narrator">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" 
+                                onclick="addNarrator('${escapeHtml(authorName)}', ${index})">
+                            <i class="fas fa-plus me-1"></i>Add Narrator
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="book-actions mt-3">
+                <button class="btn btn-sm btn-outline-danger ms-auto" 
+                        onclick="deleteBook('${escapeHtml(authorName)}', ${index})" 
+                        title="Delete Book">
+                    <i class="fas fa-trash me-1"></i>Delete
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ...existing code...
+````
+
+## 2. **Add Visual Feedback for Field Changes**
+Add immediate visual feedback when fields are edited:
+
+````css
+/* ...existing code... */
+
+/* Field edit feedback */
+.form-control.field-modified {
+    border-color: var(--accent-amber) !important;
+    background-color: rgba(217, 119, 6, 0.05) !important;
+}
+
+.form-control.field-saved {
+    border-color: var(--accent-emerald) !important;
+    background-color: rgba(5, 150, 105, 0.05) !important;
+    transition: all 0.5s ease;
+}
+
+/* Unsaved changes indicator */
+.unsaved-indicator {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--accent-amber);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1050;
+    animation: slideIn 0.3s ease;
+}
+
+.unsaved-indicator.active {
+    display: flex;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Book card completion status */
+.book-status {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.book-status.complete {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--accent-emerald);
+}
+
+.book-status.incomplete {
+    background: rgba(217, 119, 6, 0.1);
+    color: var(--accent-amber);
+}
+
+/* ...existing code... */
+````
+
+## 3. **Add an Unsaved Changes Indicator**
+Add a floating indicator that shows when there are unsaved changes:
+
+````html
+<!-- Add after the navigation -->
+<div class="unsaved-indicator" id="unsaved-indicator">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>You have unsaved changes</span>
+    <button class="btn btn-sm btn-light ms-2" onclick="window.app.saveChanges()">
+        Save Now
+    </button>
+</div>
+<!-- ...existing code... -->
+````
+
+## 4. **Improve Field Change Tracking**
+Update the field change functions to provide better visual feedback:
+
+````javascript
+// ...existing code...
+
+function updateBookField(authorName, bookIndex, field, value) {
+    const audiobooks = state.get('audiobooks');
+    const book = audiobooks.audiobooks.author[authorName][bookIndex];
+    
+    if (book) {
+        // Store the old value for comparison
+        const oldValue = book[field];
+        
+        // Update the value
+        book[field] = value;
+        
+        // Use quiet update to prevent re-render
+        state.setAudiobooksQuiet(audiobooks);
+        
+        // Mark field as modified if value actually changed
+        if (oldValue !== value) {
+            // Add visual feedback to the input
+            const input = event.target;
+            if (input) {
+                input.classList.add('field-modified');
+                input.classList.remove('field-saved');
+            }
+            
+            // Mark unsaved changes
+            if (window.app && window.app.markUnsavedChanges) {
+                window.app.markUnsavedChanges();
+            }
+            
+            // Update book completion status without re-rendering
+            updateBookCompletionStatus(authorName, bookIndex);
+        }
+    }
+}
+
+function updateBookCompletionStatus(authorName, bookIndex) {
+    const audiobooks = state.get('audiobooks');
+    const book = audiobooks.audiobooks.author[authorName][bookIndex];
+    
+    if (book) {
+        const bookCard = document.querySelector(`[data-book-id="${authorName}-${bookIndex}"]`);
+        if (bookCard) {
+            const isComplete = isBookComplete(book);
+            const statusElement = bookCard.querySelector('.book-status');
+            
+            if (statusElement) {
+                statusElement.className = `book-status ${isComplete ? 'complete' : 'incomplete'}`;
+                statusElement.innerHTML = `
+                    <i class="fas fa-${isComplete ? 'check-circle' : 'exclamation-circle'}"></i>
+                    ${isComplete ? 'Complete' : 'Incomplete'}
+                `;
+            }
+            
+            // Update card class
+            bookCard.classList.toggle('complete', isComplete);
+            bookCard.classList.toggle('incomplete', !isComplete);
+        }
+    }
+}
+
+// Update the markUnsavedChanges function
+markUnsavedChanges() {
+    this.hasUnsavedChanges = true;
+    
+    // Update save button states
+    this.updateSaveButtonStates();
+    
+    // Show unsaved indicator
+    const indicator = document.getElementById('unsaved-indicator');
+    if (indicator) {
+        indicator.classList.add('active');
+    }
+}
+
+// Update saveChanges to hide indicator
+async saveChanges() {
+    if (!this.hasUnsavedChanges) {
+        showToast('No changes to save', 'info');
+        return;
+    }
+
+    try {
+        showToast('Saving changes...', 'info');
+        
+        const audiobooks = state.get('audiobooks');
+        const success = await api.saveAudiobooks(audiobooks);
+        
+        if (success) {
+            this.hasUnsavedChanges = false;
+            
+            // Update save button states
+            this.updateSaveButtonStates();
+            
+            // Hide unsaved indicator
+            const indicator = document.getElementById('unsaved-indicator');
+            if (indicator) {
+                indicator.classList.remove('active');
+            }
+            
+            // Mark all modified fields as saved
+            document.querySelectorAll('.field-modified').forEach(field => {
+                field.classList.remove('field-modified');
+                field.classList.add('field-saved');
+                
+                // Remove saved class after animation
+                setTimeout(() => {
+                    field.classList.remove('field-saved');
+                }, 2000);
+            });
+            
+            // Update stats
+            this.updateStats();
+            
+            showToast('Changes saved successfully!', 'success');
+        } else {
+            throw new Error('Failed to save changes');
+        }
+    } catch (error) {
+        console.error('Error saving changes:', error);
+        showToast('Failed to save changes', 'error');
+    }
+}
+
+// ...existing code...
+````
+
+## 5. **Add Keyboard Shortcuts Legend**
+Add a help modal showing available keyboard shortcuts:
+
+````javascript
+// ...existing code...
+
+showKeyboardShortcutsModal() {
+    const modalId = generateId('modal');
+    const content = `
+        <div class="keyboard-shortcuts">
+            <div class="shortcut-group">
+                <h6><i class="fas fa-keyboard me-2"></i>Navigation</h6>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>F</kbd>
+                    <span>Focus search</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Esc</kbd>
+                    <span>Clear search/Close modal</span>
+                </div>
+            </div>
+            
+            <div class="shortcut-group">
+                <h6><i class="fas fa-edit me-2"></i>Editing</h6>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>S</kbd>
+                    <span>Save changes</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>N</kbd>
+                    <span>Add new author</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Tab</kbd>
+                    <span>Next field</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Shift</kbd> + <kbd>Tab</kbd>
+                    <span>Previous field</span>
+                </div>
+            </div>
+            
+            <div class="shortcut-group">
+                <h6><i class="fas fa-file me-2"></i>Data Management</h6>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>E</kbd>
+                    <span>Export collection</span>
+                </div>
+                <div class="shortcut-item">
+                    <kbd>Ctrl</kbd> + <kbd>I</kbd>
+                    <span>Import collection</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const footer = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    `;
+
+    const modal = this.createModal(modalId, 'Keyboard Shortcuts', content, { footer });
+    return this.showModal(modal);
+}
+
+// ...existing code...
+````
+
+## 6. **Add Progress Indicators for Long Operations**
+When saving or loading data, show progress:
+
+````javascript
+// ...existing code...
+
+async saveChanges() {
+    if (!this.hasUnsavedChanges) {
+        showToast('No changes to save', 'info');
+        return;
+    }
+
+    // Show progress toast
+    const progressToast = window.toast.progress('Saving your changes...');
+
+    try {
+        progressToast.updateProgress(25);
+        
+        const audiobooks = state.get('audiobooks');
+        progressToast.updateProgress(50);
+        
+        const success = await api.saveAudiobooks(audiobooks);
+        progressToast.updateProgress(75);
+        
+        if (success) {
+            this.hasUnsavedChanges = false;
+            
+            // Update UI elements
+            this.updateSaveButtonStates();
+            progressToast.updateProgress(90);
+            
+            // Hide unsaved indicator
+            const indicator = document.getElementById('unsaved-indicator');
+            if (indicator) {
+                indicator.classList.remove('active');
+            }
+            
+            // Mark fields as saved
+            document.querySelectorAll('.field-modified').forEach(field => {
+                field.classList.remove('field-modified');
+                field.classList.add('field-saved');
+                setTimeout(() => field.classList.remove('field-saved'), 2000);
+            });
+            
+            progressToast.updateProgress(100);
+            progressToast.complete('All changes saved successfully!');
+            
+            // Update stats
+            this.updateStats();
+        } else {
+            throw new Error('Failed to save changes');
+        }
+    } catch (error) {
+        console.error('Error saving changes:', error);
+        progressToast.error('Failed to save changes. Please try again.');
+    }
+}
+
+// ...existing code...
+````
+
+## 7. **Add Auto-Save Toggle Option**
+Give users the choice between manual and auto-save:
+
+````javascript
+// ...existing code...
+
+class AudioStackerApp {
+    constructor() {
+        this.isInitialized = false;
+        this.viewMode = 'grid';
+        this.hasUnsavedChanges = false;
+        this.autoSaveEnabled = false; // User preference
+        this.autoSaveTimer = null;
+        this.autoSaveDelay = 5000; // 5 seconds
+        
+        this.init();
+    }
+
+    toggleAutoSave() {
+        this.autoSaveEnabled = !this.autoSaveEnabled;
+        
+        // Save preference
+        localStorage.setItem('audioStacker_autoSave', this.autoSaveEnabled);
+        
+        // Update UI
+        const toggle = document.getElementById('auto-save-toggle');
+        if (toggle) {
+            toggle.checked = this.autoSaveEnabled;
+        }
+        
+        showToast(
+            this.autoSaveEnabled ? 
+            'Auto-save enabled. Changes will save automatically after 5 seconds.' : 
+            'Auto-save disabled. Remember to save your changes manually.',
+            'info'
+        );
+        
+        // Clear any pending auto-save
+        if (!this.autoSaveEnabled && this.autoSaveTimer) {
+            clearTimeout(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+    }
+
+    markUnsavedChanges() {
+        this.hasUnsavedChanges = true;
+        
+        // Update save button states
+        this.updateSaveButtonStates();
+        
+        // Show unsaved indicator
+        const indicator = document.getElementById('unsaved-indicator');
+        if (indicator) {
+            indicator.classList.add('active');
+        }
+        
+        // Handle auto-save if enabled
+        if (this.autoSaveEnabled) {
+            // Clear existing timer
+            if (this.autoSaveTimer) {
+                clearTimeout(this.autoSaveTimer);
+            }
+            
+            // Set new timer
+            this.autoSaveTimer = setTimeout(() => {
+                this.saveChanges();
+            }, this.autoSaveDelay);
+        }
+    }
+
+    // ...existing code...
+}
+````
+
+## 8. **Add a Settings Panel**
+Add a settings dropdown in the navbar:
+
+````html
+<!-- Add to navbar -->
+<div class="navbar-nav">
+    <div class="dropdown">
+        <button class="btn btn-link nav-link dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="fas fa-cog me-1"></i>Settings
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <div class="dropdown-item">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="auto-save-toggle" 
+                               onchange="window.app.toggleAutoSave()">
+                        <label class="form-check-label" for="auto-save-toggle">
+                            Auto-save changes
+                        </label>
+                    </div>
+                </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="window.modals.showKeyboardShortcutsModal()">
+                    <i class="fas fa-keyboard me-2"></i>Keyboard shortcuts
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="window.app.clearAllData()">
+                    <i class="fas fa-trash me-2"></i>Clear all data
+                </a>
+            </li>
+        </ul>
+    </div>
+    <button class="btn btn-outline-primary ms-2" onclick="refreshData()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+</div>
+<!-- ...existing code... -->
+````
+
+## 9. **Add Better Empty States**
+Improve the empty state messages:
+
+````javascript
+// ...existing code...
+
+createEmptyState() {
+    const hasFilters = state.get('filters.search') || state.get('filters.status') !== 'all';
+    
+    if (hasFilters) {
+        return `
+            <div class="empty-state text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-search fa-5x text-muted"></i>
+                </div>
+                <h3 class="text-muted mb-3">No results found</h3>
+                <p class="text-muted mb-4">
+                    Try adjusting your search terms or filters to find what you're looking for.
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn btn-outline-primary" onclick="clearAllFilters()">
+                        <i class="fas fa-times me-1"></i>Clear Filters
+                    </button>
+                    <button class="btn btn-primary" onclick="showQuickAddModal()">
+                        <i class="fas fa-plus me-1"></i>Add New Book
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="empty-state text-center py-5">
+            <div class="mb-4">
+                <div class="empty-state-icon">
+                    <i class="fas fa-book-open fa-5x text-primary opacity-50"></i>
+                    <i class="fas fa-plus-circle fa-3x text-success" 
+                       style="position: absolute; bottom: -10px; right: -10px;"></i>
+                </div>
+            </div>
+            <h3 class="mb-3">Start Building Your Audiobook Collection</h3>
+            <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
+                Add your favorite authors and their books to track upcoming audiobook releases. 
+                You'll be notified when new books are available.
+            </p>
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <button class="btn btn-primary btn-lg" onclick="showAddAuthorModal()">
+                    <i class="fas fa-user-plus me-2"></i>Add Your First Author
+                </button>
+                <button class="btn btn-outline-primary btn-lg" onclick="showImportModal()">
+                    <i class="fas fa-file-import me-2"></i>Import Existing Collection
+                </button>
+            </div>
+            <div class="mt-4">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Tip: Use <kbd>Ctrl</kbd>+<kbd>N</kbd> to quickly add a new author
+                </small>
+            </div>
+        </div>
+    `;
+}
+
+// ...existing code...
+````
+
+## 10. **Add Validation Feedback**
+Add real-time validation for required fields:
+
+````javascript
+// New file for validation utilities
+
+function validateBookData(book) {
+    const errors = [];
+    
+    if (!book.title || book.title.trim() === '') {
+        errors.push('Title is required');
+    }
+    
+    if (book.narrator && book.narrator.length > 0) {
+        const emptyNarrators = book.narrator.filter(n => !n || n.trim() === '');
+        if (emptyNarrators.length === book.narrator.length) {
+            errors.push('At least one narrator is required');
+        }
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+function showFieldError(inputElement, message) {
+    // Remove existing error
+    clearFieldError(inputElement);
+    
+    // Add error class
+    inputElement.classList.add('is-invalid');
+    
+    // Add error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback';
+    errorDiv.textContent = message;
+    inputElement.parentNode.appendChild(errorDiv);
+}
+
+function clearFieldError(inputElement) {
+    inputElement.classList.remove('is-invalid');
+    const errorDiv = inputElement.parentNode.querySelector('.invalid-feedback');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+}
+````
+
+## Summary
+
+These improvements will make the user experience much smoother by:
+
+1. **Preventing UI flickering** when editing fields
+2. **Adding visual feedback** for field changes and save states
+3. **Providing progress indicators** for long operations
+4. **Offering both manual and auto-save options**
+5. **Improving empty states** with helpful guidance
+6. **Adding keyboard shortcuts** for power users
+7. **Implementing real-time validation** with clear error messages
+8. **Creating a settings panel** for user preferences
+9. **Adding an unsaved changes indicator** for clarity
+10. **Enhancing overall responsiveness** and feedback
+
+The key is to make every interaction feel immediate and responsive while preventing the annoying collapse/expand behavior during edits.

@@ -372,8 +372,17 @@ window.showEditAuthorModal = function(authorName) {
 };
 
 window.showDeleteAuthorModal = function(authorName) {
-    console.log('Delete Author confirmation for:', authorName);
-    // TODO: Implement delete confirmation modal
+    if (window.modals && window.modals.showDeleteAuthorModal) {
+        window.modals.showDeleteAuthorModal(authorName);
+    } else {
+        console.log('Delete Author confirmation for:', authorName);
+        // Fallback to simple confirmation
+        if (confirm(`Are you sure you want to delete "${authorName}" and all their books?`)) {
+            if (window.deleteAuthor) {
+                window.deleteAuthor(authorName);
+            }
+        }
+    }
 };
 
 window.showImportModal = function() {

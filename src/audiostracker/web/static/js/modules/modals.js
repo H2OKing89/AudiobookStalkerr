@@ -151,8 +151,10 @@ class ModalsModule {
                 bsModal.hide();
                 showToast(`Author "${authorName}" added successfully`, 'success');
 
-                // Auto-save
-                await window.app.saveChanges();
+                // Mark unsaved changes instead of auto-saving
+                if (window.app && window.app.markUnsavedChanges) {
+                    window.app.markUnsavedChanges();
+                }
 
             } catch (error) {
                 console.error('Failed to add author:', error);
@@ -301,8 +303,10 @@ class ModalsModule {
                 bsModal.hide();
                 showToast(`Book "${title}" added to ${authorName}`, 'success');
 
-                // Auto-save
-                await window.app.saveChanges();
+                // Mark unsaved changes instead of auto-saving
+                if (window.app && window.app.markUnsavedChanges) {
+                    window.app.markUnsavedChanges();
+                }
 
             } catch (error) {
                 console.error('Failed to add book:', error);
@@ -730,6 +734,72 @@ class ModalsModule {
             const filename = `audiostacker-stats-${formatDate(new Date(), 'YYYY-MM-DD')}.json`;
             downloadFile(dataStr, filename, 'application/json');
             showToast('Statistics exported successfully', 'success');
+        };
+
+        return bsModal;
+    }
+
+    showDeleteAuthorModal(authorName) {
+        const modalId = generateId('modal');
+        const audiobooks = state.get('audiobooks');
+        const author = audiobooks.audiobooks.author[authorName];
+        const bookCount = author ? author.length : 0;
+        
+        const content = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Warning:</strong> This action cannot be undone.
+            </div>
+            <div class="mb-3">
+                <p>You are about to delete the author <strong>"${escapeHtml(authorName)}"</strong> and all associated data:</p>
+                <ul class="list-unstyled mb-3">
+                    <li><i class="fas fa-user text-danger me-2"></i>Author: ${escapeHtml(authorName)}</li>
+                    <li><i class="fas fa-books text-danger me-2"></i>Books: ${bookCount} ${bookCount === 1 ? 'book' : 'books'}</li>
+                </ul>
+                ${bookCount > 0 ? `
+                <div class="border rounded p-2 bg-light mb-3" style="max-height: 150px; overflow-y: auto;">
+                    <small class="text-muted d-block mb-2">Books to be deleted:</small>
+                    ${author.map(book => `
+                        <div class="small text-muted">
+                            <i class="fas fa-book me-1"></i>${escapeHtml(book.title || 'Untitled')}
+                            ${book.series ? `<span class="text-secondary"> (${escapeHtml(book.series)})</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                <p class="mb-0">Are you sure you want to proceed?</p>
+            </div>
+        `;
+
+        const footer = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDeleteAuthor('${escapeHtml(authorName)}')">
+                <i class="fas fa-trash me-1"></i>Delete Author
+            </button>
+        `;
+
+        const modal = this.createModal(modalId, 'Delete Author', content, { footer });
+        const bsModal = this.showModal(modal);
+
+        // Handle confirmation
+        window.confirmDeleteAuthor = async (authorName) => {
+            try {
+                const audiobooks = state.get('audiobooks');
+                delete audiobooks.audiobooks.author[authorName];
+                state.setAudiobooks(audiobooks);
+                
+                bsModal.hide();
+                showToast(`Author "${authorName}" deleted successfully`, 'success');
+                
+                // Mark unsaved changes instead of auto-saving
+                if (window.app && window.app.markUnsavedChanges) {
+                    window.app.markUnsavedChanges();
+                }
+                
+            } catch (error) {
+                console.error('Failed to delete author:', error);
+                showToast('Failed to delete author', 'error');
+            }
         };
 
         return bsModal;

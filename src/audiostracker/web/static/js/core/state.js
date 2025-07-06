@@ -132,6 +132,14 @@ class AudioStackerState {
     }
 
     /**
+     * Set audiobooks data without triggering notifications (for internal field updates)
+     */
+    setAudiobooksQuiet(data) {
+        this.data.audiobooks = data;
+        this.calculateStats();
+    }
+
+    /**
      * Set statistics
      */
     setStats(stats) {

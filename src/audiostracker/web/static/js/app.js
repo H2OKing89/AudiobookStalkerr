@@ -8,6 +8,12 @@ class AudioStackerApp {
         this.isInitialized = false;
         this.viewMode = 'grid';
         this.unsavedChanges = false;
+        this.autoSaveEnabled = localStorage.getItem('autoSaveEnabled') !== 'false';
+        this.autoSaveTimeout = null;
+        this.realtimeValidation = localStorage.getItem('realtimeValidation') !== 'false';
+        this.showCompletionStatus = localStorage.getItem('showCompletionStatus') !== 'false';
+        this.settingsPanelOpen = false;
+        this.fieldChangeTracking = new Map(); // Track field changes for visual feedback
         
         this.init();
     }
@@ -24,12 +30,21 @@ class AudioStackerApp {
                 state.setStats(window.initialStats);
             }
             
+            // Load user preferences first
+            this.loadUserPreferences();
+            
             // Set up view mode
             this.viewMode = state.get('ui.viewMode') || 'grid';
             this.updateViewModeButtons();
             
             // Set up event listeners
             this.setupEventListeners();
+            
+            // Set up keyboard shortcuts
+            this.setupKeyboardShortcuts();
+            
+            // Initialize settings
+            this.initializeSettings();
             
             // Initial render
             this.renderAuthors();
@@ -61,27 +76,12 @@ class AudioStackerApp {
             }
         });
 
-        // Auto-save when user stops typing - use a fallback if debounce isn't available
-        const autoSaveHandler = (e) => {
-            if (e.target.matches('input[data-auto-save], textarea[data-auto-save]')) {
-                this.handleAutoSave(e.target);
+        // Track changes without auto-saving
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('input[data-field], textarea[data-field], select[data-field]')) {
+                this.markUnsavedChanges();
             }
-        };
-        
-        // Use debounce if available, otherwise use a simple timeout-based approach
-        let debouncedHandler;
-        if (typeof debounce === 'function') {
-            debouncedHandler = debounce(autoSaveHandler, 1000);
-        } else {
-            // Fallback implementation if debounce isn't loaded yet
-            let timeout;
-            debouncedHandler = (e) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => autoSaveHandler(e), 1000);
-            };
-        }
-        
-        document.addEventListener('input', debouncedHandler);
+        });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -90,9 +90,9 @@ class AudioStackerApp {
     }
 
     setupStateSubscriptions() {
-        // Re-render when audiobooks data changes
+        // Don't auto-render on every audiobooks change - we'll control this manually
+        // Only update stats on audiobooks changes
         state.subscribe('audiobooks', () => {
-            this.renderAuthors();
             this.updateStats();
         });
 
@@ -107,11 +107,6 @@ class AudioStackerApp {
             this.updateViewModeButtons();
             this.renderAuthors();
         });
-
-        // Mark unsaved changes
-        state.subscribe('audiobooks', () => {
-            this.unsavedChanges = true;
-        });
     }
 
     handleKeyboardShortcuts(e) {
@@ -121,10 +116,16 @@ class AudioStackerApp {
             this.saveChanges();
         }
         
-        // Ctrl+N - Add new author
-        if (e.ctrlKey && e.key === 'n') {
+        // Ctrl+A - Add author
+        if (e.ctrlKey && e.key === 'a') {
             e.preventDefault();
             this.showAddAuthorModal();
+        }
+        
+        // Ctrl+B - Quick add book
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            this.showQuickAddModal();
         }
         
         // Ctrl+F - Focus search
@@ -143,10 +144,25 @@ class AudioStackerApp {
             this.exportCollection();
         }
         
-        // Ctrl+I - Import
-        if (e.ctrlKey && e.key === 'i') {
+        // Ctrl+, - Toggle settings
+        if (e.ctrlKey && e.key === ',') {
             e.preventDefault();
-            this.showImportModal();
+            this.toggleSettingsPanel();
+        }
+        
+        // V - Toggle view mode
+        if (e.key === 'v' || e.key === 'V') {
+            e.preventDefault();
+            const newMode = this.viewMode === 'grid' ? 'list' : 'grid';
+            this.setViewMode(newMode);
+            this.updateViewModeButtons();
+            this.renderAuthors();
+        }
+        
+        // F5 - Refresh
+        if (e.key === 'F5') {
+            e.preventDefault();
+            this.refreshData();
         }
     }
 
@@ -175,26 +191,72 @@ class AudioStackerApp {
 
         // Initialize any new components
         this.initializeAuthorCards();
+        
+        // Restore save button states after rendering (if we have unsaved changes)
+        if (this.unsavedChanges) {
+            this.updateSaveButtonStates();
+        }
     }
 
     createEmptyState() {
-        return `
-            <div class="empty-state text-center py-5">
-                <div class="mb-4">
-                    <i class="fas fa-book-open fa-5x text-muted"></i>
+        const hasFilters = state.get('filters.search') || state.get('filters.status') !== 'all';
+        
+        if (hasFilters) {
+            return `
+                <div class="empty-state text-center py-5 fade-in">
+                    <div class="mb-4">
+                        <i class="fas fa-search empty-icon"></i>
+                    </div>
+                    <h3 class="text-muted mb-3">No results found</h3>
+                    <p class="text-muted mb-4">
+                        Try adjusting your search terms or filters to find what you're looking for.
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <button class="btn btn-outline-primary" onclick="clearAllFilters()">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </button>
+                        <button class="btn btn-primary" onclick="showQuickAddModal()">
+                            <i class="fas fa-plus me-1"></i>Add New Book
+                        </button>
+                    </div>
                 </div>
-                <h3 class="text-muted mb-3">No audiobooks found</h3>
-                <p class="text-muted mb-4">
-                    ${state.get('filters.search') || state.get('filters.status') !== 'all' ? 
-                        'Try adjusting your search or filters.' : 
-                        'Get started by adding your first author and book collection.'
-                    }
+            `;
+        }
+        
+        return `
+            <div class="empty-state text-center py-5 fade-in">
+                <div class="mb-4">
+                    <div class="position-relative d-inline-block">
+                        <i class="fas fa-book-open empty-icon text-primary"></i>
+                        <i class="fas fa-plus-circle position-absolute text-success" 
+                           style="bottom: -5px; right: -5px; font-size: 2rem;"></i>
+                    </div>
+                </div>
+                <h3 class="mb-3">Start Building Your Audiobook Collection</h3>
+                <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
+                    Add your favorite authors and their books to track upcoming audiobook releases. 
+                    You'll be notified when new books are available from your watched authors.
                 </p>
-                <div class="d-flex gap-2 justify-content-center">
-                    ${state.get('filters.search') || state.get('filters.status') !== 'all' ? 
-                        '<button class="btn btn-outline-primary" onclick="clearAllFilters()"><i class="fas fa-filter me-1"></i>Clear Filters</button>' : 
-                        '<button class="btn btn-primary" onclick="showAddAuthorModal()"><i class="fas fa-plus me-1"></i>Add Author</button>'
-                    }
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <button class="btn btn-primary btn-lg" onclick="showAddAuthorModal()">
+                        <i class="fas fa-user-plus me-2"></i>Add Your First Author
+                    </button>
+                    <button class="btn btn-outline-primary btn-lg" onclick="showImportModal()">
+                        <i class="fas fa-file-import me-2"></i>Import Existing Collection
+                    </button>
+                </div>
+                <div class="mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Pro tip: Use <kbd>Ctrl</kbd>+<kbd>A</kbd> to quickly add a new author
+                    </small>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <a href="#" onclick="showKeyboardShortcuts()" class="text-decoration-none">
+                            <i class="fas fa-keyboard me-1"></i>View all keyboard shortcuts
+                        </a>
+                    </small>
                 </div>
             </div>
         `;
@@ -232,7 +294,7 @@ class AudioStackerApp {
                                 <input type="text" class="form-control author-name-input" 
                                        value="${escapeHtml(authorName)}" 
                                        onchange="updateAuthorName('${escapeHtml(authorName)}', this.value)"
-                                       data-auto-save="true">
+                                       data-field="true">
                             </h3>
                             <div class="author-meta">
                                 <div class="meta-item">
@@ -270,6 +332,12 @@ class AudioStackerApp {
                                 title="Add New Book">
                             <i class="fas fa-plus me-1"></i>Add Book
                         </button>
+                        <button class="btn btn-sm btn-success save-changes-btn me-2" 
+                                onclick="window.app.saveChanges()" 
+                                title="Save Changes"
+                                disabled>
+                            <i class="fas fa-check me-1"></i>Saved
+                        </button>
                         <button class="btn btn-sm btn-outline-danger" 
                                 onclick="deleteAuthor('${escapeHtml(authorName)}')" 
                                 title="Delete Author">
@@ -300,29 +368,53 @@ class AudioStackerApp {
 
     createBookCard(authorName, book, index) {
         const bookId = `book-${sanitizeId(authorName)}-${index}`;
+        const isComplete = this.isBookComplete(book);
+        const completionPercentage = this.getBookCompletionPercentage(book);
+        const hasChanges = this.fieldChangeTracking.has(bookId);
         
         if (this.viewMode === 'list') {
             return this.createBookListItem(authorName, book, index, bookId);
         }
         
         return `
-            <div class="book-card" id="${bookId}">
+            <div class="book-card ${hasChanges ? 'has-changes' : ''}" id="${bookId}">
                 <div class="book-header">
-                    <div class="book-title">
-                        <input type="text" class="form-control" 
-                               value="${escapeHtml(book.title || '')}" 
-                               placeholder="Enter book title..."
-                               onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'title', this.value)"
-                               data-auto-save="true">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="book-title flex-grow-1">
+                            <input type="text" 
+                                   class="form-control ${this.getFieldClass(book.title, true)}" 
+                                   value="${escapeHtml(book.title || '')}" 
+                                   placeholder="Enter book title..."
+                                   data-field="title"
+                                   onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'title', this.value, this)"
+                                   oninput="validateFieldRealtime(this, true)">
+                            <div class="field-error-message" style="display: none;">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Title is required
+                            </div>
+                        </div>
+                        ${this.showCompletionStatus ? `
+                            <span class="book-status ${isComplete ? 'complete' : 'incomplete'} ms-2">
+                                <i class="fas fa-${isComplete ? 'check-circle' : 'exclamation-circle'}"></i>
+                                ${isComplete ? 'Complete' : 'Incomplete'}
+                            </span>
+                        ` : ''}
                     </div>
+                    
+                    ${this.showCompletionStatus ? `
+                        <div class="completion-progress mb-3">
+                            <div class="completion-progress-bar" style="width: ${completionPercentage}%"></div>
+                        </div>
+                    ` : ''}
                 </div>
 
                 <div class="book-series mb-2">
                     <input type="text" class="form-control" 
                            value="${escapeHtml(book.series || '')}" 
                            placeholder="Series name..."
-                           onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'series', this.value)"
-                           data-auto-save="true">
+                           data-field="series"
+                           list="series-list"
+                           onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'series', this.value, this)">
                 </div>
 
                 <div class="book-details">
@@ -332,8 +424,8 @@ class AudioStackerApp {
                                value="${escapeHtml(book.publisher || '')}" 
                                list="publishers-list"
                                placeholder="Publisher..."
-                               onchange="updateBookField('${escapeHtml(authorName)}', ${index}, 'publisher', this.value)"
-                               data-auto-save="true">
+                               data-field="publisher"
+                               onchange="updateBookFieldEnhanced('${escapeHtml(authorName)}', ${index}, 'publisher', this.value, this)">
                     </div>
                     
                     <div class="book-detail-row">
@@ -345,8 +437,8 @@ class AudioStackerApp {
                                            value="${escapeHtml(narrator)}" 
                                            list="narrators-list"
                                            placeholder="Narrator name..."
-                                           onchange="updateNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value)"
-                                           data-auto-save="true">
+                                           data-field="narrator"
+                                           onchange="updateNarratorEnhanced('${escapeHtml(authorName)}', ${index}, ${nIndex}, this.value, this)">
                                     ${book.narrator && book.narrator.length > 1 ? `
                                         <button type="button" class="btn btn-sm btn-outline-danger ms-1" 
                                                 onclick="removeNarrator('${escapeHtml(authorName)}', ${index}, ${nIndex})"
@@ -370,6 +462,11 @@ class AudioStackerApp {
                             title="Delete Book">
                         <i class="fas fa-trash me-1"></i>Delete
                     </button>
+                </div>
+                
+                <!-- Progress overlay for save operations -->
+                <div class="progress-overlay">
+                    <div class="progress-spinner"></div>
                 </div>
             </div>
         `;
@@ -493,15 +590,46 @@ class AudioStackerApp {
         }
 
         try {
+            showToast('Saving changes...', 'info');
+            
             const result = await api.saveAudiobooks(state.get('audiobooks'));
             if (result.success) {
                 this.unsavedChanges = false;
-                showToast('Changes saved successfully', 'success');
+                
+                // Update save buttons to saved state WITHOUT re-rendering
+                const globalSaveBtn = document.querySelector('.control-panel .save-changes-btn');
+                if (globalSaveBtn) {
+                    globalSaveBtn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
+                    globalSaveBtn.classList.remove('btn-warning');
+                    globalSaveBtn.classList.add('btn-success');
+                    globalSaveBtn.disabled = true;
+                }
+                
+                const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
+                authorSaveBtns.forEach(btn => {
+                    if (btn !== globalSaveBtn) {
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved';
+                        btn.classList.remove('btn-warning');
+                        btn.classList.add('btn-success');
+                        btn.disabled = true;
+                    }
+                });
+                
+                // Clear unsaved changes indicator
+                this.updateUnsavedIndicator();
+                
+                // Clear field change tracking and show visual feedback
+                this.fieldChangeTracking.forEach((fields, bookId) => {
+                    this.clearFieldChanges(bookId);
+                });
+                this.fieldChangeTracking.clear();
                 
                 // Update stats if provided
                 if (result.stats) {
                     state.setStats(result.stats);
                 }
+                
+                showToast('Changes saved successfully', 'success');
             }
         } catch (error) {
             console.error('Failed to save changes:', error);
@@ -509,18 +637,39 @@ class AudioStackerApp {
         }
     }
 
-    handleAutoSave(element) {
-        // Auto-save specific field changes
+    markUnsavedChanges() {
+        // Mark that there are unsaved changes without auto-saving
         this.unsavedChanges = true;
         
-        // Debounced save to prevent too many API calls
-        if (this.autoSaveTimeout) {
-            clearTimeout(this.autoSaveTimeout);
+        // Update save button states WITHOUT re-rendering the entire page
+        this.updateSaveButtonStates();
+        
+        // Update unsaved changes indicator
+        this.updateUnsavedIndicator();
+        
+        // Schedule auto-save if enabled
+        this.scheduleAutoSave();
+    }
+
+    updateSaveButtonStates() {
+        // Update global save button
+        const globalSaveBtn = document.querySelector('.control-panel .save-changes-btn');
+        if (globalSaveBtn) {
+            globalSaveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
+            globalSaveBtn.className = 'btn save-changes-btn btn-warning';
+            globalSaveBtn.disabled = false;
         }
         
-        this.autoSaveTimeout = setTimeout(() => {
-            this.saveChanges();
-        }, 5000); // Auto-save after 5 seconds of inactivity
+        // Update individual author save buttons
+        const authorSaveBtns = document.querySelectorAll('.save-changes-btn');
+        authorSaveBtns.forEach(btn => {
+            if (btn !== globalSaveBtn) {
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-warning');
+                btn.disabled = false;
+            }
+        });
     }
 
     // View mode functions
@@ -613,284 +762,40 @@ class AudioStackerApp {
         // Implementation will be in modals.js
         if (window.modals) {
             window.modals.showStatsModal();
+        } else {
+            // Fallback stats display
+            const stats = state.get('stats') || {};
+            const content = `
+                <div class="stats-summary">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <h3>${stats.total_authors || 0}</h3>
+                                <p>Authors</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <h3>${stats.total_books || 0}</h3>
+                                <p>Books</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <h3>${stats.total_publishers || 0}</h3>
+                                <p>Publishers</p>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <h3>${stats.total_narrators || 0}</h3>
+                                <p>Narrators</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // ...you may want to display 'content' in a modal or alert here...
         }
     }
 }
-
-// Global functions for HTML onclick handlers
-function setViewMode(mode) {
-    if (window.app) {
-        window.app.setViewMode(mode);
-    }
-}
-
-function updateAuthorName(oldName, newName) {
-    if (oldName === newName || !newName.trim()) return;
-    
-    const audiobooks = state.get('audiobooks');
-    const authors = audiobooks.audiobooks.author;
-    
-    if (authors[newName]) {
-        showToast('Author name already exists', 'error');
-        return;
-    }
-    
-    // Move the author data
-    authors[newName] = authors[oldName];
-    delete authors[oldName];
-    
-    state.setAudiobooks(audiobooks);
-    showToast(`Author renamed to "${newName}"`, 'success');
-}
-
-function updateBookField(authorName, bookIndex, field, value) {
-    const audiobooks = state.get('audiobooks');
-    const book = audiobooks.audiobooks.author[authorName][bookIndex];
-    
-    if (book) {
-        book[field] = value;
-        state.setAudiobooks(audiobooks);
-    }
-}
-
-function updateNarrator(authorName, bookIndex, narratorIndex, value) {
-    const audiobooks = state.get('audiobooks');
-    const book = audiobooks.audiobooks.author[authorName][bookIndex];
-    
-    if (book && book.narrator) {
-        book.narrator[narratorIndex] = value;
-        state.setAudiobooks(audiobooks);
-    }
-}
-
-function addNarrator(authorName, bookIndex) {
-    const audiobooks = state.get('audiobooks');
-    const book = audiobooks.audiobooks.author[authorName][bookIndex];
-    
-    if (book) {
-        if (!book.narrator) book.narrator = [];
-        book.narrator.push('');
-        state.setAudiobooks(audiobooks);
-        window.app.renderAuthors();
-    }
-}
-
-function removeNarrator(authorName, bookIndex, narratorIndex) {
-    const audiobooks = state.get('audiobooks');
-    const book = audiobooks.audiobooks.author[authorName][bookIndex];
-    
-    if (book && book.narrator && book.narrator.length > 1) {
-        book.narrator.splice(narratorIndex, 1);
-        state.setAudiobooks(audiobooks);
-        window.app.renderAuthors();
-    }
-}
-
-function addBook(authorName) {
-    const audiobooks = state.get('audiobooks');
-    
-    if (!audiobooks.audiobooks.author[authorName]) {
-        audiobooks.audiobooks.author[authorName] = [];
-    }
-    
-    audiobooks.audiobooks.author[authorName].push({
-        title: '',
-        series: '',
-        publisher: '',
-        narrator: ['']
-    });
-    
-    state.setAudiobooks(audiobooks);
-    showToast(`New book added to ${authorName}`, 'success');
-}
-
-async function deleteBook(authorName, bookIndex) {
-    const confirmed = await toast.confirm(
-        `Are you sure you want to delete this book?`,
-        { title: 'Confirm Deletion' }
-    );
-    
-    if (confirmed) {
-        const audiobooks = state.get('audiobooks');
-        const books = audiobooks.audiobooks.author[authorName];
-        
-        if (books && books[bookIndex]) {
-            const deletedBook = books[bookIndex];
-            books.splice(bookIndex, 1);
-            state.setAudiobooks(audiobooks);
-            showToast(`Book "${deletedBook.title || 'Untitled'}" deleted`, 'success');
-        }
-    }
-}
-
-async function deleteAuthor(authorName) {
-    const books = state.get('audiobooks').audiobooks.author[authorName];
-    const bookCount = books ? books.length : 0;
-    
-    const confirmed = await toast.confirm(
-        `Are you sure you want to delete "${authorName}" and all ${bookCount} books?`,
-        { title: 'Confirm Deletion', confirmText: 'Delete' }
-    );
-    
-    if (confirmed) {
-        const audiobooks = state.get('audiobooks');
-        delete audiobooks.audiobooks.author[authorName];
-        state.setAudiobooks(audiobooks);
-        showToast(`Author "${authorName}" deleted`, 'success');
-    }
-}
-
-function toggleAuthorCollapse(authorId) {
-    console.log('toggleAuthorCollapse called with ID:', authorId);
-    
-    // Find elements using the specific authorId
-    const booksContainer = document.getElementById(`books-${authorId}`);
-    const icon = document.getElementById(`collapse-icon-${authorId}`);
-    const toggle = icon?.closest('.collapse-toggle');
-    
-    console.log('Elements found:', {
-        booksContainer: !!booksContainer,
-        booksContainerId: booksContainer?.id,
-        icon: !!icon,
-        iconId: icon?.id,
-        toggle: !!toggle
-    });
-    
-    if (!booksContainer) {
-        console.error('Books container not found for ID:', `books-${authorId}`);
-        console.log('Available book containers:', 
-            Array.from(document.querySelectorAll('[id^="books-"]')).map(el => el.id)
-        );
-        return;
-    }
-    
-    if (!icon) {
-        console.error('Icon not found for ID:', `collapse-icon-${authorId}`);
-        console.log('Available collapse icons:', 
-            Array.from(document.querySelectorAll('[id^="collapse-icon-"]')).map(el => el.id)
-        );
-        return;
-    }
-    
-    if (!toggle) {
-        console.error('Toggle button not found');
-        return;
-    }
-    
-    const isExpanded = booksContainer.classList.contains('expanded');
-    console.log('Current state - expanded:', isExpanded);
-    
-    if (isExpanded) {
-        // Collapse
-        booksContainer.classList.remove('expanded');
-        icon.className = 'fas fa-chevron-down';
-        toggle.classList.remove('expanded');
-        console.log('Collapsed author:', authorId);
-    } else {
-        // Expand
-        booksContainer.classList.add('expanded');
-        icon.className = 'fas fa-chevron-up';
-        toggle.classList.add('expanded');
-        console.log('Expanded author:', authorId);
-    }
-}
-
-// Global app functions
-function exportCollection() {
-    console.log('Export button clicked'); // Debug log
-    console.log('Checking API availability at export time:', !!window.api);
-    console.log('Checking App availability at export time:', !!window.app);
-    
-    // If API is not defined, try to recover by recreating it
-    if (!window.api && typeof AudioStackerAPI === 'function') {
-        console.log('Attempting to recover API...');
-        try {
-            window.api = new AudioStackerAPI();
-            console.log('API recovery result:', !!window.api);
-        } catch (e) {
-            console.error('Failed to recover API:', e);
-        }
-    }
-    
-    // Check if API is available after recovery attempt
-    if (!window.api) {
-        console.error('window.api is not available');
-        showToast('API not ready. Please refresh the page.', 'error');
-        return false;
-    }
-    
-    if (window.app) {
-        console.log('Calling app.exportCollection()'); // Debug log
-        window.app.exportCollection();
-    } else {
-        console.log('App not available, using API directly'); // Debug log
-        // Fallback to direct API call if app object is not ready
-        (async function() {
-            try {
-                console.log('Using direct API call for export');
-                showLoading(true);
-                const response = await fetch('/api/export', { method: 'POST' });
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                // Get filename from Content-Disposition header
-                const disposition = response.headers.get('Content-Disposition');
-                let filename = 'audiobooks_export.json';
-                if (disposition && disposition.includes('filename=')) {
-                    filename = disposition.split('filename=')[1].replace(/"/g, '');
-                }
-                
-                const blob = await response.blob();
-                
-                // Download the file
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-                
-                showToast('Collection exported successfully', 'success');
-            } catch (error) {
-                console.error('Export failed:', error);
-                showToast(`Export failed: ${error.message}`, 'error');
-            } finally {
-                showLoading(false);
-            }
-        })();
-    }
-    
-    return false; // Prevent default behavior
-}
-
-function showImportModal() {
-    if (window.app) {
-        window.app.showImportModal();
-    }
-}
-
-function showAddAuthorModal() {
-    if (window.app) {
-        window.app.showAddAuthorModal();
-    }
-}
-
-function showQuickAddModal() {
-    if (window.app) {
-        window.app.showQuickAddModal();
-    }
-}
-
-function showStatsModal() {
-    if (window.app) {
-        window.app.showStatsModal();
-    }
-}
-
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new AudioStackerApp();
-});

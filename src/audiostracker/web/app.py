@@ -339,22 +339,41 @@ async def add_author(author_name: str = Form(...)):
 async def delete_author(author_name: str):
     """Delete an author and all their books"""
     try:
+        logger.debug(f"=== DELETE_AUTHOR API START ===")
+        logger.debug(f"Request to delete author: {author_name}")
+        
         data = load_audiobooks()
+        logger.debug(f"Loaded current audiobooks data")
+        
         authors = data["audiobooks"]["author"]
         
         if author_name not in authors:
+            logger.warning(f"Author not found: {author_name}")
+            logger.debug(f"Available authors: {list(authors.keys())}")
             raise HTTPException(status_code=404, detail="Author not found")
         
-        del authors[author_name]
+        # Get book count for logging
+        book_count = len(authors[author_name])
+        logger.debug(f"Author '{author_name}' has {book_count} books")
         
+        del authors[author_name]
+        logger.debug(f"Removed author '{author_name}' from data structure")
+        
+        logger.debug(f"Calling save_audiobooks...")
         if save_audiobooks(data):
+            logger.info(f"Successfully deleted author '{author_name}' with {book_count} books")
+            logger.debug(f"=== DELETE_AUTHOR API SUCCESS ===")
             return {"success": True, "message": f"Author '{author_name}' deleted successfully"}
         else:
+            logger.error(f"save_audiobooks function returned False for author deletion")
+            logger.debug(f"=== DELETE_AUTHOR API FAILED ===")
             raise HTTPException(status_code=500, detail="Failed to save changes")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error deleting author: {e}")
+        logger.error(f"Exception type: {type(e)}")
+        logger.debug(f"=== DELETE_AUTHOR API EXCEPTION ===")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/authors/{author_name}/books")
