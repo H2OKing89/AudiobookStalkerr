@@ -339,6 +339,26 @@ body {
     color: var(--text-muted);
 }
 
+/* Book Card Actions */
+.audiobook-card .card-header .btn {
+    border: none;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.audiobook-card .card-header .btn:hover {
+    background: var(--primary-100);
+    color: var(--primary-600);
+    transform: translateY(-1px);
+}
+
+@media (prefers-color-scheme: dark) {
+    .audiobook-card .card-header .btn:hover {
+        background: var(--primary-800);
+        color: var(--primary-300);
+    }
+}
+
 /* Book Cover Styles - Enhanced */
 .book-cover {
     position: relative;
@@ -664,7 +684,7 @@ body {
 .form-select,
 #author-filter,
 #date-filter {
-    color-scheme: dark;
+    color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -673,8 +693,5 @@ body {
     #author-filter,
     #date-filter {
         color-scheme: dark;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        border-color: var(--border-light);
     }
 }

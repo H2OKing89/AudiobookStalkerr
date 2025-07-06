@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AudioStacker Web UI - FastAPI Application
-A modern, modular web interface for managing audiobook collections.
+A modern, modular web interface for managing new audiobook feeds.
 """
 
 from fastapi import FastAPI, HTTPException, Request, Form
@@ -19,6 +19,7 @@ from datetime import datetime
 import yaml
 import sqlite3
 import sys
+import io
 
 # Add the parent directory to the path so we can import from audiostracker
 sys.path.append(str(Path(__file__).parent.parent))
@@ -27,6 +28,121 @@ from database import get_connection, init_db
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Try to import iCal exporter, handle if dependencies are missing
+try:
+    from ..ical_export import ICalExporter
+    ICAL_AVAILABLE = True
+except ImportError as e:
+    try:
+        # Fallback: try importing from the parent directory
+        import sys
+        import os
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sys.path.insert(0, parent_dir)
+        from ical_export import ICalExporter
+        ICAL_AVAILABLE = True
+    except ImportError as e2:
+        logger.warning(f"iCal export not available: {e2}")
+        ICalExporter = None
+        ICAL_AVAILABLE = False
+
+def create_simple_ical_event(audiobook: dict) -> str:
+    """Create a simple iCal event for an audiobook at 00:00 America/Los_Angeles"""
+    title = audiobook.get('title', 'Unknown Title')
+    author = audiobook.get('author', 'Unknown Author')
+    series = audiobook.get('series', '')
+    series_number = audiobook.get('series_number', '')
+    narrator = audiobook.get('narrator', 'Unknown Narrator')
+    publisher = audiobook.get('publisher', 'Unknown Publisher')
+    release_date = audiobook.get('release_date', '')
+    asin = audiobook.get('asin', '')
+    
+    # Create event title
+    event_title = f"📚 {title}"
+    if series and series_number:
+        event_title += f" ({series} #{series_number})"
+    elif series:
+        event_title += f" ({series})"
+    
+    # Create description
+    description = f"New audiobook release\\n\\n"
+    description += f"Title: {title}\\n"
+    description += f"Author: {author}\\n"
+    description += f"Narrator: {narrator}\\n"
+    description += f"Publisher: {publisher}\\n"
+    if series:
+        description += f"Series: {series}"
+        if series_number:
+            description += f" (#{series_number})"
+        description += "\\n"
+    description += f"ASIN: {asin}\\n"
+    if asin:
+        description += f"Audible Link: https://www.audible.com/pd/{asin}\\n"
+    
+    # Parse release date and set to midnight California time
+    try:
+        from datetime import datetime
+        import pytz
+        ca_tz = pytz.timezone('America/Los_Angeles')
+        release_dt = datetime.strptime(release_date, '%Y-%m-%d')
+        release_dt = ca_tz.localize(release_dt.replace(hour=0, minute=0, second=0, microsecond=0))
+        dtstart = release_dt.strftime('%Y%m%dT%H%M%S')
+        dtend = release_dt.strftime('%Y%m%dT%H%M%S')
+    except Exception:
+        from datetime import datetime
+        now = datetime.now()
+        dtstart = now.strftime('%Y%m%dT000000')
+        dtend = now.strftime('%Y%m%dT000000')
+    
+    # Generate unique ID
+    from datetime import datetime
+    uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@audiostacker"
+    
+    # Create timestamp
+    timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    
+    # VTIMEZONE block for America/Los_Angeles
+    vtimezone = """BEGIN:VTIMEZONE
+TZID:America/Los_Angeles
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0800
+TZOFFSETTO:-0700
+TZNAME:PDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0700
+TZOFFSETTO:-0800
+TZNAME:PST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE"""
+    
+    ical_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AudioStacker//AudioStacker//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:AudioStacker - New Releases
+X-WR-CALDESC:New audiobook releases tracked by AudioStacker
+{vtimezone}
+BEGIN:VEVENT
+UID:{uid}
+DTSTART;TZID=America/Los_Angeles:{dtstart}
+DTEND;TZID=America/Los_Angeles:{dtend}
+DTSTAMP:{timestamp}
+SUMMARY:{event_title}
+DESCRIPTION:{description}
+CATEGORIES:Audiobooks,Entertainment
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR"""
+    
+    return ical_content
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -64,7 +180,7 @@ config = load_config()
 web_config = config.get('web_ui', {})
 
 # Web UI configuration with defaults
-WEB_HOST = web_config.get('host', '127.0.0.1')
+WEB_HOST = web_config.get('host', '0.0.0.0')  # Default to all interfaces
 WEB_PORT = web_config.get('port', 5005)
 WEB_RELOAD = web_config.get('reload', True)
 
@@ -511,6 +627,57 @@ async def import_collection(import_data: dict):
     except Exception as e:
         logger.error(f"Error importing collection: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/export/ical/{asin}")
+async def export_single_audiobook_ical(asin: str):
+    """Export a single audiobook as iCal file"""
+    try:
+        # Get the audiobook from database (same query as the main page uses)
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT asin, title, author, series, series_number, narrator, 
+                       publisher, release_date, merchandising_summary
+                FROM audiobooks 
+                WHERE asin = ?
+            """, (asin,))
+            
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Audiobook not found")
+            
+            # Convert to dict using row names (since we use row_factory = sqlite3.Row)
+            audiobook = {
+                'asin': row['asin'],
+                'title': row['title'],
+                'author': row['author'],
+                'series': row['series'],
+                'series_number': row['series_number'],
+                'narrator': row['narrator'],
+                'publisher': row['publisher'],
+                'release_date': row['release_date'],
+                'merchandising_summary': row['merchandising_summary']
+            }
+        
+        # Create iCal content using the simple fallback implementation
+        ical_content = create_simple_ical_event(audiobook)
+        
+        # Create filename
+        safe_title = "".join(c for c in audiobook['title'] if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        if not safe_title:
+            safe_title = f"audiobook_{asin}"
+        filename = f"{safe_title}.ics"
+        
+        # Return as downloadable file
+        return StreamingResponse(
+            io.BytesIO(ical_content.encode('utf-8')),
+            media_type="text/calendar",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting iCal for ASIN {asin}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to export iCal")
 
 @app.get("/debug")
 async def debug_endpoint():
