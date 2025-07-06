@@ -248,6 +248,9 @@
                                         title="Save All Changes" style="display: none;">
                                     <i class="fas fa-save me-1"></i>Save Changes
                                 </button>
+                                <button class="btn btn-danger" onclick="showManualStartConfirmation()" title="Manually run the audiobook search">
+                                    <i class="fas fa-play me-1"></i>Manual Start Search
+                                </button>
                                 <button class="btn btn-outline-success" onclick="exportCollection()">
                                     <i class="fas fa-download me-1"></i>Export
                                 </button>
@@ -459,6 +462,61 @@
         // Initialize data
         window.initialData = JSON.parse('{{ audiobooks|tojson|safe }}');
         window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
+        
+        // Manual Start functionality
+        function showManualStartConfirmation() {
+            if (window.modals && typeof window.modals.showManualStartModal === 'function') {
+                window.modals.showManualStartModal();
+            } else {
+                // Fallback using browser confirm
+                if (confirm('Are you sure you want to manually run the audiobook search? This will search Audible for new releases from all configured authors and may take several minutes.')) {
+                    runManualStart();
+                }
+            }
+        }
+        
+        // Make the function available globally
+        window.showManualStartConfirmation = showManualStartConfirmation;
+        
+        async function runManualStart() {
+            try {
+                // Show loading state
+                showLoading(true);
+                showToast('Starting manual audiobook search...', 'info');
+                
+                const response = await fetch('/api/manual-start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message || 'Manual search completed successfully!', 'success');
+                    // Optionally refresh the page data
+                    if (window.app && window.app.refreshData) {
+                        setTimeout(() => window.app.refreshData(), 2000);
+                    }
+                } else {
+                    throw new Error(result.error || 'Manual search failed');
+                }
+                
+            } catch (error) {
+                console.error('Manual start failed:', error);
+                showToast(`Manual search failed: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Make runManualStart available globally
+        window.runManualStart = runManualStart;
         
         // Initialize the main application
         document.addEventListener('DOMContentLoaded', () => {

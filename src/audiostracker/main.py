@@ -1,12 +1,30 @@
 import logging
-from .utils import load_yaml, load_json, validate_config, validate_audiobooks, setup_logging, merge_env_config
-from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
-from .audible import search_audible, search_audible_parallel, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, find_all_good_matches
-from .notify.notify import create_dispatcher
-from .ical_export import create_exporter
-from datetime import datetime, timedelta
 import os
+import sys
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
+# Handle imports for both direct execution and module execution
+try:
+    # Try relative imports first (when run as module)
+    from .utils import load_yaml, load_json, validate_config, validate_audiobooks, setup_logging, merge_env_config
+    from .database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
+    from .audible import search_audible, search_audible_parallel, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, find_all_good_matches
+    from .notify.notify import create_dispatcher
+    from .ical_export import create_exporter
+except ImportError:
+    # Fall back to absolute imports (when run directly)
+    # Add the src directory to path so we can import audiostracker
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.dirname(current_dir)
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    
+    from audiostracker.utils import load_yaml, load_json, validate_config, validate_audiobooks, setup_logging, merge_env_config
+    from audiostracker.database import init_db, insert_or_update_audiobook, prune_released, get_unnotified_for_channel, mark_notified_for_channel, vacuum_db, DB_FILE
+    from audiostracker.audible import search_audible, search_audible_parallel, set_audible_rate_limit, set_language_filter, confidence, find_best_match_with_review, find_all_good_matches
+    from audiostracker.notify.notify import create_dispatcher
+    from audiostracker.ical_export import create_exporter
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
 AUDIOBOOKS_PATH = os.path.join(os.path.dirname(__file__), 'config', 'audiobooks.json')

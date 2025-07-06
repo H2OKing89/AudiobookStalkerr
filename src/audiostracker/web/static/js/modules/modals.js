@@ -317,6 +317,79 @@ class ModalsModule {
         return bsModal;
     }
 
+    showManualStartModal() {
+        // Fallback for generateId if not available
+        const generateIdFallback = (prefix = 'id') => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const modalId = (typeof generateId === 'function') ? generateId('modal') : generateIdFallback('modal');
+        const content = `
+            <div class="text-center">
+                <div class="mb-4">
+                    <i class="fas fa-play fa-3x text-danger mb-3"></i>
+                    <h5>Manual Audiobook Search</h5>
+                    <p class="text-muted mb-0">
+                        This will manually run the audiobook search process, which will:
+                    </p>
+                </div>
+                <div class="alert alert-info text-start mb-4">
+                    <ul class="mb-0">
+                        <li>Search Audible for new releases from all configured authors</li>
+                        <li>Update the database with any new upcoming audiobooks</li>
+                        <li>Send notifications if configured</li>
+                        <li>Export iCal files if enabled</li>
+                    </ul>
+                </div>
+                <div class="alert alert-warning text-start">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> This process may take several minutes depending on the number of authors configured.
+                </div>
+            </div>
+        `;
+
+        const footer = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="fas fa-times me-1"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-danger" onclick="confirmManualStart()">
+                <i class="fas fa-play me-1"></i>Start Search
+            </button>
+        `;
+
+        const modal = this.createModal(modalId, 'Confirm Manual Start', content, {
+            size: 'lg',
+            centered: true,
+            footer: footer
+        });
+        
+        // Add manual start modal class for styling
+        modal.classList.add('manual-start-modal');
+
+        // Add the confirmManualStart function to the modal
+        window.confirmManualStart = () => {
+            // Close the modal
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+            
+            // Run the manual start
+            if (typeof runManualStart === 'function') {
+                runManualStart();
+            } else if (typeof window.runManualStart === 'function') {
+                window.runManualStart();
+            } else {
+                console.error('runManualStart function not found');
+                showToast('Error: Manual start function not available', 'error');
+            }
+        };
+
+        this.showModal(modal, {
+            backdrop: 'static',
+            keyboard: true
+        });
+
+        return modal;
+    }
+
     showImportModal() {
         const modalId = generateId('modal');
         const content = `

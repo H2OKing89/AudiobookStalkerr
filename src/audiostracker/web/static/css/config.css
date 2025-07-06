@@ -99,6 +99,58 @@
     --gradient-accent: linear-gradient(135deg, var(--accent-violet) 0%, var(--primary-500) 100%);
 }
 
+/* Manual Start Button Styling */
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border: none;
+    color: white;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+    color: white;
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    color: white;
+}
+
+/* Manual Start Modal Styling */
+.manual-start-modal .modal-body {
+    padding: 2rem;
+}
+
+.manual-start-modal .alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.manual-start-modal .alert-info {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+}
+
+.manual-start-modal .alert-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+}
+
+.manual-start-modal .fa-play {
+    color: #dc2626;
+    text-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
 /* Auto Dark Mode - Enhanced */
 @media (prefers-color-scheme: dark) {
     :root {

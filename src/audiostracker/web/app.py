@@ -628,107 +628,74 @@ async def import_collection(import_data: dict):
         logger.error(f"Error importing collection: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/export/ical/{asin}")
-async def export_single_audiobook_ical(asin: str):
-    """Export a single audiobook as iCal file"""
+@app.post("/api/manual-start")
+async def manual_start():
+    """Manually trigger the audiobook search process"""
     try:
-        # Get the audiobook from database (same query as the main page uses)
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT asin, title, author, series, series_number, narrator, 
-                       publisher, release_date, merchandising_summary
-                FROM audiobooks 
-                WHERE asin = ?
-            """, (asin,))
-            
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Audiobook not found")
-            
-            # Convert to dict using row names (since we use row_factory = sqlite3.Row)
-            audiobook = {
-                'asin': row['asin'],
-                'title': row['title'],
-                'author': row['author'],
-                'series': row['series'],
-                'series_number': row['series_number'],
-                'narrator': row['narrator'],
-                'publisher': row['publisher'],
-                'release_date': row['release_date'],
-                'merchandising_summary': row['merchandising_summary']
-            }
+        import subprocess
+        import threading
+        from pathlib import Path
         
-        # Create iCal content using the simple fallback implementation
-        ical_content = create_simple_ical_event(audiobook)
+        # Path to the main.py script
+        main_script = Path(__file__).parent.parent / "main.py"
         
-        # Create filename
-        safe_title = "".join(c for c in audiobook['title'] if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        if not safe_title:
-            safe_title = f"audiobook_{asin}"
-        filename = f"{safe_title}.ics"
+        if not main_script.exists():
+            raise HTTPException(status_code=500, detail="Main script not found")
         
-        # Return as downloadable file
-        return StreamingResponse(
-            io.BytesIO(ical_content.encode('utf-8')),
-            media_type="text/calendar",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+        # Function to run the script in background
+        def run_script():
+            try:
+                # Get the project root directory
+                project_root = Path(__file__).parent.parent.parent  # /home/quentin/dev/audiobook_feed
+                logger.info(f"Running manual search from directory: {project_root}")
+                
+                # Run the main.py script directly (it now handles imports properly)
+                result = subprocess.run(
+                    [sys.executable, str(main_script)],
+                    cwd=str(project_root),
+                    capture_output=True,
+                    text=True,
+                    timeout=600  # 10 minute timeout
+                )
+                
+                if result.returncode == 0:
+                    logger.info("Manual search completed successfully")
+                    logger.info(f"Output: {result.stdout}")
+                else:
+                    logger.error(f"Manual search failed with return code {result.returncode}")
+                    logger.error(f"Error: {result.stderr}")
+                
+            except subprocess.TimeoutExpired:
+                logger.error("Manual search timed out after 10 minutes")
+            except Exception as e:
+                logger.error(f"Error running manual search: {e}")
+        
+        # Start the script in a background thread
+        thread = threading.Thread(target=run_script, daemon=True)
+        thread.start()
+        
+        return {
+            "success": True,
+            "message": "Manual audiobook search started successfully. Check the logs for progress."
+        }
         
     except Exception as e:
-        logger.error(f"Error exporting iCal for ASIN {asin}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to export iCal")
+        logger.error(f"Error starting manual search: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/debug")
-async def debug_endpoint():
-    """Debug endpoint to check data"""
-    data = load_audiobooks()
-    stats = get_stats(data)
-    
-    return {
-        "data_structure": {
-            "type": type(data).__name__,
-            "keys": list(data.keys()) if isinstance(data, dict) else "not_dict",
-            "audiobooks_keys": list(data.get("audiobooks", {}).keys()) if "audiobooks" in data else "no_audiobooks_key",
-            "author_count": len(data.get("audiobooks", {}).get("author", {})) if "audiobooks" in data else 0
-        },
-        "first_author": list(data.get("audiobooks", {}).get("author", {}).keys())[:1] if "audiobooks" in data else [],
-        "stats": stats
-    }
-
-@app.get("/debug/template")
-async def debug_template():
-    """Debug what gets passed to template"""
-    data = load_audiobooks()
-    stats = get_stats(data)
-    
-    return HTMLResponse(f"""
-    <html>
-    <head><title>Template Debug</title></head>
-    <body>
-        <h1>Template Debug</h1>
-        <h2>Raw Data</h2>
-        <pre>{json.dumps(data, indent=2)}</pre>
+@app.get("/api/manual-start/test")
+async def manual_start_test():
+    """Test endpoint to verify manual start API is working"""
+    try:
+        from pathlib import Path
+        main_script = Path(__file__).parent.parent / "main.py"
         
-        <h2>Stats</h2>
-        <pre>{json.dumps(stats, indent=2)}</pre>
-        
-        <script>
-            console.log('Data:', {json.dumps(data)});
-            console.log('Stats:', {json.dumps(stats)});
-            
-            window.initialData = {json.dumps(data)};
-            window.initialStats = {json.dumps(stats)};
-            
-            console.log('Authors count:', Object.keys(window.initialData.audiobooks.author).length);
-        </script>
-    </body>
-    </html>
-    """)
-
-@app.get("/test")
-async def test_page():
-    """Simple test page"""
-    with open(BASE_DIR.parent.parent / "test_minimal.html", "r") as f:
-        content = f.read()
-    return HTMLResponse(content)
+        return {
+            "success": True,
+            "message": "Manual start API is working",
+            "main_script_exists": main_script.exists(),
+            "main_script_path": str(main_script)
+        }
+    except Exception as e:
+        logger.error(f"Error in manual start test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
