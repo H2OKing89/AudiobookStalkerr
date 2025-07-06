@@ -1903,3 +1903,49 @@ body.dark-theme .modal-body datalist {
     background: var(--bg-secondary, #0f1419);
     border-color: var(--border-light, #2d3748);
 }
+
+/* Progress Overlay */
+.progress-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: var(--border-radius, 12px);
+}
+
+.progress-overlay .spinner-border {
+    width: 2rem;
+    height: 2rem;
+}
+
+/* Dark theme progress overlay */
+body.dark-theme .progress-overlay {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* Field Change Indicators */
+.field-changed {
+    border-left: 3px solid var(--warning-color, #f59e0b) !important;
+    background: rgba(245, 158, 11, 0.05) !important;
+    transition: all var(--transition-fast, 0.2s ease);
+}
+
+.field-changed:focus {
+    border-left-color: var(--primary-color, #667eea) !important;
+    background: rgba(102, 126, 234, 0.05) !important;
+}
+
+/* Dark theme field change indicators */
+body.dark-theme .field-changed {
+    background: rgba(245, 158, 11, 0.1) !important;
+}
+
+body.dark-theme .field-changed:focus {
+    background: rgba(102, 126, 234, 0.1) !important;
+}

@@ -78,6 +78,12 @@ class AudioStackerApp {
             showToast('Failed to load AudioStacker. Please refresh the page.', 'error');
         } finally {
             showLoading(false);
+            
+            // Clean up any stuck progress overlays from previous sessions
+            document.querySelectorAll('.progress-overlay').forEach(overlay => {
+                console.log('Removing stuck progress overlay');
+                overlay.remove();
+            });
         }
     }
 
@@ -860,7 +866,14 @@ class AudioStackerApp {
             
             showToast('Saving changes...', 'info');
             
-            const result = await api.saveAudiobooks(state.get('audiobooks'));
+            // Wrap the audiobooks data in the expected structure for the backend
+            const audiobooksData = {
+                audiobooks: {
+                    author: state.get('audiobooks')
+                }
+            };
+            
+            const result = await api.saveAudiobooks(audiobooksData);
             
             // Handle different response formats - some APIs return success flag, others just return data
             const isSuccess = result.success === true || result.success === undefined;
@@ -884,10 +897,15 @@ class AudioStackerApp {
                 }
                 
                 // Clear all field change tracking and show visual feedback
-                this.clearAllFieldChanges();
+                if (typeof this.clearAllFieldChanges === 'function') {
+                    this.clearAllFieldChanges();
+                }
                 
                 // Hide progress indicators
                 bookCards.forEach(card => this.hideProgressOverlay(card));
+                
+                // Also clear any other stuck progress overlays
+                this.clearAllProgressOverlays();
                 
                 // Update stats if provided
                 if (result.stats) {
@@ -904,6 +922,9 @@ class AudioStackerApp {
             // Hide progress indicators on error
             const bookCards = document.querySelectorAll('.book-card.has-changes');
             bookCards.forEach(card => this.hideProgressOverlay(card));
+            
+            // Also clear any other stuck progress overlays
+            this.clearAllProgressOverlays();
             showToast('Failed to save changes', 'error');
         }
     }
@@ -1253,6 +1274,90 @@ class AudioStackerApp {
         console.log('Settings initialized');
     }
 
+    /**
+     * Track field changes for visual feedback
+     */
+    trackFieldChange(fieldId, oldValue, newValue) {
+        if (!this.fieldChangeTracking) {
+            this.fieldChangeTracking = new Map();
+        }
+        
+        this.fieldChangeTracking.set(fieldId, {
+            oldValue,
+            newValue,
+            timestamp: Date.now()
+        });
+        
+        // Mark the field as changed
+        const element = document.querySelector(`[data-field-id="${fieldId}"]`);
+        if (element) {
+            element.classList.add('field-changed');
+            element.setAttribute('title', `Changed from: "${oldValue}" to: "${newValue}"`);
+        }
+    }
+
+    /**
+     * Clear all field change tracking
+     */
+    clearAllFieldChanges() {
+        if (this.fieldChangeTracking) {
+            this.fieldChangeTracking.clear();
+        }
+        
+        // Remove visual indicators
+        document.querySelectorAll('.field-changed').forEach(element => {
+            element.classList.remove('field-changed');
+            element.removeAttribute('title');
+        });
+    }
+
+    /**
+     * Show progress overlay on a card
+     */
+    showProgressOverlay(card) {
+        if (!card) return;
+        
+        // Remove existing overlay
+        const existingOverlay = card.querySelector('.progress-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        // Create new overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'progress-overlay';
+        overlay.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Saving...</span>
+            </div>
+        `;
+        
+        card.style.position = 'relative';
+        card.appendChild(overlay);
+    }
+
+    /**
+     * Hide progress overlay on a card
+     */
+    hideProgressOverlay(card) {
+        if (!card) return;
+        
+        const overlay = card.querySelector('.progress-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    /**
+     * Clear all progress overlays (utility function)
+     */
+    clearAllProgressOverlays() {
+        document.querySelectorAll('.progress-overlay').forEach(overlay => {
+            overlay.remove();
+        });
+        console.log('Cleared all progress overlays');
+    }
+
     // Book completion utility methods
     isBookComplete(book) {
         const requiredFields = ['title'];
@@ -1322,8 +1427,8 @@ window.updateBookFieldEnhanced = function(authorName, bookIndex, field, value, e
     // Update the field using the standard function
     window.updateBookField(authorName, bookIndex, field, value);
     
-    // Track field change for visual feedback
-    if (window.app && element) {
+    // Track field change for visual feedback (only if app is ready)
+    if (window.app && typeof window.app.trackFieldChange === 'function' && element) {
         const fieldId = `${sanitizeId(authorName)}-${bookIndex}-${field}`;
         element.setAttribute('data-field-id', fieldId);
         window.app.trackFieldChange(fieldId, oldValue, value);
@@ -1348,8 +1453,8 @@ window.updateNarratorEnhanced = function(authorName, bookIndex, narratorIndex, v
         audiobooks[authorName][bookIndex].narrator[narratorIndex] = value;
         state.setAudiobooks(audiobooks);
         
-        // Track field change for visual feedback
-        if (window.app && element) {
+        // Track field change for visual feedback (only if app is ready)
+        if (window.app && typeof window.app.trackFieldChange === 'function' && element) {
             const fieldId = `${sanitizeId(authorName)}-${bookIndex}-narrator-${narratorIndex}`;
             element.setAttribute('data-field-id', fieldId);
             window.app.trackFieldChange(fieldId, oldValue, value);
@@ -1660,3 +1765,11 @@ function toggleAuthorCollapse(authorId) {
     collapsedAuthors[authorId] = !isCollapsed;
     localStorage.setItem('collapsedAuthors', JSON.stringify(collapsedAuthors));
 }
+
+// Global function to clear stuck overlays (for debugging)
+window.clearStuckOverlays = function() {
+    document.querySelectorAll('.progress-overlay').forEach(overlay => {
+        overlay.remove();
+    });
+    console.log('Manually cleared all progress overlays');
+};

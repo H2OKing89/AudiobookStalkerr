@@ -427,6 +427,16 @@
         
         // Initialize the main application
         document.addEventListener('DOMContentLoaded', () => {
+            // Prevent double initialization
+            if (window.appInitialized) {
+                console.log('App already initialized, skipping...');
+                return;
+            }
+            window.appInitialized = true;
+            
+            // Clear any stuck progress overlays
+            document.querySelectorAll('.progress-overlay').forEach(overlay => overlay.remove());
+            
             // Initialize global API
             if (!window.api && typeof AudioStackerAPI === 'function') {
                 try {
@@ -439,6 +449,7 @@
             if (window.AudioStackerApp) {
                 try {
                     window.app = new AudioStackerApp();
+                    window.app.init();
                 } catch (e) {
                     console.error('App initialization failed:', e);
                 }

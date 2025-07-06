@@ -297,11 +297,14 @@ async def get_audiobooks():
     return {"data": data, "stats": stats}
 
 @app.post("/api/audiobooks")
-async def save_audiobooks_api(audiobooks: dict):
+async def save_audiobooks_api(request: Request):
     """Save audiobooks data"""
     try:
+        audiobooks = await request.json()
+        
         # Validate the structure
         if "audiobooks" not in audiobooks or "author" not in audiobooks["audiobooks"]:
+            logger.error(f"Invalid structure - expected audiobooks.author, got keys: {list(audiobooks.keys())}")
             raise HTTPException(status_code=400, detail="Invalid audiobook data structure")
         
         if save_audiobooks(audiobooks):
