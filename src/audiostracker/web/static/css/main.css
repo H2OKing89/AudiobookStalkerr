@@ -1454,3 +1454,306 @@ datalist {
 .settings-close:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* Modern Modal Styles */
+.modal {
+    backdrop-filter: blur(8px);
+}
+
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-dialog {
+    margin: 2rem auto;
+    max-width: 600px;
+}
+
+.modal-dialog-centered {
+    min-height: calc(100vh - 4rem);
+}
+
+.modal-content {
+    background: var(--bg-primary, #ffffff);
+    border: 1px solid var(--border-light, #e2e8f0);
+    border-radius: var(--border-radius, 12px);
+    box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.15));
+    overflow: hidden;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+}
+
+.modal-header {
+    background: var(--bg-secondary, #f8f9fa);
+    border-bottom: 1px solid var(--border-light, #e2e8f0);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 70px;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a202c);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-title i {
+    color: var(--primary-color, #667eea);
+    font-size: 1.1em;
+}
+
+.modal-body {
+    padding: 2rem;
+    color: var(--text-primary, #2d3748);
+    line-height: 1.6;
+}
+
+.modal-body .form-label {
+    font-weight: 500;
+    color: var(--text-primary, #2d3748);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-body .form-label i {
+    color: var(--primary-color, #667eea);
+    font-size: 0.9em;
+}
+
+.modal-body .form-control {
+    border: 2px solid var(--border-light, #e2e8f0);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all var(--transition-fast, 0.2s ease);
+    background: var(--bg-primary, #ffffff);
+    color: var(--text-primary, #2d3748);
+}
+
+.modal-body .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color, #667eea);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: var(--bg-primary, #ffffff);
+}
+
+.modal-body .form-control::placeholder {
+    color: var(--text-muted, #718096);
+    opacity: 1;
+}
+
+.modal-body .form-text,
+.modal-body .help-block,
+.modal-body .form-helper,
+.modal-body small,
+.modal-body .text-muted {
+    color: var(--text-muted, #718096);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.modal-body .btn-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-muted, #718096);
+    opacity: 1;
+    transition: all var(--transition-fast, 0.2s ease);
+    padding: 0.5rem;
+    border-radius: 6px;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-body .btn-close:hover {
+    background: var(--danger-color, #ef4444);
+    color: white;
+    transform: scale(1.05);
+}
+
+.modal-footer {
+    background: var(--bg-secondary, #f8f9fa);
+    border-top: 1px solid var(--border-light, #e2e8f0);
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.modal-footer .btn {
+    min-width: 100px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all var(--transition-fast, 0.2s ease);
+}
+
+.modal-footer .btn-primary {
+    background: var(--primary-gradient, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.modal-footer .btn-secondary {
+    background: var(--bg-primary, #ffffff);
+    border: 2px solid var(--border-light, #e2e8f0);
+    color: var(--text-secondary, #64748b);
+}
+
+.modal-footer .btn-secondary:hover {
+    background: var(--bg-secondary, #f8f9fa);
+    border-color: var(--border-medium, #cbd5e0);
+    transform: translateY(-1px);
+}
+
+/* Specific Modal Variations */
+.modal-lg {
+    max-width: 900px;
+}
+
+.modal-sm {
+    max-width: 400px;
+}
+
+.modal-xl {
+    max-width: 1200px;
+}
+
+/* Keyboard Shortcuts Modal Specific Styles */
+.shortcuts-modal {
+    padding: 1.5rem 2rem;
+}
+
+.shortcuts-modal h6 {
+    color: var(--text-secondary, #64748b);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-light, #e2e8f0);
+    padding-bottom: 0.5rem;
+}
+
+.shortcut-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-light, #e2e8f0);
+}
+
+.shortcut-item:last-child {
+    border-bottom: none;
+}
+
+.shortcut-item span {
+    color: var(--text-primary, #2d3748);
+    font-size: 0.9rem;
+}
+
+.shortcut-keys {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.shortcut-key {
+    background: var(--bg-secondary, #f8f9fa);
+    border: 1px solid var(--border-light, #e2e8f0);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary, #64748b);
+    min-width: 2rem;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+/* Modal Animations */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    transform: translate(0, -50px) scale(0.95);
+    opacity: 0;
+}
+
+.modal.show .modal-dialog {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+}
+
+/* Modal Responsive Design */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1rem 1.5rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column-reverse;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+    
+    .shortcuts-modal .row {
+        flex-direction: column;
+    }
+    
+    .shortcuts-modal .col-md-6 {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+    }
+    
+    .modal-title {
+        font-size: 1.1rem;
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1rem;
+    }
+}

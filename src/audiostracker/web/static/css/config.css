@@ -189,23 +189,16 @@
   }
 }
 
-/* --- Modal Input Placeholder and Help Text Fixes --- */
-.modal-body input::placeholder,
-input.form-control::placeholder {
-  color: var(--text-muted);
-  opacity: 1;
-}
+/* Additional dark theme form text improvements */
 @media (prefers-color-scheme: dark) {
-  .modal-body input::placeholder,
   input.form-control::placeholder {
     color: #cbd5e1;
     opacity: 1;
   }
-  .modal-body .form-text,
-  .modal-body .help-block,
-  .modal-body .form-helper,
-  .modal-body small,
-  .modal-body .text-muted {
+  .form-text,
+  .help-block,
+  .form-helper,
+  small.text-muted {
     color: #cbd5e1 !important;
   }
 }

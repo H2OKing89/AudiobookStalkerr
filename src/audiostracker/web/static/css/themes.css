@@ -82,18 +82,92 @@ body.dark-theme .toast {
     color: #e2e8f0;
 }
 
+/* Dark Theme Modal Styles */
 body.dark-theme .modal-content {
-    background: #1a1a1a;
-    border: 1px solid #2d3748;
-    color: #e2e8f0;
+    background: var(--bg-primary, #1a1a1a);
+    border: 1px solid var(--border-light, #2d3748);
+    color: var(--text-primary, #e2e8f0);
 }
 
 body.dark-theme .modal-header {
-    border-bottom-color: #2d3748;
+    background: var(--bg-secondary, #0f1419);
+    border-bottom-color: var(--border-light, #2d3748);
 }
 
 body.dark-theme .modal-footer {
-    border-top-color: #2d3748;
+    background: var(--bg-secondary, #0f1419);
+    border-top-color: var(--border-light, #2d3748);
+}
+
+body.dark-theme .modal-title {
+    color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .modal-body .form-label {
+    color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .modal-body .form-control {
+    background: var(--bg-secondary, #0f1419);
+    border-color: var(--border-light, #2d3748);
+    color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .modal-body .form-control:focus {
+    background: var(--bg-secondary, #0f1419);
+    border-color: var(--primary-color, #667eea);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+body.dark-theme .modal-body .form-control::placeholder {
+    color: var(--text-muted, #718096);
+}
+
+body.dark-theme .modal-body .form-text,
+body.dark-theme .modal-body .help-block,
+body.dark-theme .modal-body .form-helper,
+body.dark-theme .modal-body small,
+body.dark-theme .modal-body .text-muted {
+    color: var(--text-muted, #718096);
+}
+
+body.dark-theme .btn-close {
+    color: var(--text-muted, #718096);
+}
+
+body.dark-theme .btn-close:hover {
+    background: var(--danger-color, #ef4444);
+    color: white;
+}
+
+body.dark-theme .modal-footer .btn-secondary {
+    background: var(--bg-secondary, #0f1419);
+    border-color: var(--border-light, #2d3748);
+    color: var(--text-secondary, #a0aec0);
+}
+
+body.dark-theme .modal-footer .btn-secondary:hover {
+    background: var(--bg-primary, #1a1a1a);
+    border-color: var(--border-medium, #4a5568);
+}
+
+body.dark-theme .shortcuts-modal h6 {
+    color: var(--text-secondary, #a0aec0);
+    border-bottom-color: var(--border-light, #2d3748);
+}
+
+body.dark-theme .shortcut-item {
+    border-bottom-color: var(--border-light, #2d3748);
+}
+
+body.dark-theme .shortcut-item span {
+    color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .shortcut-key {
+    background: var(--bg-secondary, #0f1419);
+    border-color: var(--border-light, #2d3748);
+    color: var(--text-secondary, #a0aec0);
 }
 
 body.dark-theme .btn-outline-primary {
