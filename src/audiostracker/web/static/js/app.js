@@ -1622,6 +1622,18 @@ window.exportCollection = function() {
     }
 };
 
+// Global wrapper for showAddAuthorModal
+window.showAddAuthorModal = function() {
+    if (window.modals && typeof window.modals.showAddAuthorModal === 'function') {
+        window.modals.showAddAuthorModal();
+    } else if (window.app && typeof window.app.showAddAuthorModal === 'function') {
+        window.app.showAddAuthorModal();
+    } else {
+        console.error('No showAddAuthorModal function available');
+        alert('Add Author feature is not available. Please refresh the page.');
+    }
+};
+
 // Global UI functions (called from HTML onclick handlers)
 function toggleAuthorCollapse(authorId) {
     const booksList = document.querySelector(`#books-${authorId}`);

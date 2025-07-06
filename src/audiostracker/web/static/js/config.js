@@ -362,9 +362,7 @@ function refreshData() {
 window.ConfigApp = ConfigApp;
 
 // Global stub functions for modal functionality (to be implemented)
-window.showAddAuthorModal = function() {
-    window.modals.showAddAuthorModal();
-};
+// Note: showAddAuthorModal is now defined in app.js
 
 window.showEditAuthorModal = function(authorName) {
     console.log('Edit Author modal for:', authorName);
@@ -386,13 +384,23 @@ window.showDeleteAuthorModal = function(authorName) {
 };
 
 window.showImportModal = function() {
-    console.log('Import modal - to be implemented');
-    // TODO: Implement import modal
+    console.log('showImportModal called from config.js');
+    if (window.modals && typeof window.modals.showImportModal === 'function') {
+        window.modals.showImportModal();
+    } else {
+        console.error('Modals module not available or showImportModal method not found');
+        alert('Import feature is not available. Please refresh the page.');
+    }
 };
 
 window.showQuickAddModal = function() {
-    console.log('Quick Add modal - to be implemented');
-    // TODO: Implement quick add modal
+    console.log('showQuickAddModal called from config.js');
+    if (window.modals && typeof window.modals.showQuickAddModal === 'function') {
+        window.modals.showQuickAddModal();
+    } else {
+        console.error('Modals module not available or showQuickAddModal method not found');
+        alert('Quick Add feature is not available. Please refresh the page.');
+    }
 };
 
 window.exportCollection = function() {
