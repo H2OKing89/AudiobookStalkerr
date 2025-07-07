@@ -603,32 +603,28 @@ class UpcomingModule extends window.BaseModule {
     renderListView() {
         return `
             <div class="list-group" role="list" aria-label="Upcoming audiobooks list">
-                ${this.filteredAudiobooks.map((book, index) => `
+                ${this.filteredAudiobooks.map((book, index) => {
+                    // Handle image with fallback - same logic as grid view
+                    const imageUrl = book.cover_url || book.image_url || '/static/images/og-image.png';
+                    
+                    return `
                     <article class="list-group-item" role="listitem" 
                              tabindex="0" 
                              aria-labelledby="book-title-list-${index}"
                              data-book-id="${book.id || index}">
                         <div class="row align-items-center">
-                            ${(book.cover_url || book.image_url) ? `
-                                <div class="col-auto">
-                                    <img data-src="${book.cover_url || book.image_url}" 
-                                         alt="Cover of ${this.escapeHtml(book.title)}" 
-                                         style="width: 60px; height: 60px; object-fit: cover;" 
-                                         class="rounded lazy-img"
-                                         loading="lazy">
-                                </div>
-                            ` : `
-                                <div class="col-auto">
-                                    <div class="d-flex align-items-center justify-content-center bg-light rounded" 
-                                         style="width: 60px; height: 60px;" aria-label="No cover image">
-                                        <i class="fas fa-book text-muted" aria-hidden="true"></i>
-                                    </div>
-                                </div>
-                            `}
+                            <div class="col-auto">
+                                <img src="${this.escapeHtml(imageUrl)}" 
+                                     alt="Cover of ${this.escapeHtml(book.title)}" 
+                                     style="width: 60px; height: 60px; object-fit: cover;" 
+                                     class="rounded"
+                                     onerror="this.src='/static/images/og-image.png';"
+                                     loading="lazy">
+                            </div>
                             <div class="col">
                                 <h6 class="mb-1" id="book-title-list-${index}">${this.escapeHtml(book.title)}</h6>
                                 <p class="mb-1 text-muted" aria-label="Author">${this.escapeHtml(book.author_name || book.author)}</p>
-                                ${book.series ? `<small class="text-secondary" aria-label="Series">${this.escapeHtml(book.series)}</small>` : ''}
+                                ${book.series ? `<small class="text-secondary" aria-label="Series">${this.escapeHtml(book.series)} ${(book.series_sequence || book.series_number) ? `#${book.series_sequence || book.series_number}` : ''}</small>` : ''}
                             </div>
                             <div class="col-auto">
                                 <span class="badge bg-primary" aria-label="Release date">${this.formatDate(book.release_date)}</span>
@@ -636,7 +632,8 @@ class UpcomingModule extends window.BaseModule {
                             </div>
                         </div>
                     </article>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         `;
     }
