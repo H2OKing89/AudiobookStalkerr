@@ -384,6 +384,13 @@ async def home(request: Request):
         "stats": stats
     })
 
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics(request: Request):
+    """Analytics dashboard page"""
+    return templates.TemplateResponse("analytics.html", {
+        "request": request
+    })
+
 # Legacy redirect for backward compatibility
 @app.get("/config", response_class=HTMLResponse)
 async def config_redirect():
@@ -419,6 +426,98 @@ async def get_upcoming():
 async def get_database_stats_api():
     """Get database statistics"""
     return get_database_stats()
+
+# Analytics API endpoints
+@app.get("/api/analytics/release-trends")
+async def get_release_trends():
+    """Get release trends data for analytics dashboard"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Get releases grouped by month for the next 12 months
+        cursor.execute("""
+            SELECT 
+                strftime('%Y-%m', release_date) as month,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+                AND release_date <= date('now', '+12 months')
+            GROUP BY month
+            ORDER BY month
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting release trends: {e}")
+        return {"labels": [], "values": []}
+
+@app.get("/api/analytics/top-authors")
+async def get_top_authors():
+    """Get top authors by number of upcoming releases"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                author,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+            GROUP BY author
+            ORDER BY count DESC
+            LIMIT 6
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting top authors: {e}")
+        return {"labels": [], "values": []}
+
+@app.get("/api/analytics/upcoming-count")
+async def get_upcoming_count():
+    """Get upcoming releases count by month"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                strftime('%Y-%m', release_date) as month,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+                AND release_date <= date('now', '+6 months')
+            GROUP BY month
+            ORDER BY month
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting upcoming count: {e}")
+        return {"labels": [], "values": []}
 
 @app.get("/api/audiobooks")
 async def get_audiobooks():

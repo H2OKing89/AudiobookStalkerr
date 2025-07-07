@@ -1,0 +1,25 @@
+/* Tailwind utilities with a scoped prefix to avoid conflicts */
+/* Only utilities, no base styles or components */
+
+/* Example scoped Tailwind utilities for future use */
+.tw-bg-blue-500 { background-color: #3b82f6; }
+.tw-bg-green-500 { background-color: #10b981; }
+.tw-bg-red-500 { background-color: #ef4444; }
+.tw-text-white { color: #ffffff; }
+.tw-p-4 { padding: 1rem; }
+.tw-p-2 { padding: 0.5rem; }
+.tw-m-4 { margin: 1rem; }
+.tw-m-2 { margin: 0.5rem; }
+.tw-rounded { border-radius: 0.25rem; }
+.tw-rounded-lg { border-radius: 0.5rem; }
+.tw-shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+.tw-shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+.tw-flex { display: flex; }
+.tw-flex-col { flex-direction: column; }
+.tw-items-center { align-items: center; }
+.tw-justify-center { justify-content: center; }
+.tw-justify-between { justify-content: space-between; }
+.tw-w-full { width: 100%; }
+.tw-h-full { height: 100%; }
+
+/* Add more utilities as needed */

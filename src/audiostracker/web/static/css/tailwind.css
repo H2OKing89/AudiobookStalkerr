@@ -1,3 +1,2 @@
-@tailwind base;
-@tailwind components;
+/* Only include Tailwind utilities, no base styles */
 @tailwind utilities;
