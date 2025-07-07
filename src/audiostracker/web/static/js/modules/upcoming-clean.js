@@ -315,7 +315,9 @@ class UpcomingModule extends window.BaseModule {
             // Date range filter with optimized date handling
             if (this.filters.dateRange && this.filters.dateRange !== 'all') {
                 if (!book._releaseDate) {
-                    book._releaseDate = new Date(book.release_date);
+                    // Parse date as local time to avoid timezone shifts
+                    const [year, month, day] = book.release_date.split('-').map(Number);
+                    book._releaseDate = new Date(year, month - 1, day);
                 }
                 
                 const releaseDate = book._releaseDate;
@@ -363,8 +365,11 @@ class UpcomingModule extends window.BaseModule {
 
             // Handle different data types
             if (this.sortBy === 'release_date') {
-                aValue = new Date(aValue);
-                bValue = new Date(bValue);
+                // Parse dates as local time to avoid timezone shifts
+                const [aYear, aMonth, aDay] = aValue.split('-').map(Number);
+                const [bYear, bMonth, bDay] = bValue.split('-').map(Number);
+                aValue = new Date(aYear, aMonth - 1, aDay);
+                bValue = new Date(bYear, bMonth - 1, bDay);
             } else if (typeof aValue === 'string') {
                 aValue = aValue.toLowerCase();
                 bValue = bValue.toLowerCase();
@@ -458,7 +463,9 @@ class UpcomingModule extends window.BaseModule {
         return `
             <div class="row g-4" role="grid" aria-label="Upcoming audiobooks grid">
                 ${this.filteredAudiobooks.map((book, index) => {
-                    const releaseDate = new Date(book.release_date);
+                    // Parse release date as local time to avoid timezone shifts
+                    const [year, month, day] = book.release_date.split('-').map(Number);
+                    const releaseDate = new Date(year, month - 1, day); // month is 0-indexed
                     const today = new Date();
                     const daysToRelease = Math.ceil((releaseDate - today) / (1000 * 60 * 60 * 24));
                     const isNewRelease = daysToRelease <= 7;
@@ -813,11 +820,17 @@ class UpcomingModule extends window.BaseModule {
     }
 
     formatDate(dateString) {
-        return new Date(dateString).toLocaleDateString();
+        // Parse date as local time to avoid timezone shifts
+        // Split YYYY-MM-DD and create date in local timezone
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day); // month is 0-indexed
+        return date.toLocaleDateString();
     }
 
     getTimeToRelease(dateString) {
-        const releaseDate = new Date(dateString);
+        // Parse date as local time to avoid timezone shifts
+        const [year, month, day] = dateString.split('-').map(Number);
+        const releaseDate = new Date(year, month - 1, day);
         const now = new Date();
         const diffTime = releaseDate - now;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
