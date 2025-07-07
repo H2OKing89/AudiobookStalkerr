@@ -370,7 +370,7 @@ class TableViewModule {
 window.showAuthorDetail = function(authorName) {
     // Navigate to author detail page
     const encodedName = encodeURIComponent(authorName);
-    window.location.href = `/authors/author/${encodedName}`;
+    window.location.href = `/authors/${encodedName}`;
 };
 
 window.editAuthor = function(authorName) {

@@ -3,7 +3,7 @@
  * Handles DataTables integration for large datasets
  */
 
-class TableViewModule extends BaseModule {
+class TableViewModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.dataTable = null;
@@ -41,7 +41,22 @@ class TableViewModule extends BaseModule {
             return;
         }
 
-        this.dataTable = tableElement.DataTable({
+        // Check if DataTable is already initialized
+        if ($.fn.DataTable.isDataTable('#authors-table')) {
+            console.log('DataTable already initialized, skipping');
+            return;
+        }
+
+        // Check if table has proper structure
+        const thead = tableElement.find('thead');
+        const tbody = tableElement.find('tbody');
+        if (thead.length === 0 || tbody.length === 0) {
+            console.warn('Table missing thead or tbody, skipping DataTable initialization');
+            return;
+        }
+
+        try {
+            this.dataTable = tableElement.DataTable({
             data: this.currentData,
             columns: [
                 { 
@@ -70,15 +85,18 @@ class TableViewModule extends BaseModule {
             language: {
                 emptyTable: 'No authors found'
             }
-        });
+            });
 
-        // Handle select all checkbox
-        $('#select-all').on('change', (e) => {
-            const checkboxes = this.dataTable.$('input[type="checkbox"]');
-            checkboxes.prop('checked', e.target.checked);
-        });
+            // Handle select all checkbox
+            $('#select-all').on('change', (e) => {
+                const checkboxes = this.dataTable.$('input[type="checkbox"]');
+                checkboxes.prop('checked', e.target.checked);
+            });
 
-        this.debug('DataTable initialized');
+            this.debug('DataTable initialized');
+        } catch (error) {
+            console.error('Error initializing DataTable:', error);
+        }
     }
 
     processDataForTable(authors) {
@@ -103,7 +121,7 @@ class TableViewModule extends BaseModule {
         return `
             <div>
                 <strong>
-                    <a href="/authors/author/${encodeURIComponent(authorName)}" class="text-decoration-none">
+                    <a href="/authors/${encodeURIComponent(authorName)}" class="text-decoration-none">
                         ${this.escapeHtml(authorName)}
                     </a>
                 </strong>
@@ -130,7 +148,7 @@ class TableViewModule extends BaseModule {
     createActionsCell(authorName) {
         return `
             <div class="btn-group">
-                <a href="/authors/author/${encodeURIComponent(authorName)}" class="btn btn-sm btn-outline-primary" title="View Details">
+                <a href="/authors/${encodeURIComponent(authorName)}" class="btn btn-sm btn-outline-primary" title="View Details">
                     <i class="fas fa-eye"></i>
                 </a>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteAuthor('${this.escapeHtml(authorName)}')" title="Delete">

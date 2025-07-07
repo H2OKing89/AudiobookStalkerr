@@ -3,7 +3,7 @@
  * Handles all API communication with the FastAPI backend
  */
 
-class APIModule extends BaseModule {
+class APIModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.baseURL = '';

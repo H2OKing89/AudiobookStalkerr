@@ -3,7 +3,7 @@
  * Manages the authors page and integrates all other modules
  */
 
-class AudiobookStalkerrApp extends BaseModule {
+class AudiobookStalkerrApp extends window.BaseModule {
     constructor(core) {
         super(core);
         this.authors = [];
@@ -15,6 +15,12 @@ class AudiobookStalkerrApp extends BaseModule {
     }
 
     async init() {
+        // Prevent double initialization
+        if (this.isInitialized) {
+            this.debug('App already initialized, skipping');
+            return;
+        }
+        
         await super.init();
         
         try {
@@ -55,24 +61,19 @@ class AudiobookStalkerrApp extends BaseModule {
     async loadInitialData() {
         // Load data from server-provided globals or API
         if (window.initialData) {
-            // Handle different data structures
-            let authorsData = window.initialData;
-            if (authorsData && typeof authorsData === 'object' && !Array.isArray(authorsData)) {
-                // Convert object format to array format
-                authorsData = this.convertObjectToArray(authorsData);
-            }
-            
-            this.authors = Array.isArray(authorsData) ? authorsData : [];
-            this.setState('audiobooks', this.authors);
+            // The data is already transformed by the backend
+            this.authors = Array.isArray(window.initialData) ? window.initialData : [];
         } else {
-            // Load from API
-            try {
-                const data = await this.api('GET', '/api/audiobooks');
-                this.authors = this.convertObjectToArray(data);
-                this.setState('audiobooks', this.authors);
-            } catch (error) {
-                console.error('Failed to load data from API:', error);
-                this.authors = [];
+            // Try to load from API
+            const api = this.getModule('api');
+            if (api) {
+                try {
+                    const data = await api.getAudiobooks();
+                    this.authors = Array.isArray(data) ? data : [];
+                } catch (error) {
+                    this.debug('Failed to load data from API:', error);
+                    this.authors = [];
+                }
             }
         }
 
@@ -398,8 +399,14 @@ class AudiobookStalkerrApp extends BaseModule {
         const container = document.getElementById('authors-container');
         const tableContainer = document.getElementById('authors-table-container');
         
+        // Only render if we're on a page that has these containers (authors page)
+        if (!container && !tableContainer) {
+            this.debug('Skipping render - not on authors page');
+            return;
+        }
+        
         if (!container || !tableContainer) {
-            console.error('Required containers not found');
+            this.debug('Partial containers found - limited rendering');
             return;
         }
 
@@ -464,7 +471,7 @@ class AudiobookStalkerrApp extends BaseModule {
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <h5 class="card-title mb-0">
-                                <a href="/authors/author/${encodeURIComponent(author.name)}" class="text-decoration-none">
+                                <a href="/authors/${encodeURIComponent(author.name)}" class="text-decoration-none">
                                     ${this.escapeHtml(author.name)}
                                 </a>
                             </h5>
@@ -473,7 +480,7 @@ class AudiobookStalkerrApp extends BaseModule {
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="/authors/author/${encodeURIComponent(author.name)}">
+                                    <a class="dropdown-item" href="/authors/${encodeURIComponent(author.name)}">
                                         <i class="fas fa-eye me-2"></i>View Details
                                     </a>
                                     <a class="dropdown-item" href="#" onclick="editAuthor('${this.escapeHtml(author.name)}')">
@@ -520,7 +527,7 @@ class AudiobookStalkerrApp extends BaseModule {
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <h6 class="mb-0">
-                            <a href="/authors/author/${encodeURIComponent(author.name)}" class="text-decoration-none">
+                            <a href="/authors/${encodeURIComponent(author.name)}" class="text-decoration-none">
                                 ${this.escapeHtml(author.name)}
                             </a>
                         </h6>
@@ -528,7 +535,7 @@ class AudiobookStalkerrApp extends BaseModule {
                     </div>
                 </div>
                 <div class="btn-group">
-                    <a href="/authors/author/${encodeURIComponent(author.name)}" class="btn btn-sm btn-outline-primary">
+                    <a href="/authors/${encodeURIComponent(author.name)}" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-eye"></i>
                     </a>
                     <button class="btn btn-sm btn-outline-secondary" onclick="editAuthor('${this.escapeHtml(author.name)}')">
@@ -773,3 +780,9 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = AudiobookStalkerrApp;
 }
+
+// Remove or comment out all references to editAuthor to prevent ReferenceError
+// If you want to keep the UI, define a global stub:
+window.editAuthor = function(authorName) {
+    alert('Edit author not implemented: ' + authorName);
+};

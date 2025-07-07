@@ -3,7 +3,7 @@
  * Handles all modal dialogs with modern browser APIs
  */
 
-class ModalsModule extends BaseModule {
+class ModalsModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.activeModals = new Map();

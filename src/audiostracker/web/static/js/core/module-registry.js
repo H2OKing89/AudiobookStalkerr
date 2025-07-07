@@ -58,6 +58,7 @@ class ModuleRegistry {
      */
     async initializeModule(name) {
         if (this.initialized.has(name)) {
+            this.core.debug(`Module ${name} already initialized, returning existing instance`);
             return this.getModuleInstance(name);
         }
 
@@ -65,6 +66,8 @@ class ModuleRegistry {
         if (!moduleData) {
             throw new Error(`Module ${name} not registered`);
         }
+
+        this.core.debug(`Starting initialization of module: ${name}`);
 
         try {
             // Initialize dependencies first
@@ -163,7 +166,7 @@ class ModuleRegistry {
         }
 
         return status;
-    }
+   }
 
     /**
      * Cleanup all modules
@@ -188,6 +191,13 @@ class ModuleRegistry {
         this.initialized.clear();
         this.initOrder = [];
     }
+
+    /**
+     * Check if a module is registered
+     */
+    isRegistered(name) {
+        return this.modules.has(name);
+    }
 }
 
 /**
@@ -206,7 +216,7 @@ class BaseModule {
      */
     async init() {
         this.isInitialized = true;
-        this.core.debug(`Base init for ${this.moduleName}`);
+        this.debug(`Base init for ${this.moduleName}`);
     }
 
     /**
@@ -214,69 +224,120 @@ class BaseModule {
      */
     destroy() {
         this.isInitialized = false;
-        this.core.debug(`Base destroy for ${this.moduleName}`);
+        this.debug(`Base destroy for ${this.moduleName}`);
     }
 
     /**
      * Emit an event through the core
      */
     emit(event, data) {
-        this.core.emit(event, data);
+        if (this.core && this.core.emit) {
+            this.core.emit(event, data);
+        }
     }
 
     /**
      * Listen to events through the core
      */
     on(event, handler) {
-        this.core.on(event, handler);
+        if (this.core && this.core.on) {
+            this.core.on(event, handler);
+        }
     }
 
     /**
      * Stop listening to events
      */
     off(event, handler) {
-        this.core.off(event, handler);
+        if (this.core && this.core.off) {
+            this.core.off(event, handler);
+        }
     }
 
     /**
      * Get another module
      */
     getModule(name) {
-        return this.core.getModule(name);
+        return this.core ? this.core.getModule(name) : null;
     }
 
     /**
      * API shortcut
      */
     async api(method, endpoint, data) {
-        return await this.core.api(method, endpoint, data);
+        if (this.core && this.core.api) {
+            return await this.core.api(method, endpoint, data);
+        }
+        throw new Error('Core not available');
     }
 
     /**
      * Notification shortcut
      */
     notify(message, type, duration) {
-        this.core.notify(message, type, duration);
+        if (this.core && this.core.notify) {
+            this.core.notify(message, type, duration);
+        }
     }
 
     /**
      * State shortcuts
      */
     setState(key, value) {
-        this.core.setState(key, value);
+        if (this.core && this.core.setState) {
+            this.core.setState(key, value);
+        }
     }
 
     getState(key) {
-        return this.core.getState(key);
+        return this.core && this.core.getState ? this.core.getState(key) : undefined;
     }
 
     /**
      * Debug logging
      */
     debug(...args) {
-        if (this.core.config.debug) {
+        if (this.core && this.core.config && this.core.config.debug) {
             console.log(`[${this.moduleName}]`, ...args);
         }
+    }
+
+    /**
+     * Warning logging
+     */
+    warn(...args) {
+        console.warn(`[${this.moduleName}]`, ...args);
+    }
+
+    /**
+     * Error logging
+     */
+    error(...args) {
+        console.error(`[${this.moduleName}]`, ...args);
+    }
+
+    /**
+     * Log message
+     */
+    log(...args) {
+        console.log(`[${this.moduleName}]`, ...args);
+    }
+
+    /**
+     * Utility method to generate unique IDs
+     */
+    generateId(prefix = 'id') {
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    /**
+     * Utility method to escape HTML
+     */
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 

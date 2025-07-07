@@ -3,7 +3,7 @@
  * Handles filtering and sorting functionality
  */
 
-class FiltersModule extends BaseModule {
+class FiltersModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.filterSelect = null;

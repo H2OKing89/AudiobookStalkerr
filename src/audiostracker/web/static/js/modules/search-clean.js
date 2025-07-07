@@ -3,7 +3,7 @@
  * Handles search functionality
  */
 
-class SearchModule extends BaseModule {
+class SearchModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.searchInput = null;
@@ -70,6 +70,10 @@ class SearchModule extends BaseModule {
 }
 
 // Register the module
+if (typeof window !== 'undefined') {
+    window.SearchModule = SearchModule;
+}
+
 if (typeof window !== 'undefined') {
     window.SearchModule = SearchModule;
 }

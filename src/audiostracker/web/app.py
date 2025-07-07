@@ -723,7 +723,7 @@ async def manual_start_test():
         logger.error(f"Error in manual start test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/authors/author/{author_name}", response_class=HTMLResponse)
+@app.get("/authors/{author_name}", response_class=HTMLResponse)
 async def author_detail_page(request: Request, author_name: str):
     """Author detail page for managing individual author's books"""
     try:
@@ -819,3 +819,37 @@ def transform_audiobooks_for_frontend(data):
         authors_list.append(author_obj)
     
     return authors_list
+
+@app.get("/")
+async def root():
+    """Root route that shows upcoming releases."""
+    try:
+        data = load_audiobooks()
+        # Calculate upcoming audiobooks and stats
+        upcoming = []
+        if 'audiobooks' in data and 'author' in data['audiobooks']:
+            # Flatten all books for all authors
+            for books in data['audiobooks']['author'].values():
+                for book in books:
+                    if book.get('release_date'):
+                        upcoming.append(book)
+        # Optionally, sort by release_date
+        upcoming = sorted(upcoming, key=lambda b: b.get('release_date', ''))
+        stats = get_stats(data)
+        return templates.TemplateResponse("upcoming.html", {
+            "request": {"url": "/"},
+            "upcoming_audiobooks": upcoming,
+            "stats": stats
+        })
+    except Exception as e:
+        print(f"Error in root route: {e}")
+        return templates.TemplateResponse("upcoming.html", {
+            "request": {"url": "/"},
+            "upcoming_audiobooks": [],
+            "stats": {
+                "total_books": 0,
+                "total_authors": 0,
+                "total_publishers": 0,
+                "total_narrators": 0
+            }
+        })

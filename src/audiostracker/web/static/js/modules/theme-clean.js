@@ -3,7 +3,7 @@
  * Handles theme switching and customization
  */
 
-class ThemeModule extends BaseModule {
+class ThemeModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.currentTheme = 'light';
@@ -14,6 +14,12 @@ class ThemeModule extends BaseModule {
     }
 
     async init() {
+        // Prevent double initialization
+        if (this.isInitialized) {
+            this.debug('Theme module already initialized, skipping');
+            return;
+        }
+        
         await super.init();
         this.loadTheme();
         this.setupEventListeners();
@@ -29,7 +35,14 @@ class ThemeModule extends BaseModule {
         if (!this.themes[themeName]) return;
         
         this.currentTheme = themeName;
-        this.setState('ui.theme', themeName);
+        
+        // Try to set state, but don't fail if state module isn't ready
+        try {
+            this.setState('ui.theme', themeName);
+        } catch (error) {
+            this.debug('Could not set theme in state module during initialization:', error.message);
+        }
+        
         this.applyTheme(themeName);
         localStorage.setItem('theme', themeName);
         

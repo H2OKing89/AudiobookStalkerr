@@ -27,7 +27,8 @@
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/buttons/3.0.0/css/buttons.bootstrap5.min.css" rel="stylesheet">
-    <link href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
+    <!-- Temporarily removing responsive CSS to debug issues -->
+    <!-- <link href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.bootstrap5.min.css" rel="stylesheet"> -->
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
@@ -433,8 +434,8 @@
     <script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/3.0.0/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/3.0.0/js/buttons.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/3.0.0/js/responsive.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/responsive/3.0.0/js/responsive.bootstrap5.min.js"></script>
+    <!-- Temporarily commenting out responsive JS to debug issues -->
+    <!-- <script src="https://cdn.datatables.net/responsive/3.0.0/js/responsive.bootstrap5.min.js"></script> -->
     
     <!-- Core Application Architecture -->
     <script src="/static/js/core/app-core.js"></script>
@@ -444,33 +445,41 @@
     <script src="/static/js/core/state.js"></script>
     <script src="/static/js/core/api-clean.js"></script>
     
+    <!-- Filters Module (ensure this is loaded before bootstrap.js) -->
+    <script src="/static/js/modules/filters-clean.js"></script>
     <!-- UI Modules -->
     <script src="/static/js/modules/toast-clean.js"></script>
     <script src="/static/js/modules/theme-clean.js"></script>
     <script src="/static/js/modules/modals-clean.js"></script>
     <script src="/static/js/modules/validation-clean.js"></script>
+    <script src="/static/js/modules/table-view-clean.js"></script>
     <script src="/static/js/modules/author-detail-clean.js"></script>
+    <script src="/static/js/modules/search-clean.js"></script>
+    
+    <!-- Main Application -->
+    <script src="/static/js/app-clean.js"></script>
     
     <!-- Application Bootstrap -->
     <script src="/static/js/bootstrap.js"></script>
 
     <!-- Initialize -->
     <script>
-        // Pass data from server
-        window.authorData = {
-            name: {{ author_name|tojson|safe }},
-            books: {{ author_books|tojson|safe }},
-            stats: {{ stats|tojson|safe }},
-            series: {{ series_data|tojson|safe }},
-            publishers: {{ publishers|tojson|safe }},
-            narrators: {{ narrators|tojson|safe }}
-        };
-        
-        // Initialize the application when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            // The bootstrap.js will handle initialization
-            console.log('Author detail page loaded with modular architecture');
-        });
+window.authorData = {
+  "name": {{ author_name|tojson|safe }},
+  "books": {{ author_books|tojson|safe }},
+  "stats": {{ stats|tojson|safe }},
+  "series": {{ series_data|tojson|safe }},
+  "publishers": {{ publishers|tojson|safe }},
+  "narrators": {{ narrators|tojson|safe }}
+};
+window.editBook = function(idx) { alert('Edit book not implemented: ' + idx); };
+window.duplicateBook = function(idx) { alert('Duplicate book not implemented: ' + idx); };
+window.deleteBook = function(idx) { alert('Delete book not implemented: ' + idx); };
+document.addEventListener('DOMContentLoaded', () => {
+  // The bootstrap.js will handle initialization
+  console.log('Author detail page loaded with modular architecture');
+  // DataTables initialization is now handled by the AuthorDetailModule
+});
     </script>
 </body>
 </html>

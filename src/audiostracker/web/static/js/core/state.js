@@ -3,7 +3,7 @@
  * Manages application state and data flow
  */
 
-class StateModule extends BaseModule {
+class StateModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.data = {
@@ -30,9 +30,41 @@ class StateModule extends BaseModule {
         this.subscribers = new Map();
         this.changeQueue = [];
         this.isProcessingChanges = false;
+        
+        // Simple localStorage wrapper
+        this.storage = {
+            get: (key, defaultValue = null) => {
+                try {
+                    const item = localStorage.getItem(key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch {
+                    return defaultValue;
+                }
+            },
+            set: (key, value) => {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                } catch (error) {
+                    console.warn('Failed to save to localStorage:', error);
+                }
+            },
+            remove: (key) => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    console.warn('Failed to remove from localStorage:', error);
+                }
+            }
+        };
     }
 
     async init() {
+        // Prevent double initialization
+        if (this.isInitialized) {
+            this.debug('State module already initialized, skipping');
+            return;
+        }
+        
         await super.init();
         
         // Load saved preferences
@@ -362,7 +394,7 @@ class StateModule extends BaseModule {
             // Set up cross-tab synchronization
             this.setupBroadcastChannel();
             
-            const saved = storage.get('AudiobookStalkerr-preferences', {});
+            const saved = this.storage.get('AudiobookStalkerr-preferences', {});
             
             if (saved.ui) {
                 Object.assign(this.data.ui, saved.ui);
@@ -427,7 +459,7 @@ class StateModule extends BaseModule {
      */
     savePreferences() {
         try {
-            storage.set('AudiobookStalkerr-preferences', {
+            this.storage.set('AudiobookStalkerr-preferences', {
                 ui: this.data.ui,
                 filters: this.data.filters
             });

@@ -3,9 +3,9 @@
  * Handles real-time validation, field error management, and accessibility
  */
 
-class ValidationModule extends window.AudiobookStalkerrCore.BaseModule {
-    constructor() {
-        super('validation', []);
+class ValidationModule extends window.BaseModule {
+    constructor(core) {
+        super(core);
         this.validators = new Map();
         this.debounceTimers = new Map();
         this.performanceObserver = null;
@@ -616,8 +616,8 @@ class ValidationModule extends window.AudiobookStalkerrCore.BaseModule {
 }
 
 // Register the module
-if (window.AudiobookStalkerrCore?.ModuleRegistry) {
-    window.AudiobookStalkerrCore.ModuleRegistry.register('validation', ValidationModule);
+if (typeof window !== 'undefined') {
+    window.ValidationModule = ValidationModule;
 }
 
 // Export for ES6 modules

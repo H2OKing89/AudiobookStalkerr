@@ -63,10 +63,8 @@ class AudiobookStalkerrCore {
         this.modules.set(name, moduleInstance);
         this.debug(`Registered module: ${name}`);
         
-        // If module has init method and core is already initialized, init the module
-        if (this.isInitialized && moduleInstance.init) {
-            moduleInstance.init();
-        }
+        // Module initialization is handled by ModuleRegistry, not here
+        // to prevent double initialization
         
         this.emit('module:registered', { name, module: moduleInstance });
     }

@@ -3,12 +3,22 @@
  * Manages individual author's book collection with DataTables integration
  */
 
-class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
-    constructor() {
-        super('authorDetail', ['api', 'toast', 'modals']);
+class AuthorDetailModule extends window.BaseModule {
+    constructor(core) {
+        super(core);
+        this.dependencies = ['api', 'toast', 'modals'];
     }
 
-    init() {
+    async init() {
+        // Call parent init first
+        await super.init();
+        
+        // Prevent double initialization (BaseModule sets isInitialized)
+        if (this.isInitialized && this.dataTable) {
+            this.debug('AuthorDetailModule already fully initialized, skipping');
+            return;
+        }
+        
         this.authorData = window.authorData || {};
         this.dataTable = null;
         this.currentViewMode = 'table';
@@ -225,14 +235,33 @@ class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
      * Initialize DataTable for books
      */
     initDataTable() {
-        if (this.dataTable) {
-            this.dataTable.destroy();
-        }
-
         const tableElement = document.getElementById('books-table');
         if (!tableElement) {
             this.warn('Books table element not found');
             return;
+        }
+
+        // Ensure jQuery and DataTables are available
+        if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined') {
+            this.warn('jQuery or DataTables not available, skipping DataTable initialization');
+            return;
+        }
+
+        // Check if DataTable is already initialized using jQuery DataTables API
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable && $.fn.DataTable.isDataTable(tableElement)) {
+            this.debug('DataTable already initialized, getting existing instance');
+            this.dataTable = $(tableElement).DataTable();
+            return;
+        }
+
+        // Destroy existing instance if we have a reference
+        if (this.dataTable) {
+            try {
+                this.dataTable.destroy();
+                this.dataTable = null;
+            } catch (error) {
+                this.warn('Error destroying existing DataTable:', error);
+            }
         }
 
         // Add accessibility attributes
@@ -240,7 +269,7 @@ class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
         tableElement.setAttribute('aria-label', `Books by ${this.authorData.name}`);
 
         this.dataTable = new DataTable(tableElement, {
-            responsive: true,
+            responsive: false,  // Temporarily disabled to fix errors
             pageLength: 25,
             lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
             order: [[1, 'asc']], // Sort by title
@@ -598,8 +627,13 @@ class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
      */
     openEditModal(bookId) {
         const modals = this.getModule('modals');
-        if (modals) {
-            modals.show('edit-book-modal', { bookId });
+        if (modals && modals.showModal) {
+            // For now, show a placeholder modal or alert
+            // TODO: Implement actual edit modal
+            alert(`Edit book feature not yet implemented for book ID: ${bookId}`);
+        } else {
+            console.warn('Modals module not available or missing showModal method');
+            alert(`Edit book feature not yet implemented for book ID: ${bookId}`);
         }
     }
 
@@ -608,8 +642,13 @@ class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
      */
     openDetailsModal(bookId) {
         const modals = this.getModule('modals');
-        if (modals) {
-            modals.show('book-details-modal', { bookId });
+        if (modals && modals.showModal) {
+            // For now, show a placeholder modal or alert
+            // TODO: Implement actual details modal
+            alert(`Book details feature not yet implemented for book ID: ${bookId}`);
+        } else {
+            console.warn('Modals module not available or missing showModal method');
+            alert(`Book details feature not yet implemented for book ID: ${bookId}`);
         }
     }
 
@@ -838,8 +877,8 @@ class AuthorDetailModule extends window.AudiobookStalkerrCore.BaseModule {
 }
 
 // Register the module
-if (window.AudiobookStalkerrCore?.ModuleRegistry) {
-    window.AudiobookStalkerrCore.ModuleRegistry.register('authorDetail', AuthorDetailModule);
+if (typeof window !== 'undefined') {
+    window.AuthorDetailModule = AuthorDetailModule;
 }
 
 // Export for ES6 modules

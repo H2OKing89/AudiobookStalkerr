@@ -562,9 +562,6 @@
     <script src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/3.0.0/js/responsive.bootstrap5.min.js"></script>
     
-    <!-- Fallback export helper (standalone) -->
-    <script src="/static/js/export-helper.js"></script>
-    
     <!-- New Modular Architecture -->
     <!-- Core Framework -->
     <script src="/static/js/core/app-core.js"></script>
@@ -580,12 +577,14 @@
     <script src="/static/js/modules/search-clean.js"></script>
     <script src="/static/js/modules/filters-clean.js"></script>
     <script src="/static/js/modules/modals-clean.js"></script>
+    <script src="/static/js/modules/validation-clean.js"></script>
     <script src="/static/js/modules/table-view-clean.js"></script>
+    <script src="/static/js/modules/author-detail-clean.js"></script>
     
     <!-- Main Application -->
     <script src="/static/js/app-clean.js"></script>
     
-    <!-- Bootstrap Script -->
+    <!-- Application Bootstrap -->
     <script src="/static/js/bootstrap.js"></script>
 
     <!-- Initialize app data -->
@@ -656,33 +655,9 @@
         window.showManualStartConfirmation = showManualStartConfirmation;
         window.runManualStart = runManualStart;
     </script>
-                try {
-                    window.api = new AudiobookStalkerrAPI();
-                } catch (e) {
-                    console.error('API initialization failed:', e);
-                }
-            }
-            
-            if (window.AuthorsApp) {
-                try {
-                    window.authorsApp = new AuthorsApp();
-                    window.authorsApp.init();
-                    
-                    // Load data into table view after a delay to ensure everything is ready
-                    setTimeout(() => {
-                        if (window.initialData && window.tableView) {
-                            window.tableView.loadData(window.initialData);
-                        }
-                    }, 500);
-                    
-                } catch (e) {
-                    console.error('Authors app initialization failed:', e);
-                }
-            } else {
-                console.error('AuthorsApp not available');
-            }
-        });
-        
+
+    <!-- Legacy compatibility script -->
+    <script>
         // Enhanced setViewMode function to handle table view
         window.setViewMode = function(mode) {
             console.log('Setting view mode to:', mode);
@@ -692,8 +667,8 @@
                 document.getElementById('table-view')?.checked && (document.getElementById('table-view').checked = true);
             } else {
                 window.tableView?.hide();
-                if (window.authorsApp) {
-                    window.authorsApp.setViewMode(mode);
+                if (window.app) {
+                    window.app.setViewMode(mode);
                 }
             }
             
@@ -705,6 +680,38 @@
                 }
             });
         };
+
+        // Check if modular architecture is initialized and if not, initialize legacy code
+        document.addEventListener('DOMContentLoaded', function() {
+            // If the app hasn't been initialized by the modular architecture
+            if (!window.app) {
+                console.log('Falling back to legacy initialization');
+                try {
+                    if (typeof AudiobookStalkerrAPI === 'function') {
+                        window.api = new AudiobookStalkerrAPI();
+                    }
+                } catch (e) {
+                    console.error('API initialization failed:', e);
+                }
+                
+                if (typeof AudiobookStalkerrApp === 'function') {
+                    try {
+                        window.app = new AudiobookStalkerrApp();
+                        window.app.init();
+                        
+                        // Load data into table view after a delay to ensure everything is ready
+                        setTimeout(() => {
+                            if (window.initialData && window.tableView) {
+                                window.tableView.loadData(window.initialData);
+                            }
+                        }, 500);
+                    } catch (e) {
+                        console.error('App initialization failed:', e);
+                    }
+                }
+            }
+        });
     </script>
 </body>
+</html>
 </html>

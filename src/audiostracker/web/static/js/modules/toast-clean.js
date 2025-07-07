@@ -3,7 +3,7 @@
  * Handles all toast notifications and user feedback
  */
 
-class ToastModule extends BaseModule {
+class ToastModule extends window.BaseModule {
     constructor(core) {
         super(core);
         this.toastContainer = null;

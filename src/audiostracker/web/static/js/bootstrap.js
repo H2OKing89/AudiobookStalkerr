@@ -8,11 +8,14 @@
 
     // Prevent multiple initialization
     if (window.AudiobookStalkerrInitialized) {
-        console.warn('AudiobookStalkerr already initialized');
+        console.warn('AudiobookStalkerr already initialized, skipping');
         return;
     }
 
     console.log('AudiobookStalkerr Bootstrap starting...');
+    
+    // Set flag immediately to prevent race conditions
+    window.AudiobookStalkerrInitialized = true;
 
     // Wait for DOM and dependencies to be ready
     function waitForDependencies() {
@@ -64,27 +67,53 @@
             const registry = new ModuleRegistry(window.appCore);
 
             // Register core modules
-            registry.register('state', StateModule, []);
-            registry.register('api', APIModule, []);
-            registry.register('toast', ToastModule, []);
+            if (typeof StateModule !== 'undefined') {
+                registry.register('state', StateModule, []);
+            }
+            if (typeof APIModule !== 'undefined') {
+                registry.register('api', APIModule, []);
+            }
+            if (typeof ToastModule !== 'undefined') {
+                registry.register('toast', ToastModule, []);
+            }
             
             // Register UI modules  
-            registry.register('theme', ThemeModule, ['state']);
-            registry.register('search', SearchModule, ['state']);
-            registry.register('filters', FiltersModule, ['state']);
-            registry.register('modals', ModalsModule, ['api', 'toast']);
-            registry.register('tableView', TableViewModule, ['state']);
+            if (typeof ThemeModule !== 'undefined') {
+                registry.register('theme', ThemeModule, ['state']);
+            }
+            if (typeof SearchModule !== 'undefined') {
+                registry.register('search', SearchModule, ['state']);
+            }
+            if (typeof FiltersModule !== 'undefined') {
+                registry.register('filters', FiltersModule, ['state']);
+            }
+            if (typeof ModalsModule !== 'undefined') {
+                registry.register('modals', ModalsModule, ['api', 'toast']);
+            }
+            if (typeof TableViewModule !== 'undefined') {
+                registry.register('tableView', TableViewModule, ['state']);
+            }
             
             // Register utility modules
-            registry.register('validation', ValidationModule, []);
-            registry.register('export', ExportModule, ['toast', 'api']);
+            if (typeof ValidationModule !== 'undefined') {
+                registry.register('validation', ValidationModule, []);
+            }
+            if (typeof ExportModule !== 'undefined') {
+                registry.register('export', ExportModule, ['toast', 'api']);
+            }
             
             // Register page-specific modules
-            registry.register('upcoming', UpcomingModule, ['search', 'filters', 'api']);
-            registry.register('authorDetail', AuthorDetailModule, ['api', 'toast', 'modals']);
+            if (typeof UpcomingModule !== 'undefined') {
+                registry.register('upcoming', UpcomingModule, ['search', 'filters', 'api']);
+            }
+            if (typeof AuthorDetailModule !== 'undefined') {
+                registry.register('authorDetail', AuthorDetailModule, ['api', 'toast', 'modals']);
+            }
             
             // Register main application
-            registry.register('app', AudiobookStalkerrApp, ['state', 'api', 'toast']);
+            if (typeof AudiobookStalkerrApp !== 'undefined') {
+                registry.register('app', AudiobookStalkerrApp, ['state', 'api', 'toast']);
+            }
 
             // Initialize all modules
             const success = await registry.initializeAll();
@@ -142,19 +171,16 @@
             switch (currentPage) {
                 case 'upcoming':
                     if (registry.isRegistered('upcoming')) {
-                        await window.appCore.initModule('upcoming');
-                        console.log('✓ Initialized upcoming module for upcoming page');
+                        console.log('✓ Upcoming module already initialized');
                     }
                     break;
                     
                 case 'author-detail':
                     if (registry.isRegistered('authorDetail')) {
-                        await window.appCore.initModule('authorDetail');
-                        console.log('✓ Initialized authorDetail module for author detail page');
+                        console.log('✓ AuthorDetail module already initialized');
                     }
                     if (registry.isRegistered('validation')) {
-                        await window.appCore.initModule('validation');
-                        console.log('✓ Initialized validation module for author detail page');
+                        console.log('✓ Validation module already initialized');
                     }
                     break;
                     
@@ -164,10 +190,9 @@
                     break;
             }
             
-            // Always initialize export module if available
+            // Always check export module if available
             if (registry.isRegistered('export') && !window.appCore.getModule('export')) {
-                await window.appCore.initModule('export');
-                console.log('✓ Initialized export module');
+                console.log('Export module registered but not initialized');
             }
             
         } catch (error) {

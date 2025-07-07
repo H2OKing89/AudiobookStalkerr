@@ -3,9 +3,10 @@
  * Handles data export operations with loading states and notifications
  */
 
-class ExportModule extends window.AudiobookStalkerrCore.BaseModule {
-    constructor() {
-        super('export', ['toast', 'api']);
+class ExportModule extends window.BaseModule {
+    constructor(core) {
+        super(core);
+        this.dependencies = ['toast', 'api'];
     }
 
     init() {
@@ -508,8 +509,8 @@ class ExportModule extends window.AudiobookStalkerrCore.BaseModule {
 }
 
 // Register the module
-if (window.AudiobookStalkerrCore?.ModuleRegistry) {
-    window.AudiobookStalkerrCore.ModuleRegistry.register('export', ExportModule);
+if (typeof window !== 'undefined') {
+    window.ExportModule = ExportModule;
 }
 
 // Maintain backward compatibility - expose global function

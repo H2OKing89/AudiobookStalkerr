@@ -3,9 +3,10 @@
  * Handles display and filtering of upcoming audiobook releases
  */
 
-class UpcomingModule extends window.AudiobookStalkerrCore.BaseModule {
-    constructor() {
-        super('upcoming', ['search', 'filters', 'api']);
+class UpcomingModule extends window.BaseModule {
+    constructor(core) {
+        super(core);
+        this.dependencies = ['search', 'filters', 'api'];
     }
 
     init() {
@@ -745,8 +746,8 @@ class UpcomingModule extends window.AudiobookStalkerrCore.BaseModule {
 }
 
 // Register the module
-if (window.AudiobookStalkerrCore?.ModuleRegistry) {
-    window.AudiobookStalkerrCore.ModuleRegistry.register('upcoming', UpcomingModule);
+if (typeof window !== 'undefined') {
+    window.UpcomingModule = UpcomingModule;
 }
 
 // Export for ES6 modules
