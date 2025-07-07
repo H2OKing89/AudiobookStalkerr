@@ -5,7 +5,7 @@ A modern, modular web interface for managing new audiobook feeds.
 """
 
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -853,3 +853,40 @@ async def root():
                 "total_narrators": 0
             }
         })
+
+@app.get("/api/ical/download/{asin}")
+async def download_ical(asin: str):
+    """Download iCal file for a specific audiobook by ASIN"""
+    try:
+        # Get upcoming audiobooks data
+        upcoming_audiobooks = get_upcoming_audiobooks()
+        
+        # Find the audiobook by ASIN
+        audiobook = None
+        for book in upcoming_audiobooks:
+            if book.get('asin') == asin:
+                audiobook = book
+                break
+        
+        if not audiobook:
+            raise HTTPException(status_code=404, detail=f"Audiobook with ASIN {asin} not found")
+        
+        # Create iCal content using the simple function
+        ical_content = create_simple_ical_event(audiobook)
+        
+        # Prepare filename
+        title = audiobook.get('title', 'audiobook').replace(' ', '_').replace('/', '_')
+        filename = f"{title}_{asin}.ics"
+        
+        return Response(
+            ical_content,
+            media_type="text/calendar",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating iCal for {asin}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

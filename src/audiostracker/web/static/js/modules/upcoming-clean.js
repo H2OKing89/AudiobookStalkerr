@@ -139,6 +139,18 @@ class UpcomingModule extends window.BaseModule {
             this.applyFilters();
         });
         
+        // iCal download button handler
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-ical')) {
+                e.preventDefault();
+                const button = e.target.closest('.btn-ical');
+                const asin = button.dataset.asin;
+                if (asin) {
+                    this.downloadIcal(asin);
+                }
+            }
+        });
+        
         // Global keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
@@ -212,14 +224,14 @@ class UpcomingModule extends window.BaseModule {
             
             // Try to get data from window first (server-rendered)
             if (window.upcomingAudiobooks) {
-                this.audiobooks = window.upcomingAudiobooks;
+                this.audiobooks = this.normalizeAudiobooks(window.upcomingAudiobooks);
             } else {
                 // Fetch from API with abort controller
                 const api = this.getModule('api');
                 const response = await api.get('/api/upcoming', {
                     signal: this.abortController.signal
                 });
-                this.audiobooks = response.data || [];
+                this.audiobooks = this.normalizeAudiobooks(response.data || []);
             }
 
             this.filteredAudiobooks = [...this.audiobooks];
@@ -250,6 +262,24 @@ class UpcomingModule extends window.BaseModule {
     }
 
     /**
+     * Normalize audiobook data from backend to frontend expected format
+     */
+    normalizeAudiobooks(audiobooks) {
+        return audiobooks.map(book => ({
+            // Preserve original fields
+            ...book,
+            // Add normalized field names for frontend compatibility
+            id: book.asin || book.id,
+            author_name: book.author_name || book.author,
+            cover_url: book.cover_url || book.image_url,
+            audible_url: book.audible_url || book.link,
+            series_sequence: book.series_sequence || book.series_number,
+            // Add price if available (currently not in backend but could be added)
+            price: book.price || null
+        }));
+    }
+
+    /**
      * Apply current filters to audiobooks
      */
     applyFilters() {
@@ -264,7 +294,7 @@ class UpcomingModule extends window.BaseModule {
                 if (!book._searchCache) {
                     book._searchCache = [
                         book.title,
-                        book.author_name,
+                        book.author_name || book.author,
                         book.series,
                         book.narrator
                     ].filter(Boolean).join(' ').toLowerCase();
@@ -426,38 +456,150 @@ class UpcomingModule extends window.BaseModule {
      */
     renderGridView() {
         return `
-            <div class="row g-3" role="grid" aria-label="Upcoming audiobooks grid">
-                ${this.filteredAudiobooks.map((book, index) => `
-                    <div class="col-md-6 col-lg-4 col-xl-3" role="gridcell">
-                        <article class="card h-100" tabindex="0" role="article" 
+            <div class="row g-4" role="grid" aria-label="Upcoming audiobooks grid">
+                ${this.filteredAudiobooks.map((book, index) => {
+                    const releaseDate = new Date(book.release_date);
+                    const today = new Date();
+                    const daysToRelease = Math.ceil((releaseDate - today) / (1000 * 60 * 60 * 24));
+                    const isNewRelease = daysToRelease <= 7;
+                    const isComingSoon = daysToRelease <= 30;
+                    
+                    // Format release date
+                    const formattedDate = releaseDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    
+                    // Handle image with fallback
+                    const imageUrl = book.cover_url || book.image_url || '/static/images/og-image.png';
+                    const hasValidImage = book.cover_url || book.image_url;
+                    
+                    // Handle description with truncation
+                    const description = book.merchandising_summary || book.description || '';
+                    const cleanDescription = this.stripHtml(description);
+                    const truncatedDescription = cleanDescription.length > 150 ? 
+                        cleanDescription.substring(0, 150) + '...' : cleanDescription;
+                    
+                    // Publisher name handling
+                    const publisherName = book.publisher_name || book.publisher || 'Unknown Publisher';
+                    
+                    return `
+                    <div class="col-lg-4 col-md-6 col-sm-12" role="gridcell">
+                        <article class="card h-100 audiobook-card ${isNewRelease ? 'border-danger' : isComingSoon ? 'border-warning' : ''}" 
+                                 tabindex="0" role="article" 
                                  aria-labelledby="book-title-${index}" 
-                                 data-book-id="${book.id || index}">
-                            ${book.cover_url ? `
-                                <img data-src="${book.cover_url}" 
-                                     class="card-img-top lazy-img" 
-                                     alt="Cover of ${this.escapeHtml(book.title)}" 
-                                     style="height: 200px; object-fit: cover;"
-                                     loading="lazy">
-                            ` : `
-                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" 
-                                     style="height: 200px;" aria-label="No cover image">
-                                    <i class="fas fa-book fa-3x text-muted" aria-hidden="true"></i>
+                                 data-book-id="${book.id || book.asin || index}">
+                            
+                            <!-- Card Header with Author and Actions -->
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 text-primary">${this.escapeHtml(book.author_name || book.author)}</h6>
+                                <div class="btn-group d-flex gap-2 align-items-center">
+                                    ${isNewRelease ? 
+                                        '<span class="badge bg-danger">This Week</span>' : 
+                                        isComingSoon ? 
+                                        '<span class="badge bg-warning">This Month</span>' : ''
+                                    }
+                                    <button class="btn btn-sm btn-outline-success btn-ical" 
+                                            data-asin="${book.asin || book.id}"
+                                            title="Download calendar event (.ics file)"
+                                            aria-label="Download calendar event for ${this.escapeHtml(book.title)}">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </button>
                                 </div>
-                            `}
-                            <div class="card-body d-flex flex-column">
-                                <h5 class="card-title" id="book-title-${index}">${this.escapeHtml(book.title)}</h5>
-                                <p class="card-text text-muted" aria-label="Author">${this.escapeHtml(book.author_name)}</p>
-                                ${book.series ? `<p class="card-text text-secondary small" aria-label="Series">${this.escapeHtml(book.series)}</p>` : ''}
-                                <div class="mt-auto">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="badge bg-primary" aria-label="Release date">${this.formatDate(book.release_date)}</span>
-                                        <small class="text-muted" aria-label="Time to release">${this.getTimeToRelease(book.release_date)}</small>
+                            </div>
+                            
+                            <!-- Card Body -->
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="book-cover mb-3">
+                                            ${hasValidImage ? `
+                                                <img src="${this.escapeHtml(imageUrl)}" 
+                                                     alt="Cover of ${this.escapeHtml(book.title)}" 
+                                                     class="book-cover-img"
+                                                     onerror="this.src='/static/images/og-image.png';"
+                                                     loading="lazy">
+                                            ` : `
+                                                <div class="book-cover-fallback">
+                                                    <i class="fas fa-headphones" aria-hidden="true"></i>
+                                                    <div class="fallback-text">No Cover</div>
+                                                </div>
+                                            `}
+                                        </div>
+                                    </div>
+                                    <div class="col-8">
+                                        <h5 class="card-title" id="book-title-${index}">${this.escapeHtml(book.title)}</h5>
+                                        ${book.series ? `
+                                            <p class="text-muted mb-2">
+                                                <i class="fas fa-list me-1"></i>
+                                                ${this.escapeHtml(book.series)} 
+                                                ${(book.series_sequence || book.series_number) ? `#${book.series_sequence || book.series_number}` : ''}
+                                            </p>
+                                        ` : ''}
+                                        ${book.narrator ? `
+                                            <p class="text-muted mb-2">
+                                                <i class="fas fa-microphone me-1"></i>
+                                                ${this.escapeHtml(book.narrator)}
+                                            </p>
+                                        ` : ''}
+                                        <p class="text-muted mb-3">
+                                            <i class="fas fa-building me-1"></i>
+                                            ${this.escapeHtml(publisherName)}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                ${truncatedDescription ? `
+                                    <div class="book-description mb-3">
+                                        <p class="text-muted small">${this.escapeHtml(truncatedDescription)}</p>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="release-info">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-calendar-day text-primary me-2"></i>
+                                        <span class="fw-bold">${formattedDate}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock text-muted me-2"></i>
+                                        <span class="text-muted">${daysToRelease} days from now</span>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Card Footer -->
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="metadata-info">
+                                        ${book.asin ? `
+                                            <span class="badge">
+                                                <i class="fas fa-tag me-1"></i>ASIN: ${book.asin}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    ${(book.audible_url || book.link) ? `
+                                        <a href="${this.escapeHtml(book.audible_url || book.link)}" 
+                                           target="_blank" 
+                                           rel="noopener"
+                                           class="btn btn-sm btn-outline-primary"
+                                           aria-label="View ${this.escapeHtml(book.title)} on Audible">
+                                            <i class="fas fa-external-link-alt me-1"></i>View on Audible
+                                        </a>
+                                    ` : ''}
+                                </div>
+                                ${book.last_checked ? `
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-sync me-1"></i>
+                                        Updated: ${new Date(book.last_checked).toLocaleDateString()}
+                                    </small>
+                                ` : ''}
+                            </div>
                         </article>
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         `;
     }
@@ -474,9 +616,9 @@ class UpcomingModule extends window.BaseModule {
                              aria-labelledby="book-title-list-${index}"
                              data-book-id="${book.id || index}">
                         <div class="row align-items-center">
-                            ${book.cover_url ? `
+                            ${(book.cover_url || book.image_url) ? `
                                 <div class="col-auto">
-                                    <img data-src="${book.cover_url}" 
+                                    <img data-src="${book.cover_url || book.image_url}" 
                                          alt="Cover of ${this.escapeHtml(book.title)}" 
                                          style="width: 60px; height: 60px; object-fit: cover;" 
                                          class="rounded lazy-img"
@@ -492,7 +634,7 @@ class UpcomingModule extends window.BaseModule {
                             `}
                             <div class="col">
                                 <h6 class="mb-1" id="book-title-list-${index}">${this.escapeHtml(book.title)}</h6>
-                                <p class="mb-1 text-muted" aria-label="Author">${this.escapeHtml(book.author_name)}</p>
+                                <p class="mb-1 text-muted" aria-label="Author">${this.escapeHtml(book.author_name || book.author)}</p>
                                 ${book.series ? `<small class="text-secondary" aria-label="Series">${this.escapeHtml(book.series)}</small>` : ''}
                             </div>
                             <div class="col-auto">
@@ -675,6 +817,11 @@ class UpcomingModule extends window.BaseModule {
         return div.innerHTML;
     }
 
+    truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        return text.substring(0, maxLength).trim() + '...';
+    }
+
     formatDate(dateString) {
         return new Date(dateString).toLocaleDateString();
     }
@@ -691,6 +838,46 @@ class UpcomingModule extends window.BaseModule {
         if (diffDays < 7) return `${diffDays} days`;
         if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks`;
         return `${Math.ceil(diffDays / 30)} months`;
+    }
+
+    /**
+     * Strip HTML tags from text
+     */
+    stripHtml(html) {
+        if (!html) return '';
+        // Create a temporary div to parse HTML and extract text content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        return tempDiv.textContent || tempDiv.innerText || '';
+    }
+
+    /**
+     * Download iCal file for audiobook
+     */
+    downloadIcal(asin) {
+        if (!asin) {
+            console.warn('No ASIN provided for iCal download');
+            return;
+        }
+        
+        // Create download URL for iCal export
+        const downloadUrl = `/api/ical/download/${asin}`;
+        
+        // Create temporary link element
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `audiobook-${asin}.ics`;
+        link.style.display = 'none';
+        
+        // Add to DOM, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show success notification
+        this.core.showToast && this.core.showToast('Calendar event downloaded', 'success');
+        
+        this.log(`Downloaded iCal for ASIN: ${asin}`);
     }
 
     /**
@@ -744,6 +931,26 @@ class UpcomingModule extends window.BaseModule {
         super.destroy();
     }
 }
+
+// Register the module
+if (typeof window !== 'undefined') {
+    window.UpcomingModule = UpcomingModule;
+}
+
+// Export for ES6 modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = UpcomingModule;
+}
+
+// Make downloadIcal globally accessible for backward compatibility
+window.downloadIcal = function(asin) {
+    const upcomingModule = window.AppCore?.getModule?.('upcoming');
+    if (upcomingModule && upcomingModule.downloadIcal) {
+        upcomingModule.downloadIcal(asin);
+    } else {
+        console.warn('UpcomingModule not available for iCal download');
+    }
+};
 
 // Register the module
 if (typeof window !== 'undefined') {

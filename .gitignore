@@ -20,3 +20,4 @@ data/
 .last_vacuum
 src/audiostracker/config/*.json
 .vscode/
+backups/legacy
