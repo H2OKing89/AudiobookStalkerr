@@ -27,8 +27,8 @@ class ThemeModule extends window.BaseModule {
     }
 
     loadTheme() {
-        const savedTheme = this.getState('ui.theme') || localStorage.getItem('theme') || 'light';
-        this.setTheme(savedTheme);
+        // Always use dark theme - no toggle, no user preference
+        this.setTheme('dark');
     }
 
     setTheme(themeName) {

@@ -6,7 +6,6 @@ Validation script to check if the JavaScript stabilization fixes are working
 import requests
 import re
 import time
-from bs4 import BeautifulSoup
 
 def test_page_loads(url, page_name):
     """Test if a page loads without server errors"""
@@ -24,10 +23,14 @@ def test_page_loads(url, page_name):
 
 def check_script_duplicates(html_content, page_name):
     """Check for duplicate script tags in HTML"""
-    soup = BeautifulSoup(html_content, 'html.parser')
-    scripts = soup.find_all('script', src=True)
+    if not html_content:
+        print(f"✗ {page_name} has no content to check")
+        return False
+        
+    # Simple pattern matching for script tags
+    script_pattern = r'<script[^>]*src="([^"]*)"[^>]*>'
+    script_srcs = re.findall(script_pattern, html_content)
     
-    script_srcs = [script.get('src') for script in scripts if script.get('src')]
     duplicates = []
     seen = set()
     
@@ -72,18 +75,19 @@ def main():
             all_passed = False
             
         # Count script tags for information
-        soup = BeautifulSoup(html, 'html.parser')
-        script_count = len(soup.find_all('script', src=True))
-        print(f"  - Total script tags: {script_count}")
-        
-        # Check for specific patterns that indicate fixes
-        if 'bootstrap.js' in html:
-            bootstrap_count = html.count('bootstrap.js')
-            if bootstrap_count == 1:
-                print(f"✓ bootstrap.js loaded exactly once")
-            else:
-                print(f"✗ bootstrap.js loaded {bootstrap_count} times")
-                all_passed = False
+        if html:
+            script_count = len(re.findall(r'<script[^>]*src="[^"]*"[^>]*>', html))
+            print(f"  - Total script tags: {script_count}")
+            
+            # Check for specific patterns that indicate fixes
+            if html and 'bootstrap.js' in html:
+                # Count actual script tags, not just text occurrences
+                bootstrap_script_count = len(re.findall(r'<script[^>]*src="[^"]*bootstrap\.js"[^>]*>', html))
+                if bootstrap_script_count == 1:
+                    print(f"✓ bootstrap.js script tag appears exactly once")
+                else:
+                    print(f"✗ bootstrap.js script tag appears {bootstrap_script_count} times")
+                    all_passed = False
     
     print(f"\n=== VALIDATION RESULT ===")
     if all_passed:
