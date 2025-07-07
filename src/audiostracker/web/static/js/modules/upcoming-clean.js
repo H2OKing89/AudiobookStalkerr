@@ -474,7 +474,7 @@ class UpcomingModule extends window.BaseModule {
                     
                     // Handle image with fallback
                     const imageUrl = book.cover_url || book.image_url || '/static/images/og-image.png';
-                    const hasValidImage = book.cover_url || book.image_url;
+                    const hasValidImage = true; // Always try to show an image (with fallback)
                     
                     // Handle description with truncation
                     const description = book.merchandising_summary || book.description || '';
@@ -515,18 +515,11 @@ class UpcomingModule extends window.BaseModule {
                                 <div class="row">
                                     <div class="col-4">
                                         <div class="book-cover mb-3">
-                                            ${hasValidImage ? `
-                                                <img src="${this.escapeHtml(imageUrl)}" 
-                                                     alt="Cover of ${this.escapeHtml(book.title)}" 
-                                                     class="book-cover-img"
-                                                     onerror="this.src='/static/images/og-image.png';"
-                                                     loading="lazy">
-                                            ` : `
-                                                <div class="book-cover-fallback">
-                                                    <i class="fas fa-headphones" aria-hidden="true"></i>
-                                                    <div class="fallback-text">No Cover</div>
-                                                </div>
-                                            `}
+                                            <img src="${this.escapeHtml(imageUrl)}" 
+                                                 alt="Cover of ${this.escapeHtml(book.title)}" 
+                                                 class="book-cover-img"
+                                                 onerror="if(this.src !== '/static/images/og-image.png') { this.src='/static/images/og-image.png'; } else { this.style.display='none'; this.parentNode.innerHTML='<div class=\\'book-cover-fallback\\'><i class=\\'fas fa-headphones\\'></i><div class=\\'fallback-text\\'>No Cover</div></div>'; }"
+                                                 loading="lazy">
                                         </div>
                                     </div>
                                     <div class="col-8">
