@@ -1,61 +1,66 @@
 /**
- * AudioStacker API Module
+ * AudiobookStalkerr API Module
  * Handles all API communication with the FastAPI backend
  */
 
-class AudioStackerAPI {
-    constructor() {
+class APIModule extends BaseModule {
+    constructor(core) {
+        super(core);
         this.baseURL = '';
         this.defaultHeaders = {
             'Content-Type': 'application/json'
         };
+    }
+
+    async init() {
+        await super.init();
         
-        // Initialize a simple fallback for debouncedSave
-        // Will be replaced with proper debounced version when available
-        this.debouncedSave = async (data) => {
+        // Initialize the debounced save function
+        this.debouncedSave = this.debounce(async (data) => {
             try {
                 await this.saveAudiobooks(data);
-                showToast('Changes saved successfully', 'success');
+                this.notify('Changes saved successfully', 'success');
             } catch (error) {
-                showToast('Failed to save changes', 'error');
+                this.notify('Failed to save changes', 'error');
             }
-        };
+        }, 1000);
         
-        // Try to initialize debounced version after a short delay
-        setTimeout(() => this.initializeDebouncedSave(), 100);
+        this.debug('API module initialized');
     }
-    
+
     /**
-     * Initialize the debounced save function
+     * Debounce utility method
      */
-    initializeDebouncedSave() {
-        if (typeof debounce === 'function') {
-            this.debouncedSave = debounce(async (data) => {
-                try {
-                    await this.saveAudiobooks(data);
-                    showToast('Changes saved successfully', 'success');
-                } catch (error) {
-                    showToast('Failed to save changes', 'error');
-                }
-            }, 1000);
-            console.log('API: Debounced save function initialized');
-        } else {
-            console.log('API: debounce function not available, using fallback');
-        }
+    debounce(func, wait, immediate) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                timeout = null;
+                if (!immediate) func(...args);
+            };
+            const callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow) func(...args);
+        };
     }
 
     /**
      * Generic API request handler
      */
-    async request(endpoint, options = {}) {
+    async request(method, endpoint, data = null) {
         const url = `${this.baseURL}${endpoint}`;
         const config = {
-            headers: this.defaultHeaders,
-            ...options
+            method: method.toUpperCase(),
+            headers: this.defaultHeaders
         };
 
+        if (data && (method.toUpperCase() === 'POST' || method.toUpperCase() === 'PUT')) {
+            config.body = JSON.stringify(data);
+        }
+
         try {
-            showLoading(true);
+            this.showLoading(true);
             const response = await fetch(url, config);
             
             if (!response.ok) {
@@ -63,14 +68,29 @@ class AudioStackerAPI {
                 throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
             }
 
-            const data = await response.json();
-            return data;
+            const responseData = await response.json();
+            return responseData;
         } catch (error) {
             console.error('API Request Error:', error);
-            showToast(`Error: ${error.message}`, 'error');
+            this.notify(`Error: ${error.message}`, 'error');
             throw error;
         } finally {
-            showLoading(false);
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoading(show) {
+        // Use utils function if available, otherwise try direct DOM manipulation
+        if (typeof showLoading === 'function') {
+            showLoading(show);
+        } else {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+            }
         }
     }
 
@@ -78,17 +98,14 @@ class AudioStackerAPI {
      * Get all audiobooks data
      */
     async getAudiobooks() {
-        return await this.request('/api/audiobooks');
+        return await this.request('GET', '/api/audiobooks');
     }
 
     /**
      * Save audiobooks data
      */
     async saveAudiobooks(data) {
-        return await this.request('/api/audiobooks', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+        return await this.request('POST', '/api/audiobooks', data);
     }
 
     /**
@@ -240,26 +257,15 @@ class AudioStackerAPI {
     }
 }
 
-// Create global API instance
-console.log('Initializing API...');
-window.api = new AudioStackerAPI();
-console.log('API initialized:', !!window.api);
-
-// Register this module as loaded
-if (window.moduleStatus && typeof window.moduleStatus.modules === 'object') {
-    window.moduleStatus.modules['api'] = {
-        loaded: true,
-        timestamp: new Date().getTime()
-    };
-    console.log('API module registered');
-} else {
-    console.log('moduleStatus not available, API module loaded but not registered');
+// Register the module with the global registry when available
+if (typeof window !== 'undefined') {
+    window.APIModule = APIModule;
 }
 
-// Add a global backup export function that doesn't rely on the app object
-window.directExport = async function() {
-    console.log('Direct export called');
-    try {
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = APIModule;
+}
         if (!window.api) {
             console.error('API not available for direct export');
             alert('API not available. Please refresh the page.');

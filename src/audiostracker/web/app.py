@@ -384,14 +384,29 @@ async def home(request: Request):
         "stats": stats
     })
 
+# Legacy redirect for backward compatibility
 @app.get("/config", response_class=HTMLResponse)
-async def config_page(request: Request):
-    """Configuration page for managing JSON watchlist"""
+async def config_redirect():
+    """Redirect old config route to new authors route"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/authors", status_code=301)
+
+# Legacy redirect for backward compatibility
+@app.get("/config/author/{author_name}", response_class=HTMLResponse)
+async def config_author_redirect(author_name: str):
+    """Redirect old config author route to new authors author route"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/authors/author/{author_name}", status_code=301)
+
+@app.get("/authors", response_class=HTMLResponse)
+async def authors_page(request: Request):
+    """Authors management page for managing JSON watchlist"""
     data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
     stats = get_stats(data)
-    return templates.TemplateResponse("config.html", {
+    return templates.TemplateResponse("authors.html", {
         "request": request,
-        "audiobooks": data,
+        "audiobooks": authors_list,
         "stats": stats
     })
 
@@ -409,8 +424,16 @@ async def get_database_stats_api():
 async def get_audiobooks():
     """Get all audiobooks data"""
     data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
     stats = get_stats(data)
-    return {"data": data, "stats": stats}
+    return {"data": authors_list, "stats": stats}
+
+@app.get("/api/config")
+async def get_config():
+    """Get authors configuration data (alias for audiobooks)"""
+    data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
+    return authors_list
 
 @app.post("/api/audiobooks")
 async def save_audiobooks_api(request: Request):
@@ -699,3 +722,100 @@ async def manual_start_test():
     except Exception as e:
         logger.error(f"Error in manual start test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/authors/author/{author_name}", response_class=HTMLResponse)
+async def author_detail_page(request: Request, author_name: str):
+    """Author detail page for managing individual author's books"""
+    try:
+        # URL decode the author name
+        from urllib.parse import unquote
+        author_name = unquote(author_name)
+        
+        # Load all audiobooks data
+        data = load_audiobooks()
+        
+        # Get books for this specific author (fix data structure)
+        authors_data = data.get("audiobooks", {}).get("author", {})
+        author_books = authors_data.get(author_name, [])
+        
+        if not author_books:
+            raise HTTPException(status_code=404, detail=f"Author '{author_name}' not found")
+        
+        # Calculate author-specific stats
+        total_books = len(author_books)
+        complete_books = sum(1 for book in author_books if is_book_complete(book))
+        completion_percentage = round((complete_books / total_books) * 100) if total_books > 0 else 0
+        
+        # Get unique publishers and narrators
+        publishers = list(set(book.get('publisher', '') for book in author_books if book.get('publisher')))
+        narrators = []
+        for book in author_books:
+            if book.get('narrator'):
+                if isinstance(book['narrator'], list):
+                    narrators.extend(book['narrator'])
+                else:
+                    narrators.append(book['narrator'])
+        unique_narrators = list(set(filter(None, narrators)))
+        
+        # Get series information
+        series_data = {}
+        for book in author_books:
+            series_name = book.get('series', '')
+            if series_name:
+                if series_name not in series_data:
+                    series_data[series_name] = []
+                series_data[series_name].append(book)
+        
+        author_stats = {
+            'total_books': total_books,
+            'complete_books': complete_books,
+            'incomplete_books': total_books - complete_books,
+            'completion_percentage': completion_percentage,
+            'total_series': len(series_data),
+            'total_publishers': len(publishers),
+            'total_narrators': len(unique_narrators)
+        }
+        
+        return templates.TemplateResponse("author_detail.html", {
+            "request": request,
+            "author_name": author_name,
+            "author_books": author_books,
+            "series_data": series_data,
+            "publishers": publishers,
+            "narrators": unique_narrators,
+            "stats": author_stats
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error loading author detail for '{author_name}': {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error loading author detail: {str(e)}")
+
+def is_book_complete(book: dict) -> bool:
+    """Check if a book has all required fields completed"""
+    return bool(
+        book.get('title') and
+        book.get('series') and
+        book.get('publisher') and
+        book.get('narrator') and
+        len(book.get('narrator', [])) > 0 and
+        all(n and n.strip() for n in book.get('narrator', []))
+    )
+
+def transform_audiobooks_for_frontend(data):
+    """Transform the nested audiobooks data structure into a flat array for frontend consumption"""
+    if not data or 'audiobooks' not in data or 'author' not in data['audiobooks']:
+        return []
+    
+    authors_list = []
+    authors_data = data['audiobooks']['author']
+    
+    for author_name, books in authors_data.items():
+        author_obj = {
+            'name': author_name,
+            'books': books if isinstance(books, list) else []
+        }
+        authors_list.append(author_obj)
+    
+    return authors_list

@@ -801,7 +801,7 @@ class ModalsModule {
             };
             
             const dataStr = JSON.stringify(statsData, null, 2);
-            const filename = `audiostacker-stats-${formatDate(new Date(), 'YYYY-MM-DD')}.json`;
+            const filename = `AudiobookStalkerr-stats-${formatDate(new Date(), 'YYYY-MM-DD')}.json`;
             downloadFile(dataStr, filename, 'application/json');
             showToast('Statistics exported successfully', 'success');
         };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audiobook Stalkerr - Configuration</title>
+    <title>Audiobook Stalkerr - Authors Management</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
@@ -13,16 +13,16 @@
     <link rel="manifest" href="/static/manifest.json">
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Configure your Audiobook Stalkerr settings to track upcoming audiobook releases from your favorite authors. Set up notifications and customize your audiobook tracking experience.">
-    <meta name="keywords" content="audiobooks, configuration, audiobook tracker, settings, audible, book notifications">
+    <meta name="description" content="Manage your audiobook authors and track upcoming releases from your favorite authors. Add, remove, and organize authors in your Audiobook Stalkerr watchlist.">
+    <meta name="keywords" content="audiobooks, authors, audiobook tracker, manage authors, audible, book tracking">
     <meta name="author" content="Audiobook Stalkerr">
     <meta name="robots" content="index, follow">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:title" content="Audiobook Stalkerr - Configuration">
-    <meta property="og:description" content="Configure your Audiobook Stalkerr settings to track upcoming audiobook releases from your favorite authors. Set up notifications and customize your audiobook tracking experience.">
+    <meta property="og:title" content="Audiobook Stalkerr - Authors Management">
+    <meta property="og:description" content="Manage your audiobook authors and track upcoming releases from your favorite authors. Add, remove, and organize authors in your Audiobook Stalkerr watchlist.">
     <meta property="og:image" content="{{ request.url_for('static', path='images/og-image.png') }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -31,8 +31,8 @@
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="{{ request.url }}">
-    <meta property="twitter:title" content="Audiobook Stalkerr - Configuration">
-    <meta property="twitter:description" content="Configure your Audiobook Stalkerr settings to track upcoming audiobook releases from your favorite authors. Set up notifications and customize your audiobook tracking experience.">
+    <meta property="twitter:title" content="Audiobook Stalkerr - Authors Management">
+    <meta property="twitter:description" content="Manage your audiobook authors and track upcoming releases from your favorite authors. Add, remove, and organize authors in your Audiobook Stalkerr watchlist.">
     <meta property="twitter:image" content="{{ request.url_for('static', path='images/twitter-card.png') }}">
     
     <!-- Theme Color -->
@@ -42,11 +42,15 @@
     
     <!-- Tabler CSS (includes Bootstrap and Tabler Icons) -->
     <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css" rel="stylesheet"/>
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/2.0.0/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/buttons/3.0.0/css/buttons.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
     <!-- Font Awesome (keeping for compatibility with existing icons) -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="stylesheet" href="/static/css/config.css">
+    <link rel="stylesheet" href="/static/css/authors.css">
 </head>
 <body>
     <!-- Navigation -->
@@ -87,11 +91,11 @@
                             </a>
                         </li>
                         <li class="nav-item active">
-                            <a class="nav-link" href="/config">
+                            <a class="nav-link" href="/authors">
                                 <span class="nav-link-icon d-md-none d-lg-inline-block">
-                                    <i class="fas fa-cog"></i>
+                                    <i class="fas fa-users"></i>
                                 </span>
-                                <span class="nav-link-title">Configuration</span>
+                                <span class="nav-link-title">Authors</span>
                             </a>
                         </li>
                     </ul>
@@ -210,11 +214,11 @@
                             Audiobook Management
                         </div>
                         <h2 class="page-title">
-                            <i class="fas fa-cog text-primary me-3"></i>
-                            Configuration
+                            <i class="fas fa-users text-primary me-3"></i>
+                            Authors Management
                         </h2>
                         <div class="text-muted mt-1">
-                            Manage your audiobook watchlist configuration. This determines which books the system searches for.
+                            Manage your audiobook authors watchlist. Add, remove, and organize authors whose upcoming releases you want to track.
                         </div>
                     </div>
                 </div>
@@ -251,6 +255,10 @@
                                         <input type="radio" class="btn-check" name="view-mode" id="grid-view" autocomplete="off" checked>
                                         <label class="btn btn-outline-secondary" for="grid-view" onclick="setViewMode('grid')" title="Grid View">
                                             <i class="fas fa-th"></i>
+                                        </label>
+                                        <input type="radio" class="btn-check" name="view-mode" id="table-view" autocomplete="off">
+                                        <label class="btn btn-outline-secondary" for="table-view" onclick="setViewMode('table')" title="Table View">
+                                            <i class="fas fa-table"></i>
                                         </label>
                                         <input type="radio" class="btn-check" name="view-mode" id="list-view" autocomplete="off">
                                         <label class="btn btn-outline-secondary" for="list-view" onclick="setViewMode('list')" title="List View">
@@ -380,7 +388,47 @@
                     </div>
                 </div>
 
-                <!-- Authors and Books Container -->
+                <!-- Authors Table View (for large datasets) -->
+                <div id="authors-table-container" class="card" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Authors & Books Management</h3>
+                        <div class="card-actions">
+                            <div class="dropdown">
+                                <a href="#" class="btn-action dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-cog"></i>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-end">
+                                    <a class="dropdown-item" href="#" onclick="exportSelected()">
+                                        <i class="fas fa-download me-2"></i>Export Selected
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="deleteSelected()">
+                                        <i class="fas fa-trash me-2"></i>Delete Selected
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="authors-table" class="table table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="select-all"></th>
+                                    <th>Author</th>
+                                    <th>Books</th>
+                                    <th>Complete</th>
+                                    <th>Publishers</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Authors Grid/Card Container (existing) -->
                 <div id="authors-container" class="authors-grid">
                     <p>Loading authors...</p>
                 </div>
@@ -500,62 +548,78 @@
     </div>
 
     <!-- Scripts -->
+    <!-- jQuery (required for DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
     <!-- Tabler JS (includes Bootstrap) -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
     
-    <!-- Stand-alone export helper (doesn't depend on other modules) -->
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.0/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.0/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/3.0.0/js/responsive.bootstrap5.min.js"></script>
+    
+    <!-- Fallback export helper (standalone) -->
     <script src="/static/js/export-helper.js"></script>
     
-    <!-- Core Application Modules -->
-    <script src="/static/js/core/api.js"></script>
-    <script src="/static/js/core/utils.js"></script>
+    <!-- New Modular Architecture -->
+    <!-- Core Framework -->
+    <script src="/static/js/core/app-core.js"></script>
+    <script src="/static/js/core/module-registry.js"></script>
+    
+    <!-- Core Modules -->
     <script src="/static/js/core/state.js"></script>
-    <script src="/static/js/validation.js"></script>
+    <script src="/static/js/core/api-clean.js"></script>
     
     <!-- UI Modules -->
-    <script src="/static/js/modules/search.js"></script>
-    <script src="/static/js/modules/filters.js"></script>
-    <script src="/static/js/modules/modals.js"></script>
-    <script src="/static/js/modules/toast.js"></script>
-    <script src="/static/js/modules/theme.js"></script>
+    <script src="/static/js/modules/toast-clean.js"></script>
+    <script src="/static/js/modules/theme-clean.js"></script>
+    <script src="/static/js/modules/search-clean.js"></script>
+    <script src="/static/js/modules/filters-clean.js"></script>
+    <script src="/static/js/modules/modals-clean.js"></script>
+    <script src="/static/js/modules/table-view-clean.js"></script>
     
     <!-- Main Application -->
-    <script src="/static/js/app.js"></script>
-    <script src="/static/js/config.js"></script>
+    <script src="/static/js/app-clean.js"></script>
+    
+    <!-- Bootstrap Script -->
+    <script src="/static/js/bootstrap.js"></script>
 
     <!-- Initialize app data -->
     <script>
-        // Pass initial data from server
-        // Initialize data
+        // Initialize data for the application
         window.initialData = JSON.parse('{{ audiobooks|tojson|safe }}');
         window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
         
-        // Manual Start functionality
+        console.log('Initial data loaded:', {
+            authors: window.initialData?.length || 0,
+            stats: window.initialStats
+        });
+        
+        // Manual Start functionality (legacy support)
         function showManualStartConfirmation() {
-            if (window.modals && typeof window.modals.showManualStartModal === 'function') {
-                window.modals.showManualStartModal();
-            } else {
-                // Fallback using browser confirm
-                if (confirm('Are you sure you want to manually run the audiobook search? This will search Audible for new releases from all configured authors and may take several minutes.')) {
-                    runManualStart();
-                }
+            if (confirm('Are you sure you want to manually run the audiobook search? This will search Audible for new releases from all configured authors and may take several minutes.')) {
+                runManualStart();
             }
         }
-        
-        // Make the function available globally
-        window.showManualStartConfirmation = showManualStartConfirmation;
         
         async function runManualStart() {
             try {
                 // Show loading state
-                showLoading(true);
-                showToast('Starting manual audiobook search...', 'info');
+                if (typeof showLoading === 'function') {
+                    showLoading(true);
+                }
+                
+                if (window.appCore) {
+                    window.appCore.notify('Starting manual audiobook search...', 'info');
+                }
                 
                 const response = await fetch('/api/manual-start', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (!response.ok) {
@@ -565,8 +629,10 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showToast(result.message || 'Manual search completed successfully!', 'success');
-                    // Optionally refresh the page data
+                    if (window.appCore) {
+                        window.appCore.notify(result.message || 'Manual search completed successfully!', 'success');
+                    }
+                    // Refresh data if available
                     if (window.app && window.app.refreshData) {
                         setTimeout(() => window.app.refreshData(), 2000);
                     }
@@ -576,47 +642,69 @@
                 
             } catch (error) {
                 console.error('Manual start failed:', error);
-                showToast(`Manual search failed: ${error.message}`, 'error');
+                if (window.appCore) {
+                    window.appCore.notify(`Manual search failed: ${error.message}`, 'error');
+                }
             } finally {
-                showLoading(false);
+                if (typeof showLoading === 'function') {
+                    showLoading(false);
+                }
             }
         }
         
-        // Make runManualStart available globally
+        // Make functions available globally for HTML onclick handlers
+        window.showManualStartConfirmation = showManualStartConfirmation;
         window.runManualStart = runManualStart;
-        
-        // Initialize the main application
-        document.addEventListener('DOMContentLoaded', () => {
-            // Prevent double initialization
-            if (window.appInitialized) {
-                console.log('App already initialized, skipping...');
-                return;
-            }
-            window.appInitialized = true;
-            
-            // Clear any stuck progress overlays
-            document.querySelectorAll('.progress-overlay').forEach(overlay => overlay.remove());
-            
-            // Initialize global API
-            if (!window.api && typeof AudioStackerAPI === 'function') {
+    </script>
                 try {
-                    window.api = new AudioStackerAPI();
+                    window.api = new AudiobookStalkerrAPI();
                 } catch (e) {
                     console.error('API initialization failed:', e);
                 }
             }
             
-            if (window.AudioStackerApp) {
+            if (window.AuthorsApp) {
                 try {
-                    window.app = new AudioStackerApp();
-                    window.app.init();
+                    window.authorsApp = new AuthorsApp();
+                    window.authorsApp.init();
+                    
+                    // Load data into table view after a delay to ensure everything is ready
+                    setTimeout(() => {
+                        if (window.initialData && window.tableView) {
+                            window.tableView.loadData(window.initialData);
+                        }
+                    }, 500);
+                    
                 } catch (e) {
-                    console.error('App initialization failed:', e);
+                    console.error('Authors app initialization failed:', e);
                 }
             } else {
-                console.error('AudioStackerApp not available');
+                console.error('AuthorsApp not available');
             }
         });
+        
+        // Enhanced setViewMode function to handle table view
+        window.setViewMode = function(mode) {
+            console.log('Setting view mode to:', mode);
+            
+            if (mode === 'table') {
+                window.tableView?.show();
+                document.getElementById('table-view')?.checked && (document.getElementById('table-view').checked = true);
+            } else {
+                window.tableView?.hide();
+                if (window.authorsApp) {
+                    window.authorsApp.setViewMode(mode);
+                }
+            }
+            
+            // Update active button state
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.view === mode) {
+                    btn.classList.add('active');
+                }
+            });
+        };
     </script>
 </body>
 </html>

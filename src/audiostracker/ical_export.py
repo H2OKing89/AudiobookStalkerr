@@ -118,7 +118,7 @@ class ICalExporter:
             dtend = utc_end.strftime('%Y%m%dT%H%M%SZ')
         
         # Generate unique ID
-        uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@audiostacker"
+        uid = f"audiobook-{asin}-{datetime.now().strftime('%Y%m%d%H%M%S')}@AudiobookStalkerr"
         
         # Create timestamp
         timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -142,11 +142,11 @@ END:VEVENT"""
         """Create the iCal file header with timezone support"""
         return """BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//AudioStacker//AudioStacker//EN
+PRODID:-//AudiobookStalkerr//AudiobookStalkerr//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:AudioStacker - New Releases
-X-WR-CALDESC:New audiobook releases tracked by AudioStacker
+X-WR-CALNAME:AudiobookStalkerr - New Releases
+X-WR-CALDESC:New audiobook releases tracked by AudiobookStalkerr
 X-WR-TIMEZONE:America/Los_Angeles
 BEGIN:VTIMEZONE
 TZID:America/Los_Angeles

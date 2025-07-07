@@ -1,10 +1,11 @@
 /**
- * AudioStacker State Management
+ * AudiobookStalkerr State Management
  * Manages application state and data flow
  */
 
-class AudioStackerState {
-    constructor() {
+class StateModule extends BaseModule {
+    constructor(core) {
+        super(core);
         this.data = {
             audiobooks: {},  // Will contain authors directly: { "Author Name": [books...] }
             stats: {},
@@ -29,12 +30,18 @@ class AudioStackerState {
         this.subscribers = new Map();
         this.changeQueue = [];
         this.isProcessingChanges = false;
+    }
+
+    async init() {
+        await super.init();
         
         // Load saved preferences
         this.loadPreferences();
         
         // Debounced save function
-        this.debouncedSave = debounce(() => this.savePreferences(), 1000);
+        this.debouncedSave = this.debounce(() => this.savePreferences(), 1000);
+        
+        this.debug('State module initialized');
     }
 
     /**
@@ -348,28 +355,93 @@ class AudioStackerState {
     }
 
     /**
-     * Load preferences from localStorage
+     * Load preferences from localStorage with enhanced error handling
      */
     loadPreferences() {
-        const saved = storage.get('audiostacker-preferences', {});
-        
-        if (saved.ui) {
-            Object.assign(this.data.ui, saved.ui);
-        }
-        
-        if (saved.filters) {
-            Object.assign(this.data.filters, saved.filters);
+        try {
+            // Set up cross-tab synchronization
+            this.setupBroadcastChannel();
+            
+            const saved = storage.get('AudiobookStalkerr-preferences', {});
+            
+            if (saved.ui) {
+                Object.assign(this.data.ui, saved.ui);
+            }
+            
+            if (saved.filters) {
+                Object.assign(this.data.filters, saved.filters);
+            }
+            
+            this.debug('Preferences loaded successfully');
+        } catch (error) {
+            this.warn('Failed to load preferences:', error);
         }
     }
 
     /**
-     * Save preferences to localStorage
+     * Set up BroadcastChannel for cross-tab state synchronization
+     */
+    setupBroadcastChannel() {
+        if ('BroadcastChannel' in window) {
+            this.broadcastChannel = new BroadcastChannel('AudiobookStalkerr-state');
+            
+            this.broadcastChannel.addEventListener('message', (event) => {
+                const { type, key, data } = event.data;
+                
+                if (type === 'state-update' && key !== 'internal-update') {
+                    this.debug('Received cross-tab state update:', key);
+                    this.handleCrossTabUpdate(key, data);
+                }
+            });
+        }
+    }
+
+    /**
+     * Handle cross-tab state updates
+     */
+    handleCrossTabUpdate(key, data) {
+        // Update state without triggering notifications to avoid loops
+        this.data[key] = data;
+        
+        // Notify subscribers
+        this.notify(key, data);
+        
+        this.debug('State synchronized from another tab');
+    }
+
+    /**
+     * Broadcast state changes to other tabs
+     */
+    broadcastUpdate(key, data) {
+        if (this.broadcastChannel) {
+            this.broadcastChannel.postMessage({
+                type: 'state-update',
+                key,
+                data
+            });
+        }
+    }
+
+    /**
+     * Save preferences to localStorage with enhanced error handling
      */
     savePreferences() {
-        storage.set('audiostacker-preferences', {
-            ui: this.data.ui,
-            filters: this.data.filters
-        });
+        try {
+            storage.set('AudiobookStalkerr-preferences', {
+                ui: this.data.ui,
+                filters: this.data.filters
+            });
+            
+            // Broadcast to other tabs
+            this.broadcastUpdate('preferences-updated', {
+                ui: this.data.ui,
+                filters: this.data.filters
+            });
+            
+            this.debug('Preferences saved successfully');
+        } catch (error) {
+            this.warn('Failed to save preferences:', error);
+        }
     }
 
     /**
@@ -419,7 +491,31 @@ class AudioStackerState {
             this.setAudiobooks(data.audiobooks);
         }
     }
+
+    /**
+     * Debounce utility method
+     */
+    debounce(func, wait, immediate) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                timeout = null;
+                if (!immediate) func(...args);
+            };
+            const callNow = immediate && !timeout;
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+            if (callNow) func(...args);
+        };
+    }
 }
 
-// Create global state instance
-window.state = new AudioStackerState();
+// Register the module with the global registry when available
+if (typeof window !== 'undefined') {
+    window.StateModule = StateModule;
+}
+
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = StateModule;
+}

@@ -113,7 +113,7 @@ def setup_logging(config, log_path=None):
     log_level = getattr(logging, str(config.get('log_level', 'INFO')).upper(), logging.INFO)
     log_format = config.get('log_format', 'text')
     if not log_path:
-        log_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'logs', 'audiostacker.log')
+        log_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'logs', 'AudiobookStalkerr.log')
     handlers = []
     file_handler = logging.FileHandler(log_path)
     if log_format == 'json':
