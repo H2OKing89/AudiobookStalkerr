@@ -94,6 +94,11 @@
                 registry.register('tableView', TableViewModule, ['state']);
             }
             
+            // Register Alpine.js integration
+            if (typeof AlpineIntegrationModule !== 'undefined') {
+                registry.register('alpine', AlpineIntegrationModule, ['state']);
+            }
+            
             // Register utility modules
             if (typeof ValidationModule !== 'undefined') {
                 registry.register('validation', ValidationModule, []);
@@ -104,7 +109,13 @@
             
             // Register page-specific modules
             if (typeof UpcomingModule !== 'undefined') {
-                registry.register('upcoming', UpcomingModule, ['search', 'filters', 'api']);
+                // Only register UpcomingModule for non-Alpine pages
+                const hasAlpineUpcoming = document.querySelector('[x-data="upcomingPageData()"]');
+                if (!hasAlpineUpcoming) {
+                    registry.register('upcoming', UpcomingModule, ['search', 'filters', 'api']);
+                } else {
+                    console.log('Alpine.js upcoming page detected - skipping traditional UpcomingModule');
+                }
             }
             if (typeof AuthorDetailModule !== 'undefined') {
                 registry.register('authorDetail', AuthorDetailModule, ['api', 'toast', 'modals']);

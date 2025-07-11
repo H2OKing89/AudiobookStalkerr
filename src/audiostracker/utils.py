@@ -218,6 +218,55 @@ def normalize_list(items):
         return []
     return [normalize_string(item) for item in items if item]
 
+def clean_html_text(text):
+    """
+    Remove HTML tags and clean up text content.
+    
+    Args:
+        text (str): Text that may contain HTML tags
+        
+    Returns:
+        str: Clean text without HTML tags
+    """
+    if not text:
+        return ""
+    
+    # Replace block-level HTML tags with spaces to prevent word concatenation
+    block_tags = ['</p>', '</div>', '</br>', '<br>', '<br/>', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>']
+    for tag in block_tags:
+        text = text.replace(tag, ' ')
+    
+    # Remove all remaining HTML tags using regex
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    
+    # Decode common HTML entities
+    html_entities = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&apos;': "'",
+        '&nbsp;': ' ',
+        '&ndash;': '–',
+        '&mdash;': '—',
+        '&hellip;': '…',
+        '&copy;': '©',
+        '&reg;': '®',
+        '&trade;': '™'
+    }
+    
+    for entity, replacement in html_entities.items():
+        clean_text = clean_text.replace(entity, replacement)
+    
+    # Clean up multiple whitespace characters
+    clean_text = re.sub(r'\s+', ' ', clean_text)
+    
+    # Remove leading/trailing whitespace
+    clean_text = clean_text.strip()
+    
+    return clean_text
+
 def fuzzy_ratio(s1, s2):
     """Calculate fuzzy match ratio between two strings"""
     if not s1 or not s2:

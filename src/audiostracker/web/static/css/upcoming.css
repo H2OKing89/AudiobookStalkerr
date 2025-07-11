@@ -559,3 +559,89 @@ body {
 .audiobook-card.new-content {
     animation: slideInUp 0.3s ease-out;
 }
+
+/* Alpine.js Integration Styles */
+
+/* Prevent flash of unstyled content */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Smooth transitions for Alpine.js elements */
+[x-show] {
+    transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+/* Loading states */
+.alpine-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Filter badge animations */
+.card-actions[x-show] {
+    transition: opacity 250ms ease-in-out, transform 250ms ease-in-out;
+}
+
+/* View mode transition smoothing */
+.row-cards,
+.list-group {
+    transition: opacity 200ms ease-in-out;
+}
+
+/* Search results summary animations */
+.alert[x-show] {
+    transition: opacity 250ms ease-in-out, max-height 250ms ease-in-out;
+}
+
+/* Empty state transitions */
+.empty[x-show] {
+    transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+.empty[x-transition] {
+    transform-origin: center;
+}
+
+/* Book card hover improvements for better Alpine.js interaction */
+.audiobook-card {
+    transition: transform 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+
+.audiobook-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Ensure Alpine.js reactive elements have proper focus states */
+[x-model]:focus,
+[x-data] button:focus,
+[x-data] select:focus {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+}
+
+/* Loading spinner for Alpine.js managed loading states */
+.alpine-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Search input improvements for Alpine.js */
+.input-icon input[x-model] {
+    transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+
+.input-icon input[x-model]:focus {
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Sort button active states */
+.btn[x-data]:active {
+    transform: scale(0.98);
+}

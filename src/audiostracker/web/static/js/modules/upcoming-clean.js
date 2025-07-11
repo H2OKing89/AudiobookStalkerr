@@ -14,8 +14,8 @@ class UpcomingModule extends window.BaseModule {
         this.filteredAudiobooks = [];
         this.filters = {
             search: '',
-            author: 'all',
-            dateRange: 'all'
+            author: '',  // Changed from 'all' to '' for consistency with Alpine.js
+            dateRange: '' // Changed from 'all' to '' for consistency with Alpine.js
         };
         this.sortBy = 'release_date';
         this.sortOrder = 'asc';
@@ -42,6 +42,61 @@ class UpcomingModule extends window.BaseModule {
     }
 
     setupEventListeners() {
+        // NOTE: Search, author filter, and date filter are now handled by Alpine.js
+        // This module only handles traditional elements without Alpine directives
+        
+        // Check if Alpine.js is managing the page
+        const isAlpineManaged = document.querySelector('[x-data="upcomingPageData()"]');
+        if (isAlpineManaged) {
+            this.debug('Alpine.js detected - skipping DOM event listeners for Alpine-managed elements');
+            this.setupNonAlpineListeners();
+            return;
+        }
+        
+        // Legacy mode - full DOM control (for pages without Alpine.js)
+        this.setupLegacyEventListeners();
+    }
+
+    /**
+     * Setup minimal event listeners for elements NOT managed by Alpine.js
+     */
+    setupNonAlpineListeners() {
+        // Page visibility API for performance
+        document.addEventListener('visibilitychange', () => {
+            this.isVisible = !document.hidden;
+            if (this.isVisible && Date.now() - this.performanceMetrics.lastUpdate > 60000) {
+                // Refresh data if page has been hidden for more than 1 minute
+                this.loadData();
+            }
+        });
+
+        // Listen for data updates from other modules
+        this.core.on('upcoming:refresh', () => {
+            this.loadData();
+        });
+
+        this.core.on('upcoming:filter', (filters) => {
+            this.filters = { ...this.filters, ...filters };
+            this.applyFilters();
+        });
+        
+        // iCal download button handler (not managed by Alpine)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-ical')) {
+                e.preventDefault();
+                const button = e.target.closest('.btn-ical');
+                const asin = button.dataset.asin;
+                if (asin) {
+                    this.downloadIcal(asin);
+                }
+            }
+        });
+    }
+
+    /**
+     * Setup full event listeners for legacy mode (no Alpine.js)
+     */
+    setupLegacyEventListeners() {
         // Search functionality with debouncing
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
@@ -92,7 +147,7 @@ class UpcomingModule extends window.BaseModule {
             });
         }
 
-        // Sort controls with keyboard navigation
+        // Sort controls with keyboard navigation (legacy mode only)
         document.addEventListener('click', (e) => {
             if (e.target.matches('[data-sort]')) {
                 const sortBy = e.target.dataset.sort;
@@ -105,7 +160,7 @@ class UpcomingModule extends window.BaseModule {
             }
         });
         
-        // Keyboard navigation for sort controls
+        // Keyboard navigation for sort controls (legacy mode only)
         document.addEventListener('keydown', (e) => {
             if (e.target.matches('[data-sort]') && (e.key === 'Enter' || e.key === ' ')) {
                 e.preventDefault();
@@ -120,54 +175,8 @@ class UpcomingModule extends window.BaseModule {
             }
         });
 
-        // Page visibility API for performance
-        document.addEventListener('visibilitychange', () => {
-            this.isVisible = !document.hidden;
-            if (this.isVisible && Date.now() - this.performanceMetrics.lastUpdate > 60000) {
-                // Refresh data if page has been hidden for more than 1 minute
-                this.loadData();
-            }
-        });
-
-        // Listen for data updates
-        this.core.on('upcoming:refresh', () => {
-            this.loadData();
-        });
-
-        this.core.on('upcoming:filter', (filters) => {
-            this.filters = { ...this.filters, ...filters };
-            this.applyFilters();
-        });
-        
-        // iCal download button handler
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-ical')) {
-                e.preventDefault();
-                const button = e.target.closest('.btn-ical');
-                const asin = button.dataset.asin;
-                if (asin) {
-                    this.downloadIcal(asin);
-                }
-            }
-        });
-        
-        // Global keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch (e.key) {
-                    case 'f':
-                        if (searchInput) {
-                            e.preventDefault();
-                            searchInput.focus();
-                        }
-                        break;
-                    case 'r':
-                        e.preventDefault();
-                        this.loadData();
-                        break;
-                }
-            }
-        });
+        // Include common listeners
+        this.setupNonAlpineListeners();
     }
 
     /**

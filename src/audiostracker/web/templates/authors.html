@@ -230,7 +230,7 @@
             <div class="container-xl">
 
         <!-- Control Panel -->
-        <div class="row mb-4">
+        <div class="row mb-4" x-data="authorsPageData()">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
@@ -241,28 +241,71 @@
                                     <span class="input-icon-addon">
                                         <i class="fas fa-search"></i>
                                     </span>
-                                    <input type="text" id="search-input" class="form-control" 
-                                           placeholder="Search authors and books...">
+                                    <input type="text" 
+                                           id="search-input" 
+                                           class="form-control" 
+                                           placeholder="Search authors and books..."
+                                           x-model="searchQuery"
+                                           @input.debounce.300ms="performSearch()"
+                                           @keydown.escape="clearSearch()">
+                                </div>
+                                <div class="form-text" x-show="searchQuery.length > 0" x-transition>
+                                    <span x-text="searchResults.length"></span> authors found
+                                    <button type="button" 
+                                            class="btn btn-link btn-sm p-0 ms-2" 
+                                            @click="clearSearch()">
+                                        Clear
+                                    </button>
                                 </div>
                             </div>
                             <div class="col-lg-3 col-md-6">
-                                <select id="publisher-filter" class="form-select">
-                                    <option value="all">All Publishers</option>
+                                <select id="publisher-filter" 
+                                        class="form-select"
+                                        x-model="selectedPublisher"
+                                        @change="applyFilters()">
+                                    <option value="">All Publishers</option>
+                                    <template x-for="publisher in availablePublishers" :key="publisher">
+                                        <option :value="publisher" x-text="publisher"></option>
+                                    </template>
                                 </select>
                             </div>
                             <div class="col-lg-4 col-md-6">
                                 <div class="d-flex justify-content-end justify-md-center justify-lg-end">
                                     <div class="btn-group" role="group">
-                                        <input type="radio" class="btn-check" name="view-mode" id="grid-view" autocomplete="off" checked>
-                                        <label class="btn btn-outline-secondary" for="grid-view" onclick="setViewMode('grid')" title="Grid View">
+                                        <input type="radio" 
+                                               class="btn-check" 
+                                               name="view-mode" 
+                                               id="grid-view" 
+                                               autocomplete="off" 
+                                               :checked="viewMode === 'grid'"
+                                               @change="setViewMode('grid')">
+                                        <label class="btn btn-outline-secondary" 
+                                               for="grid-view" 
+                                               title="Grid View">
                                             <i class="fas fa-th"></i>
                                         </label>
-                                        <input type="radio" class="btn-check" name="view-mode" id="table-view" autocomplete="off">
-                                        <label class="btn btn-outline-secondary" for="table-view" onclick="setViewMode('table')" title="Table View">
+                                        <input type="radio" 
+                                               class="btn-check" 
+                                               name="view-mode" 
+                                               id="table-view" 
+                                               autocomplete="off"
+                                               :checked="viewMode === 'table'"
+                                               @change="setViewMode('table')">
+                                        <label class="btn btn-outline-secondary" 
+                                               for="table-view" 
+                                               title="Table View">
                                             <i class="fas fa-table"></i>
                                         </label>
-                                        <input type="radio" class="btn-check" name="view-mode" id="list-view" autocomplete="off">
-                                        <label class="btn btn-outline-secondary" for="list-view" onclick="setViewMode('list')" title="List View">
+                                        <input type="radio" 
+                                               class="btn-check" 
+                                               name="view-mode" 
+                                               id="list-view" 
+                                               autocomplete="off"
+                                               :checked="viewMode === 'list'"
+                                               @change="setViewMode('list')">
+                                        <label class="btn btn-outline-secondary" 
+                                               for="list-view" 
+                                               title="List View">
                                             <i class="fas fa-list"></i>
                                         </label>
                                     </div>
@@ -274,23 +317,27 @@
                         <div class="row">
                             <div class="col-12">
                                 <div class="d-flex gap-2 flex-wrap justify-content-center justify-lg-start">
-                                    <button class="btn btn-primary" onclick="showAddAuthorModal()">
+                                    <button class="btn btn-primary" @click="showAddAuthorModal()">
                                         <i class="fas fa-plus me-1"></i>Add Author
                                     </button>
-                                    <button class="btn btn-warning save-changes-btn" onclick="window.app.saveChanges()" 
-                                            title="Save All Changes" style="display: none;">
-                                        <i class="fas fa-save me-1"></i>Save Changes
+                                    <button class="btn btn-warning" 
+                                            x-show="hasUnsavedChanges" 
+                                            x-transition
+                                            @click="saveChanges()" 
+                                            title="Save All Changes">
+                                        <i class="fas fa-save me-1"></i>
+                                        Save Changes (<span x-text="unsavedCount"></span>)
                                     </button>
-                                    <button class="btn btn-danger" onclick="showManualStartConfirmation()" title="Manually run the audiobook search">
+                                    <button class="btn btn-danger" @click="showManualStartConfirmation()" title="Manually run the audiobook search">
                                         <i class="fas fa-play me-1"></i>Manual Start Search
                                     </button>
-                                    <button class="btn btn-outline-success" onclick="exportCollection()">
+                                    <button class="btn btn-outline-success" @click="exportCollection()">
                                         <i class="fas fa-download me-1"></i>Export
                                     </button>
-                                    <button class="btn btn-outline-info" onclick="showImportModal()">
+                                    <button class="btn btn-outline-info" @click="showImportModal()">
                                         <i class="fas fa-upload me-1"></i>Import
                                     </button>
-                                    <button class="btn btn-outline-secondary" onclick="showStatsModal()" title="View Statistics">
+                                    <button class="btn btn-outline-secondary" @click="showStatsModal()" title="View Statistics">
                                         <i class="fas fa-chart-bar me-1"></i>Stats
                                     </button>
                                 </div>
@@ -555,6 +602,9 @@
     <!-- Tabler JS (includes Bootstrap) -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
     
+    <!-- Alpine.js - Reactive UI Components -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.0.0/js/dataTables.bootstrap5.min.js"></script>
@@ -579,6 +629,7 @@
     <script src="/static/js/modules/filters-clean.js"></script>
     <script src="/static/js/modules/modals-clean.js"></script>
     <script src="/static/js/modules/validation-clean.js"></script>
+    <script src="/static/js/modules/alpine-integration.js"></script>
     <script src="/static/js/modules/table-view-clean.js"></script>
     <script src="/static/js/modules/author-detail-clean.js"></script>
     
@@ -655,6 +706,230 @@
         // Make functions available globally for HTML onclick handlers
         window.showManualStartConfirmation = showManualStartConfirmation;
         window.runManualStart = runManualStart;
+        
+        // Alpine.js data function for the authors page
+        function authorsPageData() {
+            return {
+                // Data
+                allAuthors: window.initialData || [],
+                filteredAuthors: [],
+                searchResults: [],
+                availablePublishers: [],
+                
+                // UI State
+                viewMode: 'grid',
+                searchQuery: '',
+                selectedPublisher: '',
+                isLoading: false,
+                hasUnsavedChanges: false,
+                unsavedCount: 0,
+                
+                // Initialize
+                init() {
+                    this.processAuthors();
+                    this.applyFilters();
+                    this.setupKeyboardShortcuts();
+                    
+                    console.log('Alpine.js initialized for authors page');
+                    console.log('Authors loaded:', this.allAuthors.length);
+                },
+                
+                // Data processing
+                processAuthors() {
+                    // Extract unique publishers
+                    const publishers = new Set();
+                    this.allAuthors.forEach(author => {
+                        if (author.books) {
+                            author.books.forEach(book => {
+                                if (book.publisher) {
+                                    publishers.add(book.publisher);
+                                }
+                            });
+                        }
+                    });
+                    this.availablePublishers = Array.from(publishers).sort();
+                    
+                    // Initialize filtered results
+                    this.filteredAuthors = [...this.allAuthors];
+                    this.searchResults = [...this.allAuthors];
+                },
+                
+                // Search functionality
+                performSearch() {
+                    if (!this.searchQuery.trim()) {
+                        this.searchResults = [...this.allAuthors];
+                    } else {
+                        const query = this.searchQuery.toLowerCase().trim();
+                        this.searchResults = this.allAuthors.filter(author => {
+                            // Search in author name
+                            if (author.name.toLowerCase().includes(query)) return true;
+                            
+                            // Search in book titles
+                            if (author.books) {
+                                return author.books.some(book => 
+                                    book.title?.toLowerCase().includes(query) ||
+                                    book.series?.toLowerCase().includes(query)
+                                );
+                            }
+                            
+                            return false;
+                        });
+                    }
+                    
+                    this.applyFilters();
+                    
+                    // Notify existing modules
+                    if (window.core) {
+                        window.core.emit('search:performed', {
+                            query: this.searchQuery,
+                            results: this.searchResults.length
+                        });
+                    }
+                },
+                
+                clearSearch() {
+                    this.searchQuery = '';
+                    this.performSearch();
+                },
+                
+                // Filtering
+                applyFilters() {
+                    let filtered = [...this.searchResults];
+                    
+                    // Publisher filter
+                    if (this.selectedPublisher) {
+                        filtered = filtered.filter(author => {
+                            if (!author.books) return false;
+                            return author.books.some(book => 
+                                book.publisher === this.selectedPublisher
+                            );
+                        });
+                    }
+                    
+                    this.filteredAuthors = filtered;
+                    
+                    // Update existing app if it exists
+                    if (window.app && window.app.authors) {
+                        window.app.authors = this.filteredAuthors;
+                        window.app.filteredAuthors = this.filteredAuthors;
+                        if (this.viewMode !== 'table') {
+                            window.app.render();
+                        }
+                    }
+                    
+                    // Update table view if in table mode
+                    if (this.viewMode === 'table' && window.tableView) {
+                        window.tableView.loadData(this.filteredAuthors);
+                    }
+                },
+                
+                // View mode management
+                setViewMode(mode) {
+                    this.viewMode = mode;
+                    
+                    // Call the existing setViewMode function for compatibility
+                    if (window.setViewMode) {
+                        window.setViewMode(mode);
+                    }
+                    
+                    // Update existing app state
+                    if (window.app) {
+                        window.app.setViewMode(mode);
+                    }
+                    
+                    // Notify existing modules
+                    if (window.core) {
+                        window.core.emit('view:changed', mode);
+                    }
+                },
+                
+                // Modal functions (delegating to existing functionality)
+                showAddAuthorModal() {
+                    if (window.showAddAuthorModal) {
+                        window.showAddAuthorModal();
+                    }
+                },
+                
+                showManualStartConfirmation() {
+                    if (window.showManualStartConfirmation) {
+                        window.showManualStartConfirmation();
+                    }
+                },
+                
+                exportCollection() {
+                    if (window.exportCollection) {
+                        window.exportCollection();
+                    }
+                },
+                
+                showImportModal() {
+                    if (window.showImportModal) {
+                        window.showImportModal();
+                    }
+                },
+                
+                showStatsModal() {
+                    if (window.showStatsModal) {
+                        window.showStatsModal();
+                    }
+                },
+                
+                saveChanges() {
+                    if (window.app && window.app.saveChanges) {
+                        window.app.saveChanges();
+                        this.hasUnsavedChanges = false;
+                        this.unsavedCount = 0;
+                    }
+                },
+                
+                // Keyboard shortcuts
+                setupKeyboardShortcuts() {
+                    document.addEventListener('keydown', (e) => {
+                        // Ctrl+F to focus search
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                            e.preventDefault();
+                            document.getElementById('search-input')?.focus();
+                        }
+                        
+                        // Ctrl+A to add author
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                            e.preventDefault();
+                            this.showAddAuthorModal();
+                        }
+                        
+                        // Ctrl+S to save
+                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                            e.preventDefault();
+                            this.saveChanges();
+                        }
+                        
+                        // V to toggle view mode
+                        if (e.key === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                            const modes = ['grid', 'table', 'list'];
+                            const currentIndex = modes.indexOf(this.viewMode);
+                            const nextMode = modes[(currentIndex + 1) % modes.length];
+                            this.setViewMode(nextMode);
+                        }
+                    });
+                },
+                
+                // Watch for changes from existing modules
+                watchForChanges() {
+                    // This can be expanded to watch for changes in the existing app
+                    if (window.app) {
+                        // Set up a simple watcher
+                        const originalSaveChanges = window.app.saveChanges;
+                        if (originalSaveChanges) {
+                            window.app.saveChanges = () => {
+                                this.hasUnsavedChanges = false;
+                                this.unsavedCount = 0;
+                                return originalSaveChanges.call(window.app);
+                            };
+                        }
+                    }
+                }
+            }
+        }
     </script>
 
     <!-- Legacy compatibility script -->
