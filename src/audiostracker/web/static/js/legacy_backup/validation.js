@@ -1,5 +1,5 @@
 /**
- * AudioStacker Validation Utilities
+ * AudiobookStalkerr Validation Utilities
  * Handles real-time validation and field error management
  */
 

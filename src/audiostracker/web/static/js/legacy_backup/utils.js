@@ -1,5 +1,5 @@
 /**
- * AudioStacker Utility Functions
+ * AudiobookStalkerr Utility Functions
  * Common utility functions used throughout the application
  */
 

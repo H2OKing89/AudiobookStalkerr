@@ -20,3 +20,34 @@ data/
 .last_vacuum
 src/audiostracker/config/*.json
 .vscode/
+backups/legacy
+
+# Node.js dependencies and build artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm
+.yarn-integrity
+
+# Frontend build outputs
+src/audiostracker/web/static/css/output.css
+dist/
+build/
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

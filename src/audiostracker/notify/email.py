@@ -125,7 +125,7 @@ Audible Link: https://www.audible.com/pd/{asin}
             <body>
                 <h2>📚 New Audiobook Found</h2>
                 {self._format_audiobook_html(audiobook)}
-                <p><em>Sent by AudioStacker on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>
+                <p><em>Sent by AudiobookStalkerr on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>
             </body>
             </html>
             """
@@ -153,7 +153,7 @@ Audible Link: https://www.audible.com/pd/{asin}
         
         try:
             count = len(audiobooks)
-            subject = f"📚 AudioStacker Digest - {count} New Audiobook{'s' if count != 1 else ''}"
+            subject = f"📚 AudiobookStalkerr Digest - {count} New Audiobook{'s' if count != 1 else ''}"
             
             # Create message
             msg = MIMEMultipart('alternative')
@@ -162,7 +162,7 @@ Audible Link: https://www.audible.com/pd/{asin}
             msg['To'] = ', '.join(self.to_emails)
             
             # Create text version
-            text_content = f"AudioStacker found {count} new audiobook{'s' if count != 1 else ''}:\n\n"
+            text_content = f"AudiobookStalkerr found {count} new audiobook{'s' if count != 1 else ''}:\n\n"
             for i, audiobook in enumerate(audiobooks, 1):
                 text_content += f"{i}. {self._format_audiobook_text(audiobook)}"
             
@@ -170,7 +170,7 @@ Audible Link: https://www.audible.com/pd/{asin}
             html_content = f"""
             <html>
             <body>
-                <h2>📚 AudioStacker Digest</h2>
+                <h2>📚 AudiobookStalkerr Digest</h2>
                 <p>Found {count} new audiobook{'s' if count != 1 else ''}:</p>
             """
             
@@ -178,7 +178,7 @@ Audible Link: https://www.audible.com/pd/{asin}
                 html_content += self._format_audiobook_html(audiobook)
             
             html_content += f"""
-                <p><em>Sent by AudioStacker on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>
+                <p><em>Sent by AudiobookStalkerr on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>
             </body>
             </html>
             """
@@ -237,7 +237,7 @@ Audible Link: https://www.audible.com/pd/{asin}
     def test_connection(self) -> bool:
         """Test the SMTP connection"""
         try:
-            subject = "AudioStacker Test Email"
+            subject = "AudiobookStalkerr Test Email"
             
             # Create test message
             msg = MIMEMultipart('alternative')
@@ -245,11 +245,11 @@ Audible Link: https://www.audible.com/pd/{asin}
             msg['From'] = self.from_email
             msg['To'] = ', '.join(self.to_emails)
             
-            text_content = "This is a test email from AudioStacker to verify the email configuration."
+            text_content = "This is a test email from AudiobookStalkerr to verify the email configuration."
             html_content = """
             <html>
             <body>
-                <h2>🧪 AudioStacker Test Email</h2>
+                <h2>🧪 AudiobookStalkerr Test Email</h2>
                 <p>This is a test email to verify the email configuration.</p>
                 <p><em>If you received this, your email notifications are working correctly!</em></p>
             </body>

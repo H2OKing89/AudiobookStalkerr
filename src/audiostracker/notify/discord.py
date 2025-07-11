@@ -10,7 +10,7 @@ class DiscordNotifier:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.webhook_url: str = config.get('webhook_url', '')
-        self.username = config.get('username', 'AudioStacker')
+        self.username = config.get('username', 'AudiobookStalkerr')
         self.avatar_url = config.get('avatar_url')
         self.color = int(config.get('color', '0x1F8B4C'), 16)  # Default green
         
@@ -148,7 +148,7 @@ class DiscordNotifier:
         """Test the Discord webhook connection"""
         try:
             test_embed = {
-                "title": "AudioStacker Test",
+                "title": "AudiobookStalkerr Test",
                 "description": "Testing Discord webhook connection",
                 "color": self.color,
                 "timestamp": datetime.utcnow().isoformat()

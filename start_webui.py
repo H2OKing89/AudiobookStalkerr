@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AudioStacker Web UI Startup Script
+AudiobookStalkerr Web UI Startup Script
 Loads configuration and starts the web interface with proper settings.
 """
 
@@ -42,7 +42,7 @@ def main():
     port = web_config.get('port', 5005)
     reload = web_config.get('reload', True)
     
-    print(f"🚀 Starting AudioStacker Web UI")
+    print(f"🚀 Starting AudiobookStalkerr Web UI")
     print(f"📍 Host: {host}")
     print(f"🔌 Port: {port}")
     print(f"🔄 Reload: {reload}")

@@ -159,7 +159,7 @@ class PushoverNotifier:
             bool: True if test message was sent successfully
         """
         test_audiobook = {
-            'title': 'AudioStacker Test Notification',
+            'title': 'AudiobookStalkerr Test Notification',
             'author': 'System',
             'release_date': datetime.now().strftime('%Y-%m-%d'),
             'link': 'https://github.com'

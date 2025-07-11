@@ -3,12 +3,12 @@
  * Coordinates all modules and handles the main application logic
  */
 
-class AudioStackerApp {
+class AudiobookStalkerrApp {
     constructor() {
         this.isInitialized = false;
         this.viewMode = 'grid';
         this.hasUnsavedChanges = false;
-        this.autoSaveEnabled = localStorage.getItem('audioStacker_autoSave') === 'true';
+        this.autoSaveEnabled = localStorage.getItem('AudiobookStalkerr_autoSave') === 'true';
         this.autoSaveTimer = null;
         this.autoSaveDelay = 5000; // 5 seconds
         this.realtimeValidation = localStorage.getItem('realtimeValidation') !== 'false';
@@ -71,11 +71,11 @@ class AudioStackerApp {
             // Mark as initialized
             this.isInitialized = true;
             
-            showToast('AudioStacker loaded successfully', 'success', 3000);
+            showToast('AudiobookStalkerr loaded successfully', 'success', 3000);
             
         } catch (error) {
-            console.error('Failed to initialize AudioStacker:', error);
-            showToast('Failed to load AudioStacker. Please refresh the page.', 'error');
+            console.error('Failed to initialize AudiobookStalkerr:', error);
+            showToast('Failed to load AudiobookStalkerr. Please refresh the page.', 'error');
         } finally {
             showLoading(false);
             
@@ -89,7 +89,7 @@ class AudioStackerApp {
 
     loadUserPreferences() {
         // Load all user preferences from localStorage
-        this.autoSaveEnabled = localStorage.getItem('audioStacker_autoSave') === 'true';
+        this.autoSaveEnabled = localStorage.getItem('AudiobookStalkerr_autoSave') === 'true';
         this.realtimeValidation = localStorage.getItem('realtimeValidation') !== 'false';
         this.showCompletionStatus = localStorage.getItem('showCompletionStatus') !== 'false';
         
@@ -124,7 +124,7 @@ class AudioStackerApp {
 
     saveUserPreferences() {
         // Save all user preferences to localStorage
-        localStorage.setItem('audioStacker_autoSave', this.autoSaveEnabled.toString());
+        localStorage.setItem('AudiobookStalkerr_autoSave', this.autoSaveEnabled.toString());
         localStorage.setItem('realtimeValidation', this.realtimeValidation.toString());
         localStorage.setItem('showCompletionStatus', this.showCompletionStatus.toString());
         localStorage.setItem('compactMode', this.compactMode.toString());
@@ -1010,10 +1010,10 @@ class AudioStackerApp {
         console.log('API available:', !!window.api); // Debug log
         
         // If API is not defined, try to recover by recreating it
-        if (!window.api && typeof AudioStackerAPI === 'function') {
+        if (!window.api && typeof AudiobookStalkerrAPI === 'function') {
             console.log('Attempting to recover API in app.exportCollection...');
             try {
-                window.api = new AudioStackerAPI();
+                window.api = new AudiobookStalkerrAPI();
                 console.log('API recovery result in app.exportCollection:', !!window.api);
             } catch (e) {
                 console.error('Failed to recover API in app.exportCollection:', e);
@@ -1409,8 +1409,8 @@ class AudioStackerApp {
     }
 }
 
-// Make AudioStackerApp available globally
-window.AudioStackerApp = AudioStackerApp;
+// Make AudiobookStalkerrApp available globally
+window.AudiobookStalkerrApp = AudiobookStalkerrApp;
 
 // ===================================
 // GLOBAL FUNCTIONS FOR HTML ONCLICK HANDLERS

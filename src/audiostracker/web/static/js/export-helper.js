@@ -1,84 +1,46 @@
 /**
- * Export Helper - Standalone export functionality
- * This module provides a completely independent export function that doesn't rely
- * on any other modules or global objects.
+ * Export Helper - Backward compatibility wrapper
+ * This file provides a simple export function for legacy code
  */
 
-// Self-executing function to avoid polluting global namespace
-(function() {
-    // Show/hide loading overlay
-    function showLoadingOverlay(show) {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-            overlay.style.display = show ? 'flex' : 'none';
+window.simpleExport = function() {
+    console.log('Export helper: attempting export');
+    
+    // Try to use the new export module if available
+    if (window.appCore && window.appCore.getModule) {
+        const exportModule = window.appCore.getModule('export');
+        if (exportModule && exportModule.performExport) {
+            return exportModule.performExport('json');
         }
     }
     
-    // Show toast notification
-    function showToastNotification(message, type = 'info') {
-        const toast = document.getElementById('notification-toast');
-        const toastBody = document.getElementById('toast-message');
-        
-        if (toast && toastBody) {
-            // Set message
-            toastBody.textContent = message;
-            
-            // Set toast type
-            toast.className = 'toast';
-            toast.classList.add(`bg-${type === 'error' ? 'danger' : type}`);
-            if (type === 'error' || type === 'danger') {
-                toast.classList.add('text-white');
-            }
-            
-            // Show the toast
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-        } else {
-            // Fallback to alert if toast elements don't exist
-            alert(message);
-        }
-    }
-    
-    // Basic export function
-    async function performExport() {
-        console.log('Simple export helper called');
-        showLoadingOverlay(true);
-        
-        try {
-            const response = await fetch('/api/export', { method: 'POST' });
+    // Fallback to direct API call
+    fetch('/api/export', { method: 'POST' })
+        .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
-            // Get the blob data
-            const blob = await response.blob();
-            
-            // Create object URL
+            return response.blob();
+        })
+        .then(blob => {
             const url = window.URL.createObjectURL(blob);
-            
-            // Create download link
             const link = document.createElement('a');
             link.href = url;
             link.download = 'audiobooks_export.json';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Clean up
             window.URL.revokeObjectURL(url);
-            showToastNotification('Export successful', 'success');
-            console.log('Simple export completed successfully');
-        } catch (error) {
-            console.error('Simple export failed:', error);
-            showToastNotification(`Export failed: ${error.message}`, 'error');
-        } finally {
-            showLoadingOverlay(false);
-        }
-    }
-    
-    // Expose function to global scope
-    window.simpleExport = performExport;
-    
-    // Log that this module is loaded
-    console.log('Export helper module loaded, window.simpleExport is available');
-})();
+            console.log('Export completed successfully');
+        })
+        .catch(error => {
+            console.error('Export failed:', error);
+            alert('Export failed. Please try again.');
+        });
+};
+
+// Ensure performExport is also available for backward compatibility
+window.performExport = window.simpleExport;
+
+// Log that the module is loaded
+console.log('Export helper module loaded');

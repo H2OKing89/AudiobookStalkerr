@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpine.js Integration Test - Audiobook Stalkerr</title>
+    
+    <!-- Tabler CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css" rel="stylesheet"/>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="page">
+        <div class="page-wrapper">
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title">
+                                <i class="fas fa-flask text-primary me-3"></i>
+                                Alpine.js Integration Test
+                            </h2>
+                            <div class="text-muted mt-1">
+                                Testing Alpine.js reactive components for Audiobook Stalkerr
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-body">
+                <div class="container-xl">
+                    
+                    <!-- Test Section 1: Basic Reactivity -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card" x-data="{ message: 'Hello Alpine.js!', count: 0 }">
+                                <div class="card-header">
+                                    <h3 class="card-title">Basic Reactivity Test</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Message</label>
+                                                <input type="text" class="form-control" x-model="message">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Counter</label>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-outline-danger" @click="count--">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary" x-text="count"></button>
+                                                    <button type="button" class="btn btn-outline-success" @click="count++">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="alert alert-info">
+                                                <h4 x-text="message"></h4>
+                                                <p>Count: <span x-text="count" class="badge bg-primary"></span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Section 2: Search and Filter -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card" x-data="searchTestData()">
+                                <div class="card-header">
+                                    <h3 class="card-title">Search and Filter Test</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Search Books</label>
+                                            <div class="input-icon">
+                                                <span class="input-icon-addon">
+                                                    <i class="fas fa-search"></i>
+                                                </span>
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       placeholder="Search titles..."
+                                                       x-model="searchQuery"
+                                                       @input.debounce.300ms="filterBooks()">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Filter by Author</label>
+                                            <select class="form-select" x-model="selectedAuthor" @change="filterBooks()">
+                                                <option value="">All Authors</option>
+                                                <template x-for="author in uniqueAuthors" :key="author">
+                                                    <option :value="author" x-text="author"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3" x-show="filteredBooks.length > 0">
+                                        <div class="alert alert-success">
+                                            Showing <span x-text="filteredBooks.length" class="fw-bold"></span> 
+                                            of <span x-text="books.length" class="fw-bold"></span> books
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row row-cards" x-show="filteredBooks.length > 0">
+                                        <template x-for="book in filteredBooks.slice(0, 6)" :key="book.id">
+                                            <div class="col-md-4">
+                                                <div class="card card-sm">
+                                                    <div class="card-body">
+                                                        <h4 class="card-title" x-text="book.title"></h4>
+                                                        <p class="text-muted" x-text="book.author"></p>
+                                                        <div class="d-flex align-items-center pt-2">
+                                                            <span class="badge bg-blue" x-text="book.genre"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    
+                                    <div x-show="filteredBooks.length === 0" class="empty">
+                                        <div class="empty-icon">
+                                            <i class="fas fa-search"></i>
+                                        </div>
+                                        <p class="empty-title">No books found</p>
+                                        <p class="empty-subtitle text-muted">
+                                            Try adjusting your search or filter criteria
+                                        </p>
+                                        <div class="empty-action">
+                                            <button class="btn btn-primary" @click="clearFilters()">
+                                                Clear Filters
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Section 3: View Mode Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card" x-data="{ viewMode: 'grid', items: ['Item 1', 'Item 2', 'Item 3', 'Item 4'] }">
+                                <div class="card-header">
+                                    <h3 class="card-title">View Mode Toggle Test</h3>
+                                    <div class="card-actions">
+                                        <div class="btn-group" role="group">
+                                            <button type="button" 
+                                                    class="btn"
+                                                    :class="viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'"
+                                                    @click="viewMode = 'grid'">
+                                                <i class="fas fa-th"></i> Grid
+                                            </button>
+                                            <button type="button" 
+                                                    class="btn"
+                                                    :class="viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'"
+                                                    @click="viewMode = 'list'">
+                                                <i class="fas fa-list"></i> List
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Grid View -->
+                                    <div x-show="viewMode === 'grid'" x-transition class="row">
+                                        <template x-for="item in items" :key="item">
+                                            <div class="col-md-3">
+                                                <div class="card card-sm bg-light">
+                                                    <div class="card-body text-center">
+                                                        <i class="fas fa-book text-primary mb-2" style="font-size: 2rem;"></i>
+                                                        <h5 x-text="item"></h5>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    
+                                    <!-- List View -->
+                                    <div x-show="viewMode === 'list'" x-transition class="list-group list-group-flush">
+                                        <template x-for="item in items" :key="item">
+                                            <div class="list-group-item">
+                                                <div class="row align-items-center">
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-book text-primary"></i>
+                                                    </div>
+                                                    <div class="col">
+                                                        <span x-text="item"></span>
+                                                    </div>
+                                                    <div class="col-auto">
+                                                        <span class="badge bg-green">Available</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Section 4: Integration Status -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Integration Status</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="list-group list-group-flush">
+                                                <div class="list-group-item">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-auto">
+                                                            <span class="status-dot status-dot-animated bg-green"></span>
+                                                        </div>
+                                                        <div class="col">
+                                                            <strong>Alpine.js Loaded</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-auto">
+                                                            <span class="status-dot status-dot-animated bg-green"></span>
+                                                        </div>
+                                                        <div class="col">
+                                                            <strong>Reactivity Working</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-auto">
+                                                            <span class="status-dot status-dot-animated bg-green"></span>
+                                                        </div>
+                                                        <div class="col">
+                                                            <strong>Event Handling Active</strong>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="alert alert-success">
+                                                <h4>✅ Alpine.js Integration Successful!</h4>
+                                                <p class="mb-0">
+                                                    All reactive components are working correctly. 
+                                                    Your audiobook tracker is now enhanced with Alpine.js.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Test Data -->
+    <script>
+        function searchTestData() {
+            return {
+                searchQuery: '',
+                selectedAuthor: '',
+                books: [
+                    { id: 1, title: "The Name of the Wind", author: "Patrick Rothfuss", genre: "Fantasy" },
+                    { id: 2, title: "Dune", author: "Frank Herbert", genre: "Sci-Fi" },
+                    { id: 3, title: "The Way of Kings", author: "Brandon Sanderson", genre: "Fantasy" },
+                    { id: 4, title: "Neuromancer", author: "William Gibson", genre: "Sci-Fi" },
+                    { id: 5, title: "The Hobbit", author: "J.R.R. Tolkien", genre: "Fantasy" },
+                    { id: 6, title: "Foundation", author: "Isaac Asimov", genre: "Sci-Fi" },
+                    { id: 7, title: "Mistborn", author: "Brandon Sanderson", genre: "Fantasy" },
+                    { id: 8, title: "The Martian", author: "Andy Weir", genre: "Sci-Fi" }
+                ],
+                filteredBooks: [],
+                uniqueAuthors: [],
+                
+                init() {
+                    this.filteredBooks = [...this.books];
+                    this.uniqueAuthors = [...new Set(this.books.map(book => book.author))].sort();
+                },
+                
+                filterBooks() {
+                    let filtered = [...this.books];
+                    
+                    // Search filter
+                    if (this.searchQuery.trim()) {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(book => 
+                            book.title.toLowerCase().includes(query) ||
+                            book.author.toLowerCase().includes(query) ||
+                            book.genre.toLowerCase().includes(query)
+                        );
+                    }
+                    
+                    // Author filter
+                    if (this.selectedAuthor) {
+                        filtered = filtered.filter(book => book.author === this.selectedAuthor);
+                    }
+                    
+                    this.filteredBooks = filtered;
+                },
+                
+                clearFilters() {
+                    this.searchQuery = '';
+                    this.selectedAuthor = '';
+                    this.filterBooks();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

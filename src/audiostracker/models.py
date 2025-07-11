@@ -87,7 +87,7 @@ class PushoverConfig(NotificationConfig):
 class DiscordConfig(NotificationConfig):
     """Discord-specific configuration"""
     webhook_url: Optional[str] = None
-    username: str = "AudioStacker"
+    username: str = "AudiobookStalkerr"
     avatar_url: Optional[str] = None
     color: str = "0x1F8B4C"
 

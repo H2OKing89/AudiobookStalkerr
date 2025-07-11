@@ -1,0 +1,2 @@
+/* Only include Tailwind utilities, no base styles */
+@tailwind utilities;

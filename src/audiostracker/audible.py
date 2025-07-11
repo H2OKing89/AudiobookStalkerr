@@ -8,6 +8,7 @@ import os
 import hashlib
 from datetime import datetime, timedelta
 from threading import Lock
+from .utils import clean_html_text
 from difflib import SequenceMatcher
 from decimal import Decimal
 import re
@@ -849,8 +850,8 @@ def _process_product(product: Dict[str, Any]) -> Dict[str, Any]:
     
     # Additional fields for upcoming audiobook monitor
     subtitle = product.get('subtitle', '')
-    description = product.get('publisher_summary', '')
-    merchandising_summary = product.get('merchandising_summary', '')
+    description = clean_html_text(product.get('publisher_summary', ''))
+    merchandising_summary = clean_html_text(product.get('merchandising_summary', ''))
     runtime_minutes = product.get('runtime_length_min', 0)
     
     # Get publisher name (may be different from publisher field)

@@ -5,7 +5,7 @@ A modern, modular web interface for managing new audiobook feeds.
 """
 
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -384,14 +384,36 @@ async def home(request: Request):
         "stats": stats
     })
 
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics(request: Request):
+    """Analytics dashboard page"""
+    return templates.TemplateResponse("analytics.html", {
+        "request": request
+    })
+
+# Legacy redirect for backward compatibility
 @app.get("/config", response_class=HTMLResponse)
-async def config_page(request: Request):
-    """Configuration page for managing JSON watchlist"""
+async def config_redirect():
+    """Redirect old config route to new authors route"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/authors", status_code=301)
+
+# Legacy redirect for backward compatibility
+@app.get("/config/author/{author_name}", response_class=HTMLResponse)
+async def config_author_redirect(author_name: str):
+    """Redirect old config author route to new authors author route"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/authors/author/{author_name}", status_code=301)
+
+@app.get("/authors", response_class=HTMLResponse)
+async def authors_page(request: Request):
+    """Authors management page for managing JSON watchlist"""
     data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
     stats = get_stats(data)
-    return templates.TemplateResponse("config.html", {
+    return templates.TemplateResponse("authors.html", {
         "request": request,
-        "audiobooks": data,
+        "audiobooks": authors_list,
         "stats": stats
     })
 
@@ -405,12 +427,112 @@ async def get_database_stats_api():
     """Get database statistics"""
     return get_database_stats()
 
+# Analytics API endpoints
+@app.get("/api/analytics/release-trends")
+async def get_release_trends():
+    """Get release trends data for analytics dashboard"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Get releases grouped by month for the next 12 months
+        cursor.execute("""
+            SELECT 
+                strftime('%Y-%m', release_date) as month,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+                AND release_date <= date('now', '+12 months')
+            GROUP BY month
+            ORDER BY month
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting release trends: {e}")
+        return {"labels": [], "values": []}
+
+@app.get("/api/analytics/top-authors")
+async def get_top_authors():
+    """Get top authors by number of upcoming releases"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                author,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+            GROUP BY author
+            ORDER BY count DESC
+            LIMIT 6
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting top authors: {e}")
+        return {"labels": [], "values": []}
+
+@app.get("/api/analytics/upcoming-count")
+async def get_upcoming_count():
+    """Get upcoming releases count by month"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                strftime('%Y-%m', release_date) as month,
+                COUNT(*) as count
+            FROM audiobooks 
+            WHERE release_date IS NOT NULL 
+                AND release_date >= date('now')
+                AND release_date <= date('now', '+6 months')
+            GROUP BY month
+            ORDER BY month
+        """)
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        labels = [result[0] for result in results]
+        values = [result[1] for result in results]
+        
+        return {"labels": labels, "values": values}
+    except Exception as e:
+        logger.error(f"Error getting upcoming count: {e}")
+        return {"labels": [], "values": []}
+
 @app.get("/api/audiobooks")
 async def get_audiobooks():
     """Get all audiobooks data"""
     data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
     stats = get_stats(data)
-    return {"data": data, "stats": stats}
+    return {"data": authors_list, "stats": stats}
+
+@app.get("/api/config")
+async def get_config():
+    """Get authors configuration data (alias for audiobooks)"""
+    data = load_audiobooks()
+    authors_list = transform_audiobooks_for_frontend(data)
+    return authors_list
 
 @app.post("/api/audiobooks")
 async def save_audiobooks_api(request: Request):
@@ -698,4 +820,172 @@ async def manual_start_test():
         }
     except Exception as e:
         logger.error(f"Error in manual start test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/authors/{author_name}", response_class=HTMLResponse)
+async def author_detail_page(request: Request, author_name: str):
+    """Author detail page for managing individual author's books"""
+    try:
+        # URL decode the author name
+        from urllib.parse import unquote
+        author_name = unquote(author_name)
+        
+        # Load all audiobooks data
+        data = load_audiobooks()
+        
+        # Get books for this specific author (fix data structure)
+        authors_data = data.get("audiobooks", {}).get("author", {})
+        author_books = authors_data.get(author_name, [])
+        
+        if not author_books:
+            raise HTTPException(status_code=404, detail=f"Author '{author_name}' not found")
+        
+        # Calculate author-specific stats
+        total_books = len(author_books)
+        complete_books = sum(1 for book in author_books if is_book_complete(book))
+        completion_percentage = round((complete_books / total_books) * 100) if total_books > 0 else 0
+        
+        # Get unique publishers and narrators
+        publishers = list(set(book.get('publisher', '') for book in author_books if book.get('publisher')))
+        narrators = []
+        for book in author_books:
+            if book.get('narrator'):
+                if isinstance(book['narrator'], list):
+                    narrators.extend(book['narrator'])
+                else:
+                    narrators.append(book['narrator'])
+        unique_narrators = list(set(filter(None, narrators)))
+        
+        # Get series information
+        series_data = {}
+        for book in author_books:
+            series_name = book.get('series', '')
+            if series_name:
+                if series_name not in series_data:
+                    series_data[series_name] = []
+                series_data[series_name].append(book)
+        
+        author_stats = {
+            'total_books': total_books,
+            'complete_books': complete_books,
+            'incomplete_books': total_books - complete_books,
+            'completion_percentage': completion_percentage,
+            'total_series': len(series_data),
+            'total_publishers': len(publishers),
+            'total_narrators': len(unique_narrators)
+        }
+        
+        return templates.TemplateResponse("author_detail.html", {
+            "request": request,
+            "author_name": author_name,
+            "author_books": author_books,
+            "series_data": series_data,
+            "publishers": publishers,
+            "narrators": unique_narrators,
+            "stats": author_stats
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error loading author detail for '{author_name}': {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error loading author detail: {str(e)}")
+
+def is_book_complete(book: dict) -> bool:
+    """Check if a book has all required fields completed"""
+    return bool(
+        book.get('title') and
+        book.get('series') and
+        book.get('publisher') and
+        book.get('narrator') and
+        len(book.get('narrator', [])) > 0 and
+        all(n and n.strip() for n in book.get('narrator', []))
+    )
+
+def transform_audiobooks_for_frontend(data):
+    """Transform the nested audiobooks data structure into a flat array for frontend consumption"""
+    if not data or 'audiobooks' not in data or 'author' not in data['audiobooks']:
+        return []
+    
+    authors_list = []
+    authors_data = data['audiobooks']['author']
+    
+    for author_name, books in authors_data.items():
+        author_obj = {
+            'name': author_name,
+            'books': books if isinstance(books, list) else []
+        }
+        authors_list.append(author_obj)
+    
+    return authors_list
+
+@app.get("/")
+async def root():
+    """Root route that shows upcoming releases."""
+    try:
+        data = load_audiobooks()
+        # Calculate upcoming audiobooks and stats
+        upcoming = []
+        if 'audiobooks' in data and 'author' in data['audiobooks']:
+            # Flatten all books for all authors
+            for books in data['audiobooks']['author'].values():
+                for book in books:
+                    if book.get('release_date'):
+                        upcoming.append(book)
+        # Optionally, sort by release_date
+        upcoming = sorted(upcoming, key=lambda b: b.get('release_date', ''))
+        stats = get_stats(data)
+        return templates.TemplateResponse("upcoming.html", {
+            "request": {"url": "/"},
+            "upcoming_audiobooks": upcoming,
+            "stats": stats
+        })
+    except Exception as e:
+        print(f"Error in root route: {e}")
+        return templates.TemplateResponse("upcoming.html", {
+            "request": {"url": "/"},
+            "upcoming_audiobooks": [],
+            "stats": {
+                "total_books": 0,
+                "total_authors": 0,
+                "total_publishers": 0,
+                "total_narrators": 0
+            }
+        })
+
+@app.get("/api/ical/download/{asin}")
+async def download_ical(asin: str):
+    """Download iCal file for a specific audiobook by ASIN"""
+    try:
+        # Get upcoming audiobooks data
+        upcoming_audiobooks = get_upcoming_audiobooks()
+        
+        # Find the audiobook by ASIN
+        audiobook = None
+        for book in upcoming_audiobooks:
+            if book.get('asin') == asin:
+                audiobook = book
+                break
+        
+        if not audiobook:
+            raise HTTPException(status_code=404, detail=f"Audiobook with ASIN {asin} not found")
+        
+        # Create iCal content using the simple function
+        ical_content = create_simple_ical_event(audiobook)
+        
+        # Prepare filename
+        title = audiobook.get('title', 'audiobook').replace(' ', '_').replace('/', '_')
+        filename = f"{title}_{asin}.ics"
+        
+        return Response(
+            ical_content,
+            media_type="text/calendar",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating iCal for {asin}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

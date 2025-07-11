@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Audiobook Stalkerr</title>
+    
+    <!-- Tabler CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css" rel="stylesheet"/>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/themes.css">
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="/static/css/output.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="navbar navbar-expand-md navbar-light d-print-none" role="banner">
+        <div class="container-xl">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" 
+                    aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+                <a href="/" aria-label="Audiobook Stalkerr - Go to home page">
+                    <i class="fas fa-headphones text-primary me-2" aria-hidden="true"></i>
+                    Audiobook Stalkerr
+                </a>
+            </h1>
+            <div class="navbar-nav flex-row order-md-last">
+                <button type="button" class="nav-link px-0 hide-theme-dark btn btn-link" 
+                        onclick="window.location.reload()" 
+                        aria-label="Refresh analytics data">
+                    <i class="fas fa-sync-alt me-1" aria-hidden="true"></i>
+                    <span class="d-none d-md-inline">Refresh</span>
+                </button>
+            </div>
+            <nav class="collapse navbar-collapse" id="navbar-menu" aria-label="Main navigation">
+                <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
+                    <ul class="navbar-nav" role="menubar">
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" href="/" role="menuitem">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </span>
+                                <span class="nav-link-title">Upcoming Releases</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link active" href="/analytics" role="menuitem" aria-current="page">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                                    <i class="fas fa-chart-line"></i>
+                                </span>
+                                <span class="nav-link-title">Analytics</span>
+                            </a>
+                        </li>
+                        <li class="nav-item" role="none">
+                            <a class="nav-link" href="/authors" role="menuitem">
+                                <span class="nav-link-icon d-md-none d-lg-inline-block" aria-hidden="true">
+                                    <i class="fas fa-users"></i>
+                                </span>
+                                <span class="nav-link-title">Authors</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="page-wrapper">
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <h2 class="page-title">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Analytics Dashboard
+                        </h2>
+                        <div class="text-muted mt-1">Track your audiobook collection trends and insights</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="page-body">
+            <div class="container-xl">
+                <!-- Stats Cards -->
+                <div class="row row-deck row-cards mb-4">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="subheader">Total Books</div>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-book text-primary"></i>
+                                    </div>
+                                </div>
+                                <div class="h1 mb-3" id="total-books">-</div>
+                                <div class="d-flex mb-2">
+                                    <div class="text-muted">In your tracking list</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="subheader">Upcoming</div>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-clock text-warning"></i>
+                                    </div>
+                                </div>
+                                <div class="h1 mb-3" id="upcoming-books">-</div>
+                                <div class="d-flex mb-2">
+                                    <div class="text-muted">Next 30 days</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="subheader">Authors</div>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-users text-success"></i>
+                                    </div>
+                                </div>
+                                <div class="h1 mb-3" id="total-authors">-</div>
+                                <div class="d-flex mb-2">
+                                    <div class="text-muted">Being tracked</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="subheader">This Month</div>
+                                    <div class="ms-auto">
+                                        <i class="fas fa-calendar text-info"></i>
+                                    </div>
+                                </div>
+                                <div class="h1 mb-3" id="this-month">-</div>
+                                <div class="d-flex mb-2">
+                                    <div class="text-muted">New releases</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="row row-deck row-cards">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Release Timeline</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="release-trend-chart" style="height: 300px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Top Authors</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="top-authors-chart" style="height: 300px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Charts Row -->
+                <div class="row row-deck row-cards mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Upcoming Releases by Month</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="upcoming-count-chart" style="height: 200px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="/static/js/analytics-dashboard.js"></script>
+    
+    <script>
+        // Load basic stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('total-books').textContent = data.total_audiobooks || 0;
+                document.getElementById('upcoming-books').textContent = data.upcoming_30_days || 0;
+                document.getElementById('total-authors').textContent = data.total_authors || 0;
+                document.getElementById('this-month').textContent = data.this_month || 0;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+        
+        // Load stats when page loads
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>
