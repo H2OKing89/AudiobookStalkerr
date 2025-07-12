@@ -1,0 +1,761 @@
+/* Audiobook Stalkerr - Vue Theme Styles */
+/* Adapted from legacy theme system for Vue 3 application */
+
+/* Base CSS Custom Properties */
+:root {
+  /* Primary Colors */
+  --primary-color: #6366f1;
+  --primary-hover: #5856eb;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #06b6d4;
+  
+  /* Neutral Colors */
+  --text-color: #1f2937;
+  --text-muted: #6b7280;
+  --border-color: #e5e7eb;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  
+  /* Legacy variable compatibility */
+  --audiobook-primary: var(--primary-color);
+  --audiobook-secondary: #64748b;
+  --audiobook-success: var(--success-color);
+  --audiobook-warning: var(--warning-color);
+  --audiobook-danger: var(--danger-color);
+  --audiobook-info: var(--info-color);
+}
+
+/* Light Theme (Default) */
+body.light-theme {
+  background-color: #f8fafc;
+  color: #1f2937;
+  
+  /* Tabler CSS variables override for light theme */
+  --tblr-bg-primary: #ffffff;
+  --tblr-bg-secondary: #f8fafc;
+  --tblr-bg-light: #f8fafc;
+  --tblr-bg-white: #ffffff;
+  --tblr-body-bg: #f8fafc;
+  --tblr-body-color: #1f2937;
+  --tblr-border-color: #e5e7eb;
+  --tblr-text-muted: #6b7280;
+  
+  /* Bootstrap variables override */
+  --bs-bg-opacity: 1;
+  --bs-body-bg: #f8fafc;
+  --bs-body-color: #1f2937;
+  --bs-border-color: #e5e7eb;
+  --bs-light: #f8fafc;
+  --bs-light-rgb: 248, 250, 252;
+  --bs-white: #ffffff;
+  --bs-white-rgb: 255, 255, 255;
+}
+
+/* Dark Theme */
+body.dark-theme {
+  background-color: #0f0f0f;
+  color: #e2e8f0;
+
+  /* Override CSS custom properties for better integration */
+  --tblr-bg-primary: #1a1a1a;
+  --tblr-bg-secondary: #2d3748;
+  --tblr-bg-light: #2d3748;
+  --tblr-bg-white: #1a1a1a;
+  --tblr-body-bg: #0f0f0f;
+  --tblr-body-color: #e2e8f0;
+  --tblr-border-color: #2d3748;
+  --tblr-text-muted: #718096;
+  
+  /* Bootstrap variables override */
+  --bs-bg-opacity: 1;
+  --bs-body-bg: #0f0f0f;
+  --bs-body-color: #e2e8f0;
+  --bs-border-color: #2d3748;
+  --bs-light: #2d3748;
+  --bs-light-rgb: 45, 55, 72;
+  --bs-white: #1a1a1a;
+  --bs-white-rgb: 26, 26, 26;
+  
+  /* Update custom colors for dark theme */
+  --text-color: #e2e8f0;
+  --text-muted: #718096;
+  --border-color: #2d3748;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d3748;
+}
+
+/* Dark Theme Component Overrides */
+body.dark-theme .control-panel {
+  background: #1a1a1a;
+  border: 1px solid #2d3748;
+}
+
+/* Force override for stubborn white backgrounds */
+body.dark-theme .author-card,
+body.dark-theme .book-card,
+body.dark-theme .card,
+body.dark-theme .control-panel,
+body.dark-theme .navbar,
+body.dark-theme .modal-content {
+  background: #1a1a1a !important;
+  color: #e2e8f0 !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-theme .author-card {
+  background: #1a1a1a !important;
+  border: 1px solid #2d3748 !important;
+}
+
+body.dark-theme .author-header {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%) !important;
+  border-bottom-color: #4a5568 !important;
+}
+
+body.dark-theme .book-card {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+body.dark-theme .book-card.complete {
+  background: #1a2e05;
+  border-color: var(--success-color);
+}
+
+body.dark-theme .book-card.incomplete {
+  background: #2d1b07;
+  border-color: var(--warning-color);
+}
+
+body.dark-theme .form-control {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .form-control:focus {
+  background: #374151;
+  color: #f9fafb;
+  border-color: var(--primary-color);
+}
+
+body.dark-theme .form-select {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .narrator-item {
+  background: #374151;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .navbar-light {
+  background: #1a1a1a !important;
+  border-bottom: 1px solid #2d3748;
+}
+
+body.dark-theme .navbar-light .navbar-brand,
+body.dark-theme .navbar-light .nav-link {
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .input-group-text {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .toast {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Dark Theme Modal Styles */
+body.dark-theme .modal-content {
+  background: #1a1a1a !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-theme .modal-header {
+  background: #2d3748;
+  border-bottom-color: #4a5568;
+}
+
+body.dark-theme .modal-footer {
+  background: #2d3748;
+  border-top-color: #4a5568;
+}
+
+body.dark-theme .modal-title {
+  color: #e2e8f0;
+}
+
+body.dark-theme .modal-body .form-label {
+  color: #e2e8f0;
+}
+
+body.dark-theme .modal-body .form-control {
+  background: #374151;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .modal-body .form-control:focus {
+  background: #4a5568;
+  border-color: var(--primary-color);
+  color: #f9fafb;
+}
+
+body.dark-theme .modal-body .form-control::placeholder {
+  color: #9ca3af;
+}
+
+body.dark-theme .modal-body .form-text,
+body.dark-theme .modal-body .help-block,
+body.dark-theme .modal-body .form-helper,
+body.dark-theme .modal-body small,
+body.dark-theme .modal-body .text-muted {
+  color: #9ca3af !important;
+}
+
+body.dark-theme .btn-close,
+body.dark-theme .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+body.dark-theme .btn-close:hover,
+body.dark-theme .modal-header .btn-close:hover {
+  opacity: 0.75;
+}
+
+body.dark-theme .modal-footer .btn-secondary {
+  background: #4a5568;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Additional Dark Theme Styles for White Backgrounds */
+
+/* Body and main containers */
+body.dark-theme {
+  background: #0f0f0f !important;
+}
+
+body.dark-theme .page-wrapper,
+body.dark-theme .container,
+body.dark-theme .container-fluid,
+body.dark-theme .container-xl {
+  background: transparent;
+  color: #e2e8f0;
+}
+
+/* Statistics Cards - keep gradients but ensure text is visible */
+body.dark-theme .stat-card {
+  background: #1a1a1a !important;
+  border-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Generic Cards */
+body.dark-theme .card {
+  background: #1a1a1a !important;
+  border-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .card-header {
+  background: #2d3748 !important;
+  border-bottom-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .card-body {
+  background: #1a1a1a !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .card-footer {
+  background: #2d3748 !important;
+  border-top-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Search Input */
+body.dark-theme .search-input {
+  background: #2d3748 !important;
+  border-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .search-input:focus {
+  background: #374151 !important;
+  border-color: var(--primary-color) !important;
+  color: #f9fafb !important;
+}
+
+/* Tables and DataTables */
+body.dark-theme .table {
+  color: #e2e8f0;
+  --bs-table-bg: transparent;
+}
+
+body.dark-theme .table th {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .table td {
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .table-striped tbody tr:nth-of-type(odd) {
+  --bs-table-accent-bg: #1a202c;
+}
+
+body.dark-theme .table-hover tbody tr:hover {
+  --bs-table-hover-bg: #2d3748;
+}
+
+/* DataTables specific */
+body.dark-theme .dataTables_wrapper {
+  background: #1a1a1a;
+  color: #e2e8f0;
+}
+
+body.dark-theme .dataTables_length select,
+body.dark-theme .dataTables_filter input {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .dataTables_info,
+body.dark-theme .dataTables_length label,
+body.dark-theme .dataTables_filter label {
+  color: #e2e8f0;
+}
+
+body.dark-theme .page-link {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .page-link:hover {
+  background: #374151;
+  border-color: #4a5568;
+  color: #f9fafb;
+}
+
+body.dark-theme .page-item.active .page-link {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+/* Generic White Backgrounds */
+body.dark-theme .bg-white {
+  background: #1a1a1a !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme .bg-light {
+  background: #2d3748 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Buttons */
+body.dark-theme .btn-light {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .btn-light:hover {
+  background: #374151;
+  border-color: #4a5568;
+  color: #f9fafb;
+}
+
+body.dark-theme .btn-outline-light {
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .btn-outline-light:hover {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Dropdowns */
+body.dark-theme .dropdown-menu {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+body.dark-theme .dropdown-item {
+  color: #e2e8f0;
+}
+
+body.dark-theme .dropdown-item:hover,
+body.dark-theme .dropdown-item:focus {
+  background: #374151;
+  color: #f9fafb;
+}
+
+body.dark-theme .dropdown-divider {
+  border-color: #4a5568;
+}
+
+/* Alerts */
+body.dark-theme .alert {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+body.dark-theme .alert-light {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+/* Breadcrumb */
+body.dark-theme .breadcrumb {
+  background: #2d3748;
+}
+
+body.dark-theme .breadcrumb-item a {
+  color: var(--primary-color);
+}
+
+/* Vue specific styles */
+body.dark-theme .loading-overlay {
+  background: rgba(15, 15, 15, 0.8);
+  color: #e2e8f0;
+}
+
+/* Vue Transition Classes for Theme Switching */
+.theme-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+.theme-fade-enter-active,
+.theme-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.theme-fade-enter-from,
+.theme-fade-leave-to {
+  opacity: 0;
+}
+
+/* Vue Theme Toggle Button Styles */
+.theme-toggle-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-theme .theme-toggle-btn:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.theme-toggle-btn i {
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle-btn:hover i {
+  transform: rotate(180deg);
+}
+
+/* Auto theme indicator */
+.theme-auto-indicator {
+  position: relative;
+}
+
+.theme-auto-indicator::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--info-color);
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+/* Accessibility improvements for theme switching */
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition,
+  .theme-toggle-btn,
+  .theme-toggle-btn i {
+    transition: none !important;
+  }
+  
+  .theme-toggle-btn:hover i {
+    transform: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  body.dark-theme {
+    --border-color: #ffffff;
+    --text-muted: #ffffff;
+  }
+  
+  body.light-theme {
+    --border-color: #000000;
+    --text-muted: #000000;
+  }
+}
+
+/* ====================================================
+   UPCOMING AUDIOBOOKS PAGE SPECIFIC STYLES
+   ==================================================== */
+
+/* Enhanced audiobook card styling */
+.audiobook-card {
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  background: var(--bg-primary, #ffffff);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.audiobook-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--primary-50, rgba(99, 102, 241, 0.05)) 0%, var(--primary-100, rgba(99, 102, 241, 0.1)) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.audiobook-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+  border-color: var(--primary-200, #c7d2fe);
+}
+
+.audiobook-card:hover::before {
+  opacity: 1;
+}
+
+/* Book image container */
+.audiobook-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--secondary-50, #f8fafc) 0%, var(--secondary-100, #f1f5f9) 100%);
+}
+
+.audiobook-image {
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  border: 1px solid var(--border-light, #e2e8f0);
+}
+
+.audiobook-image:hover {
+  transform: scale(1.02);
+}
+
+/* Enhanced text styling */
+.audiobook-title {
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.audiobook-author {
+  color: var(--primary-600, #4f46e5);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.audiobook-series {
+  color: var(--text-secondary, #475569);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.audiobook-narrator {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.audiobook-narrator i {
+  color: var(--accent-amber, #d97706);
+}
+
+/* Release date badges */
+.release-badge {
+  background: linear-gradient(135deg, var(--primary-500, #6366f1) 0%, var(--primary-600, #4f46e5) 100%);
+  color: white;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Action buttons */
+.audiobook-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.audiobook-actions .btn {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.audiobook-actions .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Search and filter controls */
+.controls-panel {
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.search-input-container {
+  position: relative;
+}
+
+.search-input {
+  padding-left: 2.5rem;
+  border: 1px solid var(--border-medium, #cbd5e1);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: var(--bg-primary, #ffffff);
+}
+
+.search-input:focus {
+  border-color: var(--primary-400, #818cf8);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted, #64748b);
+  pointer-events: none;
+}
+
+/* Statistics cards */
+.stat-card {
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-400, #818cf8) 0%, var(--primary-600, #4f46e5) 100%);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-600, #4f46e5);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  color: var(--text-secondary, #475569);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Dark theme overrides for upcoming page */
+body.dark-theme .audiobook-card {
+  background: var(--bg-secondary, #1a1a1a);
+  border-color: var(--border-medium, #2d3748);
+}
+
+body.dark-theme .audiobook-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--primary-400, #818cf8);
+}
+
+body.dark-theme .audiobook-title {
+  color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .controls-panel {
+  background: var(--bg-secondary, #1a1a1a);
+  border-color: var(--border-medium, #2d3748);
+}
+
+body.dark-theme .search-input {
+  background: var(--bg-tertiary, #2d3748);
+  border-color: var(--border-medium, #4a5568);
+  color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .search-input:focus {
+  border-color: var(--primary-400, #818cf8);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+body.dark-theme .stat-card {
+  background: var(--bg-secondary, #1a1a1a);
+  border-color: var(--border-medium, #2d3748);
+}
+
+/* ====================================================
+   END UPCOMING AUDIOBOOKS PAGE STYLES
+   ==================================================== */

@@ -1,16 +1,13 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
+    "./index.html",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
     "../templates/**/*.html",
-    "./js/**/*.js",
   ],
   theme: {
     extend: {},
   },
   plugins: [],
-  corePlugins: {
-    // Disable Tailwind's base styles to prevent conflicts with Bootstrap/Tabler
-    preflight: false,
-  },
 }
 

@@ -373,49 +373,55 @@ def get_database_stats() -> dict:
         }
 
 # API Routes
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Main page with upcoming audiobooks from database"""
-    upcoming_audiobooks = get_upcoming_audiobooks()
-    stats = get_database_stats()
-    return templates.TemplateResponse("upcoming.html", {
-        "request": request,
-        "upcoming_audiobooks": upcoming_audiobooks,
-        "stats": stats
-    })
+@app.get("/")
+async def api_root():
+    """Root API endpoint - redirect to Vue frontend or return API info"""
+    return {
+        "message": "AudiobookStalkerr API Server",
+        "version": "1.0.0",
+        "frontend_url": "http://localhost:3000",
+        "api_docs": "/docs",
+        "endpoints": {
+            "upcoming": "/api/upcoming",
+            "stats": "/api/database/stats", 
+            "authors": "/api/audiobooks",
+            "analytics": "/api/analytics/release-trends"
+        }
+    }
 
-@app.get("/analytics", response_class=HTMLResponse)
-async def analytics(request: Request):
-    """Analytics dashboard page"""
-    return templates.TemplateResponse("analytics.html", {
-        "request": request
-    })
+# Template-based routes commented out - using Vue frontend instead
+# @app.get("/analytics", response_class=HTMLResponse)
+# async def analytics(request: Request):
+#     """Analytics dashboard page"""
+#     return templates.TemplateResponse("analytics.html", {
+#         "request": request
+#     })
 
-# Legacy redirect for backward compatibility
-@app.get("/config", response_class=HTMLResponse)
+# Legacy redirect for backward compatibility - redirect to Vue frontend
+@app.get("/config")
 async def config_redirect():
-    """Redirect old config route to new authors route"""
+    """Redirect old config route to Vue frontend authors page"""
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/authors", status_code=301)
+    return RedirectResponse(url="http://localhost:3000/authors", status_code=301)
 
-# Legacy redirect for backward compatibility
-@app.get("/config/author/{author_name}", response_class=HTMLResponse)
+# Legacy redirect for backward compatibility  
+@app.get("/config/author/{author_name}")
 async def config_author_redirect(author_name: str):
-    """Redirect old config author route to new authors author route"""
+    """Redirect old config author route to Vue frontend"""
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"/authors/author/{author_name}", status_code=301)
+    return RedirectResponse(url=f"http://localhost:3000/authors", status_code=301)
 
-@app.get("/authors", response_class=HTMLResponse)
-async def authors_page(request: Request):
-    """Authors management page for managing JSON watchlist"""
-    data = load_audiobooks()
-    authors_list = transform_audiobooks_for_frontend(data)
-    stats = get_stats(data)
-    return templates.TemplateResponse("authors.html", {
-        "request": request,
-        "audiobooks": authors_list,
-        "stats": stats
-    })
+# @app.get("/authors", response_class=HTMLResponse)
+# async def authors_page(request: Request):
+#     """Authors management page for managing JSON watchlist"""
+#     data = load_audiobooks()
+#     authors_list = transform_audiobooks_for_frontend(data)
+#     stats = get_stats(data)
+#     return templates.TemplateResponse("authors.html", {
+#         "request": request,
+#         "audiobooks": authors_list,
+#         "stats": stats
+#     })
 
 @app.get("/api/upcoming")
 async def get_upcoming():
@@ -918,40 +924,6 @@ def transform_audiobooks_for_frontend(data):
         authors_list.append(author_obj)
     
     return authors_list
-
-@app.get("/")
-async def root():
-    """Root route that shows upcoming releases."""
-    try:
-        data = load_audiobooks()
-        # Calculate upcoming audiobooks and stats
-        upcoming = []
-        if 'audiobooks' in data and 'author' in data['audiobooks']:
-            # Flatten all books for all authors
-            for books in data['audiobooks']['author'].values():
-                for book in books:
-                    if book.get('release_date'):
-                        upcoming.append(book)
-        # Optionally, sort by release_date
-        upcoming = sorted(upcoming, key=lambda b: b.get('release_date', ''))
-        stats = get_stats(data)
-        return templates.TemplateResponse("upcoming.html", {
-            "request": {"url": "/"},
-            "upcoming_audiobooks": upcoming,
-            "stats": stats
-        })
-    except Exception as e:
-        print(f"Error in root route: {e}")
-        return templates.TemplateResponse("upcoming.html", {
-            "request": {"url": "/"},
-            "upcoming_audiobooks": [],
-            "stats": {
-                "total_books": 0,
-                "total_authors": 0,
-                "total_publishers": 0,
-                "total_narrators": 0
-            }
-        })
 
 @app.get("/api/ical/download/{asin}")
 async def download_ical(asin: str):

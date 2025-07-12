@@ -144,46 +144,31 @@
             }
         }
         
-        /* Alpine.js specific styles */
-        [x-cloak] { 
+        /* Vue 3 specific styles */
+        [v-cloak] { 
             display: none !important; 
         }
         
-        /* Alpine.js transition classes */
-        .x-transition-enter {
-            transition-property: opacity, transform;
-            transition-duration: 300ms;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        /* Vue 3 transition classes */
+        .v-enter-active,
+        .v-leave-active {
+            transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
         }
         
-        .x-transition-enter-start {
+        .v-enter-from,
+        .v-leave-to {
             opacity: 0;
             transform: scale(0.95);
         }
         
-        .x-transition-enter-end {
+        .v-enter-to,
+        .v-leave-from {
             opacity: 1;
             transform: scale(1);
         }
         
-        .x-transition-leave {
-            transition-property: opacity, transform;
-            transition-duration: 200ms;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .x-transition-leave-start {
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        .x-transition-leave-end {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-        
-        /* Loading states for Alpine.js */
-        [x-show] {
+        /* Loading states for Vue */
+        [v-show] {
             transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
         }
         
@@ -218,8 +203,7 @@
             </h1>
             <div class="navbar-nav flex-row order-md-last">
                 <button type="button" class="nav-link px-0 hide-theme-dark btn btn-link" 
-                        x-data
-                        @click="window.refreshData()"
+                        @click="refreshData"
                         aria-label="Refresh upcoming audiobooks data">
                     <i class="fas fa-sync-alt me-1" aria-hidden="true"></i>
                     <span class="d-none d-md-inline">Refresh</span>
@@ -281,8 +265,8 @@
         
         <div class="page-body">
             <div class="container-xl" 
-                 x-data="upcomingPageData()" 
-                 x-cloak>
+                 id="vue-app" 
+                 v-cloak>
 
         <!-- Control Panel -->
         <section class="row mb-4" aria-labelledby="controls-heading">
@@ -290,13 +274,13 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title" id="controls-heading">Search and Filter Controls</h3>
-                        <div class="card-actions" x-show="activeFilters > 0" x-transition>
+                        <div class="card-actions" v-show="activeFilters > 0" v-if="activeFilters > 0">
                             <button type="button" 
                                     class="btn btn-sm btn-outline-danger" 
-                                    @click="clearAllFilters()"
+                                    @click="clearAllFilters"
                                     aria-label="Clear all filters">
                                 <i class="fas fa-times me-1" aria-hidden="true"></i>
-                                Clear All (<span x-text="activeFilters"></span>)
+                                Clear All ({{ activeFilters }})
                             </button>
                         </div>
                     </div>
@@ -313,10 +297,10 @@
                                            class="form-control" 
                                            placeholder="Search titles, authors, series, narrators, publishers..."
                                            aria-describedby="search-help"
-                                           x-model="filters.search"
-                                           @input.debounce.300ms="applyFilters()"
-                                           @keydown.escape="clearSearch()"
-                                           @keydown.enter.prevent="applyFilters()">
+                                           v-model="filters.search"
+                                           @input="debounceApplyFilters"
+                                           @keydown.esc="clearSearch"
+                                           @keydown.enter.prevent="applyFilters">
                                 </div>
                                 <div id="search-help" class="form-text">
                                     Use Ctrl+F to quickly focus the search field • Press Escape to clear
@@ -327,12 +311,12 @@
                                 <select id="author-filter" 
                                         class="form-select" 
                                         aria-describedby="author-filter-help"
-                                        x-model="filters.author"
-                                        @change="applyFilters()">
+                                        v-model="filters.author"
+                                        @change="applyFilters">
                                     <option value="">All Authors</option>
-                                    <template x-for="author in availableAuthors" :key="author">
-                                        <option :value="author" x-text="author"></option>
-                                    </template>
+                                    <option v-for="author in availableAuthors" :key="author" :value="author">
+                                        {{ author }}
+                                    </option>
                                 </select>
                                 <div id="author-filter-help" class="form-text">
                                     Filter books by specific author
@@ -343,8 +327,8 @@
                                 <select id="date-range-filter" 
                                         class="form-select" 
                                         aria-describedby="date-filter-help"
-                                        x-model="filters.dateRange"
-                                        @change="applyFilters()">
+                                        v-model="filters.dateRange"
+                                        @change="applyFilters">
                                     <option value="">All Dates</option>
                                     <option value="this-week">This Week</option>
                                     <option value="this-month">This Month</option>
@@ -476,7 +460,6 @@
                                     class="btn"
                                     :class="viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'"
                                     @click="setViewMode('grid')" 
-                                    :aria-pressed="viewMode === 'grid'"
                                     aria-label="Grid view">
                                 <i class="fas fa-th" aria-hidden="true"></i>
                                 <span class="d-none d-md-inline ms-1">Grid</span>
@@ -485,7 +468,6 @@
                                     class="btn"
                                     :class="viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'"
                                     @click="setViewMode('list')" 
-                                    :aria-pressed="viewMode === 'list'"
                                     aria-label="List view">
                                 <i class="fas fa-list" aria-hidden="true"></i>
                                 <span class="d-none d-md-inline ms-1">List</span>
@@ -497,8 +479,8 @@
                                     class="form-select form-select-sm" 
                                     style="width: auto;" 
                                     aria-label="Sort audiobooks by"
-                                    x-model="sortBy"
-                                    @change="applySorting()">
+                                    v-model="sortBy"
+                                    @change="applySorting">
                                 <option value="release_date">Release Date</option>
                                 <option value="author">Author</option>
                                 <option value="title">Title</option>
@@ -506,7 +488,7 @@
                             </select>
                             <button type="button" 
                                     class="btn btn-sm btn-outline-secondary ms-2" 
-                                    @click="toggleSortOrder()"
+                                    @click="toggleSortOrder"
                                     :aria-label="sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'"
                                     :title="sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'">
                                 <i :class="sortOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down'" 
@@ -517,30 +499,23 @@
                 </section>
 
                 <!-- Results Summary -->
-                <div class="mb-3" x-show="(filteredBooks.length > 0 && !isLoading) || isLoading" x-transition>
+                <div class="mb-3" v-show="(filteredBooks.length > 0 && !isLoading) || isLoading">
                     <div class="alert alert-info mb-3" role="status" aria-live="polite">
                         <div class="d-flex justify-content-between align-items-center">
                             <span>
-                                <template x-if="isLoading">
-                                    <span><i class="fas fa-spinner fa-spin me-2"></i>Loading audiobooks...</span>
-                                </template>
-                                <template x-if="!isLoading && filteredBooks.length > 0">
-                                    <span>
-                                        Showing <strong x-text="filteredBooks.length"></strong> 
-                                        of <strong x-text="allBooks.length"></strong> upcoming audiobooks
-                                        <template x-if="activeFilters > 0">
-                                            <span class="text-muted">• <span x-text="activeFilters"></span> filter(s) active</span>
-                                        </template>
-                                    </span>
-                                </template>
+                                <span v-if="isLoading"><i class="fas fa-spinner fa-spin me-2"></i>Loading audiobooks...</span>
+                                <span v-else-if="!isLoading && filteredBooks.length > 0">
+                                    Showing <strong>{{ filteredBooks.length }}</strong> 
+                                    of <strong>{{ allBooks.length }}</strong> upcoming audiobooks
+                                    <span v-if="activeFilters > 0" class="text-muted">• {{ activeFilters }} filter(s) active</span>
+                                </span>
                             </span>
-                            <template x-if="!isLoading && activeFilters > 0">
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-danger" 
-                                        @click="clearAllFilters()">
-                                    Clear Filters
-                                </button>
-                            </template>
+                            <button v-if="!isLoading && activeFilters > 0" 
+                                    type="button" 
+                                    class="btn btn-sm btn-outline-danger" 
+                                    @click="clearAllFilters">
+                                Clear Filters
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -554,7 +529,7 @@
                     <h3 class="sr-only" id="audiobooks-heading">Upcoming Audiobooks</h3>
                     
                     <!-- Loading State -->
-                    <div x-show="isLoading" x-transition class="text-center py-5">
+                    <div v-show="isLoading" class="text-center py-5">
                         <div class="spinner-border text-primary mb-3" role="status">
                             <span class="sr-only">Loading...</span>
                         </div>
@@ -562,25 +537,19 @@
                     </div>
 
                     <!-- Grid View -->
-                    <div x-show="!isLoading && viewMode === 'grid' && filteredBooks.length > 0" 
-                         x-transition
+                    <div v-show="!isLoading && viewMode === 'grid' && filteredBooks.length > 0" 
                          class="row row-cards">
-                        <template x-for="(book, index) in filteredBooks" :key="book.id || index">
-                            <div class="col-lg-4 col-md-6 col-sm-12">
+                        <div v-for="(book, index) in filteredBooks" :key="book.id || index" class="col-lg-4 col-md-6 col-sm-12">
                                 <article class="card h-100 audiobook-card" 
                                          tabindex="0" 
                                          role="article" 
                                          :aria-labelledby="`book-title-${index}`">
-                                    <!-- Card content will be rendered by Alpine -->
+                                    <!-- Card content will be rendered by Vue -->
                                     <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 text-primary" x-text="book.author_name || book.author"></h6>
+                                        <h6 class="mb-0 text-primary">{{ book.author_name || book.author }}</h6>
                                         <div class="btn-group d-flex gap-2 align-items-center">
-                                            <template x-if="isNewRelease(book.release_date)">
-                                                <span class="badge bg-danger">This Week</span>
-                                            </template>
-                                            <template x-if="!isNewRelease(book.release_date) && isComingSoon(book.release_date)">
-                                                <span class="badge bg-warning">This Month</span>
-                                            </template>
+                                            <span v-if="isNewRelease(book.release_date)" class="badge bg-danger">This Week</span>
+                                            <span v-else-if="isComingSoon(book.release_date)" class="badge bg-warning">This Month</span>
                                         </div>
                                     </div>
                                     <div class="card-body">
@@ -596,87 +565,73 @@
                                                 </div>
                                             </div>
                                             <div class="col-8">
-                                                <h5 class="card-title" :id="`book-title-${index}`" x-text="book.title"></h5>
+                                                <h5 class="card-title" :id="`book-title-${index}`">{{ book.title }}</h5>
                                                 
                                                 <!-- Series Information -->
-                                                <template x-if="book.series">
-                                                    <p class="text-muted mb-2">
-                                                        <i class="fas fa-list me-1"></i>
-                                                        <span x-text="book.series"></span>
-                                                        <template x-if="book.series_sequence || book.series_number">
-                                                            <span x-text="`#${book.series_sequence || book.series_number}`"></span>
-                                                        </template>
-                                                    </p>
-                                                </template>
+                                                <p v-if="book.series" class="text-muted mb-2">
+                                                    <i class="fas fa-list me-1"></i>
+                                                    {{ book.series }}
+                                                    <span v-if="book.series_sequence || book.series_number">#{{ book.series_sequence || book.series_number }}</span>
+                                                </p>
                                                 
                                                 <!-- Narrator Information -->
-                                                <template x-if="book.narrator">
-                                                    <p class="text-muted mb-2">
-                                                        <i class="fas fa-microphone me-1"></i>
-                                                        <span x-text="book.narrator"></span>
-                                                    </p>
-                                                </template>
+                                                <p v-if="book.narrator" class="text-muted mb-2">
+                                                    <i class="fas fa-microphone me-1"></i>
+                                                    {{ book.narrator }}
+                                                </p>
                                                 
                                                 <!-- Publisher Information -->
-                                                <template x-if="book.publisher_name || book.publisher">
-                                                    <p class="text-muted mb-2">
-                                                        <i class="fas fa-building me-1"></i>
-                                                        <span x-text="book.publisher_name || book.publisher"></span>
-                                                    </p>
-                                                </template>
+                                                <p v-if="book.publisher_name || book.publisher" class="text-muted mb-2">
+                                                    <i class="fas fa-building me-1"></i>
+                                                    {{ book.publisher_name || book.publisher }}
+                                                </p>
                                                 
                                                 <!-- Release Information -->
                                                 <div class="release-info">
                                                     <div class="d-flex align-items-center mb-2">
                                                         <i class="fas fa-calendar-day text-primary me-2"></i>
-                                                        <span class="fw-bold" x-text="formatDate(book.release_date)"></span>
+                                                        <span class="fw-bold">{{ formatDate(book.release_date) }}</span>
                                                     </div>
                                                     <div class="d-flex align-items-center">
                                                         <i class="fas fa-clock text-muted me-2"></i>
-                                                        <span class="text-muted" x-text="getTimeToRelease(book.release_date)"></span>
+                                                        <span class="text-muted">{{ getTimeToRelease(book.release_date) }}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         
                                         <!-- Description/Summary -->
-                                        <template x-if="book.merchandising_summary">
-                                            <div class="mt-3">
-                                                <p class="card-text text-muted small" 
-                                                   x-text="book.merchandising_summary.length > 150 ? book.merchandising_summary.substring(0, 150) + '...' : book.merchandising_summary">
-                                                </p>
-                                            </div>
-                                        </template>
+                                        <div v-if="book.merchandising_summary" class="mt-3">
+                                            <p class="card-text text-muted small">
+                                                {{ book.merchandising_summary.length > 150 ? book.merchandising_summary.substring(0, 150) + '...' : book.merchandising_summary }}
+                                            </p>
+                                        </div>
                                     </div>
                                     
                                     <!-- Card Footer with Actions -->
                                     <div class="card-footer bg-light">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <small class="text-muted">
-                                                <template x-if="book.last_checked">
-                                                    <span>Updated: <span x-text="formatDate(book.last_checked)"></span></span>
-                                                </template>
+                                                <span v-if="book.last_checked">Updated: {{ formatDate(book.last_checked) }}</span>
                                             </small>
                                             <div class="btn-group btn-group-sm">
-                                                <template x-if="book.link">
-                                                    <a :href="book.link" 
-                                                       target="_blank" 
-                                                       rel="noopener noreferrer"
-                                                       class="btn btn-outline-primary btn-sm"
-                                                       :aria-label="`View ${book.title} on Audible`">
-                                                        <i class="fas fa-external-link-alt me-1"></i>
-                                                        <span class="d-none d-md-inline">View</span>
-                                                    </a>
-                                                </template>
-                                                <template x-if="book.asin">
-                                                    <a :href="`/api/ical/download/${book.asin}`" 
-                                                       download
-                                                       class="btn btn-outline-success btn-sm"
-                                                       :aria-label="`Download calendar event for ${book.title}`">
-                                                        <i class="fas fa-calendar-plus me-1"></i>
-                                                        <span class="d-none d-md-inline">iCal</span>
-                                                    </a>
-                                                </template>
+                                                <a v-if="book.link" 
+                                                   :href="book.link" 
+                                                   target="_blank" 
+                                                   rel="noopener noreferrer"
+                                                   class="btn btn-outline-primary btn-sm"
+                                                   :aria-label="`View ${book.title} on Audible`">
+                                                    <i class="fas fa-external-link-alt me-1"></i>
+                                                    <span class="d-none d-md-inline">View</span>
+                                                </a>
+                                                <a v-if="book.asin" 
+                                                   :href="`/api/ical/download/${book.asin}`" 
+                                                   download
+                                                   class="btn btn-outline-success btn-sm"
+                                                   :aria-label="`Download calendar event for ${book.title}`">
+                                                    <i class="fas fa-calendar-plus me-1"></i>
+                                                    <span class="d-none d-md-inline">iCal</span>
+                                                </a>
                                                 <button type="button" 
                                                         class="btn btn-outline-secondary btn-sm"
                                                         @click="showBookDetails(book)"
@@ -689,18 +644,16 @@
                                     </div>
                                 </article>
                             </div>
-                        </template>
                     </div>
 
                     <!-- List View -->
-                    <div x-show="!isLoading && viewMode === 'list' && filteredBooks.length > 0" 
-                         x-transition
+                    <div v-show="!isLoading && viewMode === 'list' && filteredBooks.length > 0" 
                          class="list-group">
-                        <template x-for="(book, index) in filteredBooks" :key="book.id || index">
-                            <article class="list-group-item" 
-                                     role="listitem" 
-                                     tabindex="0" 
-                                     :aria-labelledby="`book-title-list-${index}`">
+                        <article v-for="(book, index) in filteredBooks" :key="book.id || index"
+                                 class="list-group-item" 
+                                 role="listitem" 
+                                 tabindex="0" 
+                                 :aria-labelledby="`book-title-list-${index}`">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
                                         <img :src="book.cover_url || book.image_url || '/static/images/og-image.png'" 
@@ -712,67 +665,55 @@
                                              @load="handleImageLoad">
                                     </div>
                                     <div class="col">
-                                        <h6 class="mb-1" :id="`book-title-list-${index}`" x-text="book.title"></h6>
-                                        <p class="mb-1 text-muted" x-text="book.author_name || book.author"></p>
+                                        <h6 class="mb-1" :id="`book-title-list-${index}`">{{ book.title }}</h6>
+                                        <p class="mb-1 text-muted">{{ book.author_name || book.author }}</p>
                                         
                                         <!-- Series and additional info -->
                                         <div class="mb-1">
-                                            <template x-if="book.series">
-                                                <small class="text-secondary me-3">
-                                                    <i class="fas fa-list me-1"></i>
-                                                    <span x-text="book.series"></span>
-                                                    <template x-if="book.series_sequence || book.series_number">
-                                                        <span x-text="`#${book.series_sequence || book.series_number}`"></span>
-                                                    </template>
-                                                </small>
-                                            </template>
+                                            <small v-if="book.series" class="text-secondary me-3">
+                                                <i class="fas fa-list me-1"></i>
+                                                {{ book.series }}
+                                                <span v-if="book.series_sequence || book.series_number">#{{ book.series_sequence || book.series_number }}</span>
+                                            </small>
                                             
-                                            <template x-if="book.narrator">
-                                                <small class="text-secondary me-3">
-                                                    <i class="fas fa-microphone me-1"></i>
-                                                    <span x-text="book.narrator"></span>
-                                                </small>
-                                            </template>
+                                            <small v-if="book.narrator" class="text-secondary me-3">
+                                                <i class="fas fa-microphone me-1"></i>
+                                                {{ book.narrator }}
+                                            </small>
                                             
-                                            <template x-if="book.publisher_name || book.publisher">
-                                                <small class="text-secondary">
-                                                    <i class="fas fa-building me-1"></i>
-                                                    <span x-text="book.publisher_name || book.publisher"></span>
-                                                </small>
-                                            </template>
+                                            <small v-if="book.publisher_name || book.publisher" class="text-secondary">
+                                                <i class="fas fa-building me-1"></i>
+                                                {{ book.publisher_name || book.publisher }}
+                                            </small>
                                         </div>
                                         
                                         <!-- Description preview -->
-                                        <template x-if="book.merchandising_summary">
-                                            <small class="text-muted d-block" 
-                                                   x-text="book.merchandising_summary.length > 100 ? book.merchandising_summary.substring(0, 100) + '...' : book.merchandising_summary">
-                                            </small>
-                                        </template>
+                                        <small v-if="book.merchandising_summary" class="text-muted d-block">
+                                            {{ book.merchandising_summary.length > 100 ? book.merchandising_summary.substring(0, 100) + '...' : book.merchandising_summary }}
+                                        </small>
                                     </div>
                                     <div class="col-auto">
                                         <div class="d-flex flex-column align-items-end">
-                                            <span class="badge bg-primary mb-1" x-text="formatDate(book.release_date)"></span>
-                                            <div class="text-muted small mb-2" x-text="getTimeToRelease(book.release_date)"></div>
+                                            <span class="badge bg-primary mb-1">{{ formatDate(book.release_date) }}</span>
+                                            <div class="text-muted small mb-2">{{ getTimeToRelease(book.release_date) }}</div>
                                             
                                             <!-- Action buttons -->
                                             <div class="btn-group btn-group-sm">
-                                                <template x-if="book.link">
-                                                    <a :href="book.link" 
-                                                       target="_blank" 
-                                                       rel="noopener noreferrer"
-                                                       class="btn btn-outline-primary btn-sm"
-                                                       :aria-label="`View ${book.title} on Audible`">
-                                                        <i class="fas fa-external-link-alt"></i>
-                                                    </a>
-                                                </template>
-                                                <template x-if="book.asin">
-                                                    <a :href="`/api/ical/download/${book.asin}`" 
-                                                       download
-                                                       class="btn btn-outline-success btn-sm"
-                                                       :aria-label="`Download calendar event for ${book.title}`">
-                                                        <i class="fas fa-calendar-plus"></i>
-                                                    </a>
-                                                </template>
+                                                <a v-if="book.link"
+                                                   :href="book.link" 
+                                                   target="_blank" 
+                                                   rel="noopener noreferrer"
+                                                   class="btn btn-outline-primary btn-sm"
+                                                   :aria-label="`View ${book.title} on Audible`">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                                <a v-if="book.asin"
+                                                   :href="`/api/ical/download/${book.asin}`" 
+                                                   download
+                                                   class="btn btn-outline-success btn-sm"
+                                                   :aria-label="`Download calendar event for ${book.title}`">
+                                                    <i class="fas fa-calendar-plus"></i>
+                                                </a>
                                                 <button type="button" 
                                                         class="btn btn-outline-secondary btn-sm"
                                                         @click="showBookDetails(book)"
@@ -784,44 +725,31 @@
                                     </div>
                                 </div>
                             </article>
-                        </template>
+                    </div>
                     </div>
 
                     <!-- Empty State -->
-                    <div x-show="!isLoading && filteredBooks.length === 0" 
-                         x-transition
+                    <div v-show="!isLoading && filteredBooks.length === 0" 
                          class="empty" 
                          role="status">
                         <div class="empty-icon" aria-hidden="true">
                             <i class="fas fa-calendar-times"></i>
                         </div>
                         <h3 class="empty-title">
-                            <template x-if="activeFilters > 0">
-                                <span>No audiobooks match your filters</span>
-                            </template>
-                            <template x-if="activeFilters === 0">
-                                <span>No upcoming audiobooks found</span>
-                            </template>
+                            <span v-if="activeFilters > 0">No audiobooks match your filters</span>
+                            <span v-else>No upcoming audiobooks found</span>
                         </h3>
                         <p class="empty-subtitle text-muted">
-                            <template x-if="activeFilters > 0">
-                                <span>Try adjusting your search criteria or clearing filters.</span>
-                            </template>
-                            <template x-if="activeFilters === 0">
-                                <span>Check your configuration or wait for the next search cycle.</span>
-                            </template>
+                            <span v-if="activeFilters > 0">Try adjusting your search criteria or clearing filters.</span>
+                            <span v-else>Check your configuration or wait for the next search cycle.</span>
                         </p>
                         <div class="empty-action">
-                            <template x-if="activeFilters > 0">
-                                <button class="btn btn-primary" @click="clearAllFilters()">
-                                    <i class="fas fa-times me-2" aria-hidden="true"></i>Clear All Filters
-                                </button>
-                            </template>
-                            <template x-if="activeFilters === 0">
-                                <a href="/authors" class="btn btn-primary">
-                                    <i class="fas fa-cog me-2" aria-hidden="true"></i>Configure Watchlist
-                                </a>
-                            </template>
+                            <button v-if="activeFilters > 0" class="btn btn-primary" @click="clearAllFilters">
+                                <i class="fas fa-times me-2" aria-hidden="true"></i>Clear All Filters
+                            </button>
+                            <a v-else href="/authors" class="btn btn-primary">
+                                <i class="fas fa-cog me-2" aria-hidden="true"></i>Configure Watchlist
+                            </a>
                         </div>
                     </div>
                 </main>
@@ -862,8 +790,8 @@
     <!-- Tabler JS (includes Bootstrap) -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
     
-    <!-- Alpine.js - Reactive UI Components -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Vue 3 - Progressive JavaScript Framework -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     
     <!-- Core Application Architecture -->
     <script src="/static/js/core/app-core.js"></script>
@@ -891,8 +819,497 @@
         window.upcomingAudiobooks = JSON.parse('{{ upcoming_audiobooks|tojson|safe }}');
         window.initialStats = JSON.parse('{{ stats|tojson|safe }}');
         
-        // Alpine.js data function for the upcoming page
-        function upcomingPageData() {
+        // Vue 3 application for the upcoming page
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
+        
+        const upcomingApp = createApp({
+            setup() {
+                // Reactive data
+                const allBooks = ref(window.upcomingAudiobooks || []);
+                const filteredBooks = ref([]);
+                const availableAuthors = ref([]);
+                const isLoading = ref(false);
+                
+                // View state
+                const viewMode = ref('grid');
+                const sortBy = ref('release_date');
+                const sortOrder = ref('asc');
+                
+                // Filters
+                const filters = ref({
+                    search: '',
+                    author: '',
+                    dateRange: ''
+                });
+                
+                // Computed values
+                const activeFilters = computed(() => {
+                    return Object.values(filters.value).filter(value => 
+                        value && value.toString().trim() !== ''
+                    ).length;
+                });
+                
+                // Debounce helper
+                let searchTimeout = null;
+                const debounceApplyFilters = () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(applyFilters, 300);
+                };
+                
+                // Initialize
+                const init = () => {
+                    console.log('Vue 3 initializing with data:', window.upcomingAudiobooks);
+                    console.log('All books length:', allBooks.value.length);
+                    
+                    // Start with loading state if no data
+                    if (!allBooks.value || allBooks.value.length === 0) {
+                        console.log('No books found, setting isLoading to false to show empty state');
+                        isLoading.value = false;
+                    } else {
+                        isLoading.value = false;
+                    }
+                    
+                    processData();
+                    applyFilters();
+                    
+                    // Set up keyboard shortcuts
+                    setupKeyboardShortcuts();
+                    
+                    // Listen for refresh events
+                    document.addEventListener('refresh-data', () => {
+                        refreshData();
+                    });
+                    
+                    console.log('Vue 3 initialized for upcoming page');
+                    console.log('Books loaded:', allBooks.value.length);
+                    console.log('Filtered books:', filteredBooks.value.length);
+                    console.log('Is loading:', isLoading.value);
+                };
+                
+                // Data processing
+                const processData = () => {
+                    try {
+                        // Ensure allBooks is an array
+                        if (!Array.isArray(allBooks.value)) {
+                            console.warn('allBooks is not an array, initializing as empty array');
+                            allBooks.value = [];
+                        }
+                        
+                        // Extract unique authors for filter dropdown
+                        const authors = [...new Set(allBooks.value.map(book => book.author_name || book.author))];
+                        availableAuthors.value = authors.filter(Boolean).sort();
+                        
+                        // Initialize filtered books
+                        filteredBooks.value = [...allBooks.value];
+                        
+                        console.log(`Processed ${allBooks.value.length} books, ${availableAuthors.value.length} unique authors`);
+                    } catch (error) {
+                        console.error('Error processing data:', error);
+                        allBooks.value = [];
+                        filteredBooks.value = [];
+                        availableAuthors.value = [];
+                    }
+                };
+                
+                // Filtering
+                const applyFilters = () => {
+                    try {
+                        let filtered = [...allBooks.value];
+                        
+                        // Search filter
+                        if (filters.value.search && filters.value.search.trim()) {
+                            const search = filters.value.search.toLowerCase().trim();
+                            filtered = filtered.filter(book => {
+                                const searchableText = [
+                                    book.title || '',
+                                    book.author_name || book.author || '',
+                                    book.series || '',
+                                    book.narrator || '',
+                                    book.publisher_name || book.publisher || '',
+                                    book.description || '',
+                                    book.merchandising_summary || '',
+                                    book.asin || ''
+                                ].join(' ').toLowerCase();
+                                
+                                return searchableText.includes(search);
+                            });
+                        }
+                        
+                        // Author filter
+                        if (filters.value.author) {
+                            filtered = filtered.filter(book => 
+                                (book.author_name || book.author) === filters.value.author
+                            );
+                        }
+                        
+                        // Date range filter
+                        if (filters.value.dateRange) {
+                            const now = new Date();
+                            filtered = filtered.filter(book => {
+                                try {
+                                    const releaseDate = new Date(book.release_date);
+                                    
+                                    // Skip invalid dates
+                                    if (isNaN(releaseDate.getTime())) {
+                                        return false;
+                                    }
+                                    
+                                    switch (filters.value.dateRange) {
+                                        case 'this-week':
+                                            const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                                            return releaseDate >= now && releaseDate <= weekFromNow;
+                                        case 'this-month':
+                                            const monthFromNow = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+                                            return releaseDate >= now && releaseDate <= monthFromNow;
+                                        case 'next-3-months':
+                                            const threeMonthsFromNow = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
+                                            return releaseDate >= now && releaseDate <= threeMonthsFromNow;
+                                        default:
+                                            return true;
+                                    }
+                                } catch (error) {
+                                    console.warn('Error filtering by date for book:', book.title, error);
+                                    return false;
+                                }
+                            });
+                        }
+                        
+                        filteredBooks.value = filtered;
+                        applySorting();
+                        
+                        // Notify existing modules if needed
+                        if (window.core) {
+                            window.core.emit('books:filtered', {
+                                total: allBooks.value.length,
+                                filtered: filteredBooks.value.length,
+                                filters: filters.value
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error applying filters:', error);
+                        // Fallback to showing all books
+                        filteredBooks.value = [...allBooks.value];
+                    }
+                };
+                
+                // Sorting
+                const applySorting = () => {
+                    filteredBooks.value.sort((a, b) => {
+                        let valueA, valueB;
+                        
+                        switch (sortBy.value) {
+                            case 'title':
+                                valueA = a.title || '';
+                                valueB = b.title || '';
+                                break;
+                            case 'author':
+                                valueA = a.author_name || a.author || '';
+                                valueB = b.author_name || b.author || '';
+                                break;
+                            case 'series':
+                                valueA = a.series || '';
+                                valueB = b.series || '';
+                                break;
+                            case 'release_date':
+                            default:
+                                valueA = new Date(a.release_date);
+                                valueB = new Date(b.release_date);
+                                break;
+                        }
+                        
+                        let comparison = 0;
+                        if (valueA < valueB) comparison = -1;
+                        if (valueA > valueB) comparison = 1;
+                        
+                        return sortOrder.value === 'desc' ? -comparison : comparison;
+                    });
+                };
+                
+                // Actions
+                const setViewMode = (mode) => {
+                    viewMode.value = mode;
+                    
+                    // Notify existing modules
+                    if (window.core) {
+                        window.core.emit('view:changed', mode);
+                    }
+                };
+                
+                const toggleSortOrder = () => {
+                    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+                    applySorting();
+                };
+                
+                const clearSearch = () => {
+                    filters.value.search = '';
+                    applyFilters();
+                };
+                
+                const clearAllFilters = () => {
+                    filters.value.search = '';
+                    filters.value.author = '';
+                    filters.value.dateRange = '';
+                    applyFilters();
+                };
+                
+                // Utility methods
+                const formatDate = (dateString) => {
+                    try {
+                        const date = new Date(dateString);
+                        if (isNaN(date.getTime())) {
+                            return 'Invalid Date';
+                        }
+                        return date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    } catch (error) {
+                        console.warn('Error formatting date:', dateString, error);
+                        return 'Unknown Date';
+                    }
+                };
+                
+                const getTimeToRelease = (dateString) => {
+                    try {
+                        const releaseDate = new Date(dateString);
+                        if (isNaN(releaseDate.getTime())) {
+                            return 'Unknown';
+                        }
+                        
+                        const now = new Date();
+                        const diffTime = releaseDate - now;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        if (diffDays < 0) return 'Released';
+                        if (diffDays === 0) return 'Today';
+                        if (diffDays === 1) return 'Tomorrow';
+                        if (diffDays < 7) return `${diffDays} days`;
+                        if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks`;
+                        return `${Math.ceil(diffDays / 30)} months`;
+                    } catch (error) {
+                        console.warn('Error calculating time to release:', dateString, error);
+                        return 'Unknown';
+                    }
+                };
+                
+                const isNewRelease = (dateString) => {
+                    try {
+                        const releaseDate = new Date(dateString);
+                        if (isNaN(releaseDate.getTime())) return false;
+                        
+                        const now = new Date();
+                        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                        return releaseDate >= now && releaseDate <= weekFromNow;
+                    } catch (error) {
+                        return false;
+                    }
+                };
+                
+                const isComingSoon = (dateString) => {
+                    try {
+                        const releaseDate = new Date(dateString);
+                        if (isNaN(releaseDate.getTime())) return false;
+                        
+                        const now = new Date();
+                        const monthFromNow = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+                        return releaseDate >= now && releaseDate <= monthFromNow;
+                    } catch (error) {
+                        return false;
+                    }
+                };
+                
+                // Image handling
+                const handleImageError = (event) => {
+                    const img = event.target;
+                    if (img.src !== '/static/images/og-image.png') {
+                        img.src = '/static/images/og-image.png';
+                        console.warn('Failed to load book cover, using fallback:', img.alt);
+                    }
+                };
+                
+                const handleImageLoad = (event) => {
+                    // Optional: Track successful image loads for analytics
+                    const img = event.target;
+                    img.classList.add('loaded');
+                };
+                
+                // Book details modal
+                const showBookDetails = (book) => {
+                    // Create a detailed view of the book information
+                    const detailsContent = `
+                        <div class="book-details-modal">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <img src="${book.cover_url || book.image_url || '/static/images/og-image.png'}" 
+                                         alt="Cover of ${book.title}" 
+                                         class="img-fluid rounded">
+                                </div>
+                                <div class="col-md-8">
+                                    <h3>${book.title}</h3>
+                                    <p class="text-muted mb-3">by ${book.author_name || book.author}</p>
+                                    
+                                    ${book.series ? `<p><strong>Series:</strong> ${book.series}${book.series_sequence || book.series_number ? ` #${book.series_sequence || book.series_number}` : ''}</p>` : ''}
+                                    ${book.narrator ? `<p><strong>Narrator:</strong> ${book.narrator}</p>` : ''}
+                                    ${book.publisher_name || book.publisher ? `<p><strong>Publisher:</strong> ${book.publisher_name || book.publisher}</p>` : ''}
+                                    <p><strong>Release Date:</strong> ${formatDate(book.release_date)} (${getTimeToRelease(book.release_date)})</p>
+                                    ${book.asin ? `<p><strong>ASIN:</strong> ${book.asin}</p>` : ''}
+                                    ${book.last_checked ? `<p><strong>Last Updated:</strong> ${formatDate(book.last_checked)}</p>` : ''}
+                                    
+                                    ${book.merchandising_summary ? `<div class="mt-3"><h5>Description</h5><p>${book.merchandising_summary}</p></div>` : ''}
+                                    
+                                    <div class="mt-4">
+                                        ${book.link ? `<a href="${book.link}" target="_blank" rel="noopener noreferrer" class="btn btn-primary me-2">View on Audible</a>` : ''}
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Use the existing modal system if available
+                    if (window.core && window.core.get('modals')) {
+                        window.core.get('modals').showModal('Book Details', detailsContent);
+                    } else {
+                        // Fallback: create a simple alert with key information
+                        const simpleDetails = [
+                            `Title: ${book.title}`,
+                            `Author: ${book.author_name || book.author}`,
+                            book.series ? `Series: ${book.series}${book.series_sequence || book.series_number ? ` #${book.series_sequence || book.series_number}` : ''}` : '',
+                            book.narrator ? `Narrator: ${book.narrator}` : '',
+                            book.publisher_name || book.publisher ? `Publisher: ${book.publisher_name || book.publisher}` : '',
+                            `Release Date: ${formatDate(book.release_date)} (${getTimeToRelease(book.release_date)})`,
+                            book.merchandising_summary ? `\nDescription: ${book.merchandising_summary}` : ''
+                        ].filter(Boolean).join('\n');
+                        
+                        alert(simpleDetails);
+                    }
+                };
+                
+                // Data refresh
+                const refreshData = async () => {
+                    isLoading.value = true;
+                    try {
+                        // Emit event to traditional modules
+                        if (window.core) {
+                            window.core.emit('upcoming:refresh');
+                        }
+                        
+                        // You can add API call here if needed
+                        // const response = await fetch('/api/upcoming');
+                        // const data = await response.json();
+                        // window.upcomingAudiobooks = data.audiobooks;
+                        // allBooks.value = data.audiobooks || [];
+                        
+                        // For now, just refresh with current data
+                        processData();
+                        applyFilters();
+                        
+                        console.log('Data refreshed successfully');
+                    } catch (error) {
+                        console.error('Error refreshing data:', error);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+                
+                const setupKeyboardShortcuts = () => {
+                    document.addEventListener('keydown', (e) => {
+                        // Ctrl+F to focus search (prevent default browser search)
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                            e.preventDefault();
+                            const searchInput = document.getElementById('search-input');
+                            if (searchInput) {
+                                searchInput.focus();
+                                searchInput.select();
+                            }
+                        }
+                        
+                        // Escape to clear search when search is focused
+                        if (e.key === 'Escape' && document.activeElement?.id === 'search-input') {
+                            clearSearch();
+                            document.getElementById('search-input')?.blur();
+                        }
+                        
+                        // Alt+G for grid view, Alt+L for list view
+                        if (e.altKey && e.key === 'g') {
+                            e.preventDefault();
+                            setViewMode('grid');
+                        }
+                        if (e.altKey && e.key === 'l') {
+                            e.preventDefault();
+                            setViewMode('list');
+                        }
+                    });
+                };
+                
+                // Vue lifecycle
+                onMounted(() => {
+                    init();
+                });
+                
+                // Return all reactive data and methods
+                return {
+                    // Data
+                    allBooks,
+                    filteredBooks,
+                    availableAuthors,
+                    isLoading,
+                    
+                    // View state
+                    viewMode,
+                    sortBy,
+                    sortOrder,
+                    
+                    // Filters
+                    filters,
+                    activeFilters,
+                    
+                    // Methods
+                    applyFilters,
+                    debounceApplyFilters,
+                    applySorting,
+                    setViewMode,
+                    toggleSortOrder,
+                    clearSearch,
+                    clearAllFilters,
+                    formatDate,
+                    getTimeToRelease,
+                    isNewRelease,
+                    isComingSoon,
+                    handleImageError,
+                    handleImageLoad,
+                    showBookDetails,
+                    refreshData
+                };
+            }
+        });
+        
+        // Mount the Vue app
+        upcomingApp.mount('#vue-app');
+        
+        // Initialize the application when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // The Vue app will handle initialization
+            console.log('Upcoming page loaded with Vue 3 integration');
+            console.log('Upcoming audiobooks:', window.upcomingAudiobooks?.length || 0);
+            console.log('Stats:', window.initialStats);
+        });
+        
+        // Fallback refresh function for non-Vue elements
+        window.refreshData = function() {
+            // The Vue app will handle refresh through its methods
+            if (document.getElementById('vue-app')?.__vue_app__) {
+                // Dispatch to Vue app
+                document.dispatchEvent(new CustomEvent('refresh-data'));
+            } else if (window.core) {
+                // Use traditional module system
+                window.core.emit('upcoming:refresh');
+            } else {
+                // Last resort - reload page
+                window.location.reload();
+            }
+        };
             return {
                 // Data
                 allBooks: window.upcomingAudiobooks || [],
