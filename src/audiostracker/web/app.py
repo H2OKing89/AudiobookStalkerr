@@ -835,10 +835,18 @@ async def author_detail_page(request: Request, author_name: str):
         
         # Get books for this specific author (fix data structure)
         authors_data = data.get("audiobooks", {}).get("author", {})
+        
+        # Check if the author exists in the data
+        if author_name not in authors_data:
+            # Log detailed info for debugging
+            logger.warning(f"Author '{author_name}' not found. Available authors: {list(authors_data.keys())[:5]}...")
+            raise HTTPException(status_code=404, detail=f"Author '{author_name}' not found")
+            
+        # Get the author's books (might be an empty list for newly added authors)
         author_books = authors_data.get(author_name, [])
         
-        if not author_books:
-            raise HTTPException(status_code=404, detail=f"Author '{author_name}' not found")
+        # Set a flag to indicate if this is a newly created author with no books
+        is_new_author = len(author_books) == 0
         
         # Calculate author-specific stats
         total_books = len(author_books)
@@ -882,7 +890,8 @@ async def author_detail_page(request: Request, author_name: str):
             "series_data": series_data,
             "publishers": publishers,
             "narrators": unique_narrators,
-            "stats": author_stats
+            "stats": author_stats,
+            "is_new_author": is_new_author
         })
         
     except HTTPException:

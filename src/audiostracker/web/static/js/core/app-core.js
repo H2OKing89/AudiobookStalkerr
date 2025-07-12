@@ -104,8 +104,8 @@ class AudiobookStalkerrCore {
      */
     setState(key, value) {
         const stateModule = this.getModule('state');
-        if (stateModule && stateModule.set) {
-            stateModule.set(key, value);
+        if (stateModule && stateModule.update) {
+            stateModule.update(key, value);
             this.emit('state:changed', { key, value });
         } else {
             console.warn('State module not available');

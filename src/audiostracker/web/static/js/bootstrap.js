@@ -144,6 +144,7 @@
                 window.api = window.appCore.getModule('api');
                 window.state = window.appCore.getModule('state');
                 window.toast = window.appCore.getModule('toast');
+                window.modals = window.appCore.getModule('modals');
                 
                 // Emit initialization complete event
                 window.appCore.emit('app:initialized');

@@ -249,10 +249,10 @@ class ModalsModule extends window.BaseModule {
     showAddAuthorModal() {
         const modalId = `add-author-modal-${Date.now()}`;
         const content = `
-            <form id="add-author-form">
+            <form id="add-author-form-${modalId}">
                 <div class="mb-3">
-                    <label for="author-name" class="form-label">Author Name</label>
-                    <input type="text" class="form-control" id="author-name" placeholder="Enter author name" required>
+                    <label for="author-name-${modalId}" class="form-label">Author Name</label>
+                    <input type="text" class="form-control" id="author-name-${modalId}" placeholder="Enter author name" required>
                 </div>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
@@ -263,47 +263,129 @@ class ModalsModule extends window.BaseModule {
 
         const footer = `
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="this.submitAddAuthor('${modalId}')">Add Author</button>
+            <button type="button" class="btn btn-primary" id="submit-author-btn-${modalId}" data-action="submit-add-author" data-modal-id="${modalId}">Add Author</button>
         `;
 
+        // Create the modal
         const modal = this.createModal(modalId, 'Add New Author', content, { footer });
+        
+        // Set up event handlers before showing the modal to prevent race conditions
+        const self = this; // Store reference to 'this' for event handlers
+        
+        // Set up the submit button click handler immediately
+        document.getElementById(`submit-author-btn-${modalId}`).addEventListener('click', function() {
+            self.submitAddAuthor(modalId);
+        });
+        
+        // Show the modal
         this.showModal(modal);
 
-        // Focus on the input
-        setTimeout(() => {
-            const input = document.getElementById('author-name');
-            if (input) input.focus();
-        }, 300);
+        // Set up form handling and focus the input field after the modal is shown
+        modal.addEventListener('shown.bs.modal', () => {
+            // Focus on the input
+            const inputField = document.getElementById(`author-name-${modalId}`);
+            if (inputField) {
+                inputField.focus();
+                
+                // Handle Enter key in the form
+                inputField.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.submitAddAuthor(modalId);
+                    }
+                });
+                
+                // Set up form submission
+                const form = document.getElementById(`add-author-form-${modalId}`);
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        this.submitAddAuthor(modalId);
+                    });
+                }
+            }
+        });
 
         this.debug('Add author modal shown');
     }
 
     async submitAddAuthor(modalId) {
-        const input = document.getElementById('author-name');
+        const input = document.getElementById(`author-name-${modalId}`);
         if (!input || !input.value.trim()) {
             this.notify('Please enter an author name', 'warning');
+            if (input) input.focus();
             return;
         }
 
         const authorName = input.value.trim();
+        
+        // Basic validation
+        if (authorName.length < 2) {
+            this.notify('Author name must be at least 2 characters long', 'warning');
+            input.focus();
+            return;
+        }
+
+        // Disable the submit button to prevent double submission
+        const submitButton = document.getElementById(`submit-author-btn-${modalId}`);
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Adding...';
+        }
 
         try {
             const apiModule = this.getModule('api');
-            if (apiModule) {
-                await apiModule.addAuthor(authorName);
-                this.notify(`Author "${authorName}" added successfully`, 'success');
-                
-                // Close modal
-                const modal = this.activeModals.get(modalId);
-                if (modal) {
-                    modal.hide();
-                }
-
-                // Refresh data
-                this.emit('author:added', { authorName });
+            if (!apiModule) {
+                throw new Error('API module not available');
             }
+
+            const response = await apiModule.addAuthor(authorName);
+            this.notify(`Author "${authorName}" added successfully`, 'success');
+            
+            // Close modal
+            const modalData = this.activeModals.get(modalId);
+            if (modalData && modalData.modal) {
+                modalData.modal.hide();
+            } else {
+                // Fallback in case the modal reference is not found
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const bsModal = bootstrap.Modal.getInstance(modalElement);
+                    if (bsModal) bsModal.hide();
+                }
+            }
+
+            // Emit event for other modules
+            this.emit('author:added', { authorName });
+            
+            // Show a message asking if the user wants to navigate to the author page
+            const confirmNavigation = confirm(`Author "${authorName}" added successfully. Do you want to view the author's page?\n\nNote: This author doesn't have any books yet. You'll be able to add books from the author's page.`);
+            if (confirmNavigation) {
+                // Redirect to the author's page with proper URL encoding
+                // Wait a moment for the server to process the new author
+                setTimeout(() => {
+                    window.location.href = `/authors/${encodeURIComponent(authorName)}`;
+                }, 1000);
+            } else {
+                // If they choose not to navigate, refresh the current page to show the updated author list
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            }
+            
         } catch (error) {
+            console.error('Error adding author:', error);
             this.notify(`Failed to add author: ${error.message}`, 'error');
+            
+            // Re-enable the submit button
+            const resetButton = document.getElementById(`submit-author-btn-${modalId}`);
+            if (resetButton) {
+                resetButton.disabled = false;
+                resetButton.innerHTML = 'Add Author';
+            }
+            
+            // Focus back to input for retry
+            if (input) input.focus();
         }
     }
 
