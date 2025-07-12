@@ -1,114 +1,154 @@
 <template>
-  <div class="space-y-6">
-    <!-- Search Header -->
-    <div class="bg-white rounded-lg shadow p-6">
-      <h1 class="text-2xl font-bold text-gray-900 mb-4">Search Audiobooks</h1>
-      
-      <!-- Search Form -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
-          <input 
-            v-model="searchForm.title"
-            type="text" 
-            placeholder="Enter book title..."
-            class="input-field"
-            @keyup.enter="performSearch"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Author</label>
-          <input 
-            v-model="searchForm.author"
-            type="text" 
-            placeholder="Enter author name..."
-            class="input-field"
-            @keyup.enter="performSearch"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Series</label>
-          <input 
-            v-model="searchForm.series"
-            type="text" 
-            placeholder="Enter series name..."
-            class="input-field"
-            @keyup.enter="performSearch"
-          />
-        </div>
-      </div>
+  <div id="vue-app">
+    <div v-cloak>
+      <!-- Search Header -->
+      <section class="mb-4" aria-labelledby="search-heading">
+        <header class="static-controls-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <h3 id="search-heading">Search Audiobooks</h3>
+          </div>
+        </header>
+        
+        <!-- Search Form -->
+        <div class="controls-content">
+          <div class="row g-3">
+            <div class="col-lg-4">
+              <label for="search-title" class="form-label">Title</label>
+              <input 
+                id="search-title"
+                v-model="searchForm.title"
+                type="text" 
+                placeholder="Enter book title..."
+                class="form-control"
+                @keyup.enter="performSearch">
+            </div>
+            <div class="col-lg-4">
+              <label for="search-author" class="form-label">Author</label>
+              <input 
+                id="search-author"
+                v-model="searchForm.author"
+                type="text" 
+                placeholder="Enter author name..."
+                class="form-control"
+                @keyup.enter="performSearch">
+            </div>
+            <div class="col-lg-4">
+              <label for="search-series" class="form-label">Series</label>
+              <input 
+                id="search-series"
+                v-model="searchForm.series"
+                type="text" 
+                placeholder="Enter series name..."
+                class="form-control"
+                @keyup.enter="performSearch">
+            </div>
+          </div>
 
-      <!-- Search Actions -->
-      <div class="flex items-center space-x-4 mt-4">
-        <button 
-          @click="performSearch"
-          :disabled="isSearching"
-          class="btn-primary"
-        >
-          {{ isSearching ? 'Searching...' : '🔍 Search' }}
-        </button>
-        <button 
-          @click="clearSearch"
-          class="btn-secondary"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
+          <!-- Search Actions -->
+          <div class="d-flex gap-2 mt-3">
+            <button 
+              @click="performSearch"
+              :disabled="isSearching"
+              class="btn btn-primary">
+              <i class="fas fa-search me-1"></i>
+              {{ isSearching ? 'Searching...' : 'Search' }}
+            </button>
+            <button 
+              @click="clearSearch"
+              class="btn btn-outline-secondary">
+              <i class="fas fa-times me-1"></i>
+              Clear
+            </button>
+          </div>
+        </div>
+      </section>
 
-    <!-- Search Results -->
-    <div v-if="searchPerformed" class="bg-white rounded-lg shadow">
-      <div class="p-6 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">
-          Search Results ({{ searchResults.length }} found)
-        </h2>
-      </div>
-      
-      <div class="p-6">
-        <div v-if="isSearching" class="text-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-2 text-gray-600">Searching...</p>
+      <!-- Search Results -->
+      <section v-if="searchPerformed" class="row row-cards" id="search-results" aria-labelledby="search-results-heading">
+        <div class="col-12 mb-3">
+          <h3 class="h5 mb-0" id="search-results-heading">
+            Search Results ({{ searchResults.length }} found)
+          </h3>
         </div>
         
-        <div v-else-if="searchResults.length === 0" class="text-center py-8">
-          <p class="text-gray-500">No books found matching your criteria.</p>
-        </div>
-        
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div 
-            v-for="book in searchResults" 
-            :key="book.id"
-            class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-          >
-            <div class="flex items-start space-x-4">
-              <img 
-                :src="book.cover_url || '/static/images/placeholder-book.jpg'" 
-                :alt="book.title"
-                class="w-16 h-20 object-cover rounded"
-              />
-              <div class="flex-1">
-                <h3 class="font-semibold text-gray-900 text-sm mb-1">{{ book.title }}</h3>
-                <p class="text-sm text-gray-600 mb-1">{{ book.author }}</p>
-                <p v-if="book.series" class="text-xs text-gray-500 mb-2">{{ book.series }}</p>
-                <p class="text-xs text-gray-500 mb-2">Release: {{ formatDate(book.release_date) }}</p>
-                
-                <div class="flex items-center space-x-2">
-                  <button 
-                    @click="addToWishlist(book)"
-                    :disabled="book.in_wishlist"
-                    class="text-xs px-2 py-1 rounded"
-                    :class="book.in_wishlist ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'"
-                  >
-                    {{ book.in_wishlist ? '✓ In Wishlist' : '⭐ Add to Wishlist' }}
-                  </button>
-                </div>
-              </div>
+        <!-- Loading State -->
+        <div v-if="isSearching" class="col-12">
+          <div class="card">
+            <div class="card-body text-center py-5">
+              <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+              <p class="text-muted">Searching...</p>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
+        
+        <!-- No Results -->
+        <div v-else-if="searchResults.length === 0" class="col-12">
+          <div class="empty">
+            <div class="empty-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <p class="empty-title">No books found</p>
+            <p class="empty-subtitle text-muted">Try adjusting your search criteria</p>
+          </div>
+        </div>
+        
+        <!-- Search Results -->
+        <div v-else v-for="book in searchResults" :key="book.id" class="col-lg-4 col-md-6">
+          <article class="card h-100 search-result-card">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-4">
+                  <div class="search-image-container mb-3">
+                    <img :src="book.cover_url || getImageSrc(book)" 
+                         :alt="`Cover of ${book.title}`" 
+                         class="search-image img-fluid rounded"
+                         loading="lazy"
+                         @error="handleImageError">
+                  </div>
+                </div>
+                <div class="col-8">
+                  <h5 class="search-title card-title">{{ book.title }}</h5>
+                  <p class="text-muted mb-2">{{ book.author }}</p>
+                  <p v-if="book.series" class="search-series text-muted mb-2">
+                    <i class="fas fa-list me-1"></i>
+                    {{ book.series }}
+                  </p>
+                  <p class="text-muted small mb-2">
+                    <i class="fas fa-calendar me-1"></i>
+                    Release: {{ formatDate(book.release_date) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Footer with Actions -->
+            <div class="card-footer bg-light">
+              <div class="d-flex justify-content-center">
+                <div class="btn-group">
+                  <button 
+                    @click="addToWishlist(book)"
+                    :disabled="book.in_wishlist"
+                    :class="book.in_wishlist ? 'btn btn-outline-secondary' : 'btn btn-primary'"
+                    class="btn btn-sm">
+                    <i :class="book.in_wishlist ? 'fas fa-check' : 'fas fa-heart'" class="me-1"></i>
+                    {{ book.in_wishlist ? 'In Wishlist' : 'Add to Wishlist' }}
+                  </button>
+                  <a v-if="book.audible_url"
+                     :href="book.audible_url" 
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    View
+                  </a>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div> <!-- End v-cloak -->
+  </div> <!-- End vue-app -->
 </template>
 
 <script setup>
@@ -128,7 +168,29 @@ const searchForm = reactive({
 })
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
+  if (!dateString) return 'TBD'
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  } catch (error) {
+    return 'TBD'
+  }
+}
+
+// Image handling - exact match to UpcomingReleases
+const getImageSrc = (book) => {
+  const imageUrl = book.image_url || book.cover_url || book.thumbnail_url
+  if (imageUrl && imageUrl !== 'null' && imageUrl !== '') {
+    return imageUrl
+  }
+  return '/static/images/og-image.png'
+}
+
+const handleImageError = (event) => {
+  event.target.src = '/static/images/og-image.png'
 }
 
 const performSearch = async () => {
@@ -210,3 +272,166 @@ const addToWishlist = async (book) => {
   }
 }
 </script>
+
+<style scoped>
+/* Vue specific styles - match UpcomingReleases */
+[v-cloak] { 
+  display: none !important; 
+}
+
+/* Static controls header - clean and minimal */
+.static-controls-header {
+  padding: 1rem 0 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.static-controls-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.controls-content {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+/* Dark mode support for controls header and content */
+[data-theme="dark"] .static-controls-header,
+.dark-theme .static-controls-header {
+  border-bottom: 1px solid #374151;
+}
+
+[data-theme="dark"] .static-controls-header h3,
+.dark-theme .static-controls-header h3 {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .controls-content,
+.dark-theme .controls-content {
+  background: #23272f;
+  border: 1px solid #374151;
+}
+
+/* Search result card styling */
+.search-result-card {
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.search-result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1);
+  border-color: var(--primary-200, #c7d2fe);
+}
+
+/* Search image container */
+.search-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--secondary-50, #f8fafc) 0%, var(--secondary-100, #f1f5f9) 100%);
+}
+
+.search-image {
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+}
+
+.search-image:hover {
+  transform: scale(1.02);
+}
+
+/* Enhanced text styling */
+.search-title {
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.search-series {
+  color: var(--text-secondary, #475569);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Empty state styling - match UpcomingReleases */
+.empty {
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.empty-subtitle {
+  margin-bottom: 1.5rem;
+}
+
+/* Card consistent sizing */
+.row-cards .col-lg-4.col-md-6 {
+  display: flex;
+  margin-bottom: 1.5rem;
+}
+
+.search-result-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-footer {
+  margin-top: auto;
+  padding: 0.75rem 1rem;
+  background-color: transparent;
+  border-top: 1px solid var(--border-color-light, rgba(0,0,0,0.1));
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .search-result-card {
+  background: var(--bg-secondary, #1a1a1a);
+  border-color: var(--border-medium, #2d3748);
+}
+
+[data-theme="dark"] .search-result-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  border-color: var(--primary-400, #818cf8);
+}
+
+[data-theme="dark"] .search-title {
+  color: var(--text-primary, #e2e8f0);
+}
+
+[data-theme="dark"] .card-footer {
+  border-top-color: var(--border-color-dark, rgba(255,255,255,0.1));
+}
+</style>
