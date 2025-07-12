@@ -95,7 +95,10 @@ class AuthorDetailModule extends window.BaseModule {
             if (e.target.matches('[data-book-action]')) {
                 const action = e.target.dataset.bookAction;
                 const bookId = e.target.dataset.bookId;
-                this.handleBookAction(action, bookId);
+                // Only handle data-book-action if we have a valid bookId
+                if (bookId !== undefined) {
+                    this.handleBookAction(action, bookId);
+                }
             }
         });
 
@@ -302,36 +305,14 @@ class AuthorDetailModule extends window.BaseModule {
                     orderable: false,
                     searchable: false,
                     className: 'text-center',
-                    width: '40px',
-                    render: function(data, type, row) {
-                        return `<input type="checkbox" class="book-checkbox" value="${row.id}" 
-                                       aria-label="Select ${row.title}">`;
-                    }
+                    width: '40px'
                 },
                 {
                     targets: -1, // Actions column (last column)
                     orderable: false,
                     searchable: false,
                     className: 'text-center',
-                    width: '120px',
-                    render: function(data, type, row) {
-                        return `
-                            <div class="btn-group" role="group" aria-label="Book actions for ${row.title}">
-                                <button class="btn btn-sm btn-outline-primary" 
-                                        data-book-action="edit" 
-                                        data-book-id="${row.id}"
-                                        aria-label="Edit ${row.title}">
-                                    <i class="fas fa-edit" aria-hidden="true"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" 
-                                        data-book-action="delete" 
-                                        data-book-id="${row.id}"
-                                        aria-label="Delete ${row.title}">
-                                    <i class="fas fa-trash" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        `;
-                    }
+                    width: '120px'
                 }
             ],
             language: {
@@ -621,8 +602,18 @@ class AuthorDetailModule extends window.BaseModule {
      */
     openEditModal(bookIndex) {
         try {
-            const book = this.authorData.books[bookIndex];
+            // Convert bookIndex to number if it's a string
+            const index = typeof bookIndex === 'string' ? parseInt(bookIndex, 10) : bookIndex;
+            
+            // Validate index and get book by array index
+            if (index < 0 || index >= this.authorData.books.length || isNaN(index)) {
+                this.debug(`Invalid book index: ${bookIndex}. Available indices: 0-${this.authorData.books.length - 1}`);
+                throw new Error('Book not found');
+            }
+            
+            const book = this.authorData.books[index];
             if (!book) {
+                this.debug(`Book not found at index: ${index}. Available books:`, this.authorData.books.map((b, i) => ({index: i, title: b.title})));
                 throw new Error('Book not found');
             }
 
@@ -779,9 +770,10 @@ class AuthorDetailModule extends window.BaseModule {
     /**
      * Handle book action (edit, duplicate, delete)
      */
-    async handleBookAction(action, bookId) {
+    async handleBookAction(action, bookIndex) {
         try {
-            const bookIndex = parseInt(bookId);
+            // bookIndex is the array index from the template
+            this.debug(`Handling book action: ${action} for bookIndex: ${bookIndex} (type: ${typeof bookIndex})`);
             const authorName = this.authorData.name;
             
             switch (action) {
@@ -811,8 +803,18 @@ class AuthorDetailModule extends window.BaseModule {
      */
     async duplicateBook(bookIndex) {
         try {
-            const book = this.authorData.books[bookIndex];
+            // Convert bookIndex to number if it's a string
+            const index = typeof bookIndex === 'string' ? parseInt(bookIndex, 10) : bookIndex;
+            
+            // Validate index and get book by array index
+            if (index < 0 || index >= this.authorData.books.length || isNaN(index)) {
+                this.debug(`Invalid book index: ${bookIndex}. Available indices: 0-${this.authorData.books.length - 1}`);
+                throw new Error('Book not found');
+            }
+            
+            const book = this.authorData.books[index];
             if (!book) {
+                this.debug(`Book not found at index: ${index}. Available books:`, this.authorData.books.map((b, i) => ({index: i, title: b.title})));
                 throw new Error('Book not found');
             }
 
@@ -847,8 +849,18 @@ class AuthorDetailModule extends window.BaseModule {
      */
     async deleteBook(bookIndex) {
         try {
-            const book = this.authorData.books[bookIndex];
+            // Convert bookIndex to number if it's a string
+            const index = typeof bookIndex === 'string' ? parseInt(bookIndex, 10) : bookIndex;
+            
+            // Validate index and get book by array index
+            if (index < 0 || index >= this.authorData.books.length || isNaN(index)) {
+                this.debug(`Invalid book index: ${bookIndex}. Available indices: 0-${this.authorData.books.length - 1}`);
+                throw new Error('Book not found');
+            }
+            
+            const book = this.authorData.books[index];
             if (!book) {
+                this.debug(`Book not found at index: ${index}. Available books:`, this.authorData.books.map((b, i) => ({index: i, title: b.title})));
                 throw new Error('Book not found');
             }
 
@@ -858,13 +870,13 @@ class AuthorDetailModule extends window.BaseModule {
             }
 
             const apiModule = this.getModule('api');
-            await apiModule.deleteBook(this.authorData.name, bookIndex);
+            await apiModule.deleteBook(this.authorData.name, index);
             
             this.notify(`Book "${book.title}" deleted successfully`, 'success');
             this.emit('book:deleted', { 
                 authorName: this.authorData.name, 
                 book, 
-                bookIndex 
+                bookIndex: index 
             });
             
             // Refresh the page
