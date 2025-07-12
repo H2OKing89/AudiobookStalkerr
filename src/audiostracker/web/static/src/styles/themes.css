@@ -720,42 +720,114 @@ body.dark-theme .theme-toggle-btn:hover {
   font-weight: 500;
 }
 
-/* Dark theme overrides for upcoming page */
-body.dark-theme .audiobook-card {
-  background: var(--bg-secondary, #1a1a1a);
-  border-color: var(--border-medium, #2d3748);
+/* Specific styling for upcoming audiobooks cards to match screenshot layout */
+.book-cover {
+  width: 100%;
+  height: auto;
 }
 
-body.dark-theme .audiobook-card:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-  border-color: var(--primary-400, #818cf8);
+.book-cover-img {
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-body.dark-theme .audiobook-title {
-  color: var(--text-primary, #e2e8f0);
+.book-cover-img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-body.dark-theme .controls-panel {
-  background: var(--bg-secondary, #1a1a1a);
-  border-color: var(--border-medium, #2d3748);
+/* Ensure cards have consistent height and proper spacing */
+.card.h-100 {
+  height: 100% !important;
+  display: flex;
+  flex-direction: column;
 }
 
-body.dark-theme .search-input {
-  background: var(--bg-tertiary, #2d3748);
-  border-color: var(--border-medium, #4a5568);
-  color: var(--text-primary, #e2e8f0);
+.card.h-100 .card-body {
+  flex: 1;
+  padding: 1rem;
 }
 
-body.dark-theme .search-input:focus {
-  border-color: var(--primary-400, #818cf8);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+.card.h-100 .card-footer {
+  margin-top: auto;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-secondary, #f8fafc);
+  border-top: 1px solid var(--border-light, #e2e8f0);
 }
 
-body.dark-theme .stat-card {
-  background: var(--bg-secondary, #1a1a1a);
-  border-color: var(--border-medium, #2d3748);
+/* Card header styling for author and badges */
+.card-header {
+  background-color: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  padding: 0.75rem 1rem;
 }
 
-/* ====================================================
-   END UPCOMING AUDIOBOOKS PAGE STYLES
-   ==================================================== */
+.card-header h6 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--primary-600, #4f46e5);
+}
+
+/* Release info styling */
+.release-info {
+  margin-top: 0.5rem;
+}
+
+.release-info .fw-bold {
+  background: linear-gradient(135deg, var(--primary-500, #6366f1) 0%, var(--primary-600, #4f46e5) 100%);
+  color: white;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Button group styling */
+.btn-group-sm .btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-group-sm .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Badge styling for "This Week" and "This Month" */
+.badge.bg-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+  color: #212529 !important;
+}
+
+/* Enhanced card grid layout */
+.row-cards .col-lg-4 {
+  margin-bottom: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .book-cover-img {
+    max-height: 120px;
+  }
+  
+  .card-body .row .col-8 {
+    font-size: 0.9rem;
+  }
+  
+  .btn-group-sm .btn .d-none.d-md-inline {
+    display: none !important;
+  }
+}
+
+/* ...existing code... */

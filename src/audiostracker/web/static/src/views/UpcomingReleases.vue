@@ -1,23 +1,22 @@
 <template>
   <div id="vue-app">
-    <div v-cloak>
-    <!-- Control Panel - Exact match to legacy -->
-    <section class="row mb-4" aria-labelledby="controls-heading">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" id="controls-heading">Search and Filter Controls</h3>
-            <div class="card-actions" v-show="activeFilters > 0" v-if="activeFilters > 0">
-              <button type="button" 
-                      class="btn btn-sm btn-outline-danger" 
-                      @click="clearAllFilters"
-                      aria-label="Clear all filters">
-                <i class="fas fa-times me-1" aria-hidden="true"></i>
-                Clear All ({{ activeFilters }})
-              </button>
-            </div>
+    <div v-cloak>    <!-- Control Panel - Static header without card -->
+    <section class="mb-4" aria-labelledby="controls-heading">
+      <header class="static-controls-header">
+        <div class="d-flex justify-content-between align-items-center">
+          <h3 id="controls-heading">Search and Filter Controls</h3>
+          <div v-show="activeFilters > 0" v-if="activeFilters > 0">
+            <button type="button" 
+                    class="btn btn-sm btn-outline-danger" 
+                    @click="clearAllFilters"
+                    aria-label="Clear all filters">
+              <i class="fas fa-times me-1" aria-hidden="true"></i>
+              Clear All ({{ activeFilters }})
+            </button>
           </div>
-          <div class="card-body">
+        </div>
+      </header>
+      <div class="controls-content">
             <div class="row align-items-center g-3">
               <div class="col-lg-6">
                 <label for="search-input" class="form-label">Search</label>
@@ -73,213 +72,109 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+        </section>
 
-    <!-- Statistics Cards - Exact match to legacy -->
-    <section class="row row-deck row-cards mb-4" id="stats-cards" aria-labelledby="stats-heading">
-      <h3 class="sr-only" id="stats-heading">Statistics Overview</h3>
-      <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-info text-white avatar" aria-hidden="true">
-                  <i class="fas fa-calendar-alt"></i>
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium" id="upcoming-books" aria-label="Number of upcoming books">
-                  {{ stats.upcoming_books }}
-                </div>
-                <div class="text-muted">
-                  Upcoming Books
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-success text-white avatar" aria-hidden="true">
-                  <i class="fas fa-users"></i>
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium" id="total-authors" aria-label="Number of authors">
-                  {{ stats.total_authors }}
-                </div>
-                <div class="text-muted">
-                  Authors
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-warning text-white avatar" aria-hidden="true">
-                  <i class="fas fa-building"></i>
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium" id="total-publishers" aria-label="Number of publishers">
-                  {{ stats.total_publishers }}
-                </div>
-                <div class="text-muted">
-                  Publishers
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-danger text-white avatar" aria-hidden="true">
-                  <i class="fas fa-plus-circle"></i>
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium" id="recent-additions" aria-label="Books added this week">
-                  {{ stats.recent_additions }}
-                </div>
-                <div class="text-muted">
-                  Added This Week
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Search Results Header - Exact match to legacy -->
-    <section class="search-results-header" id="search-results-header" v-show="showSearchResults" aria-labelledby="results-heading">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="search-results-count">
-              <h3 class="h5 mb-0" id="results-heading">
-                <span id="results-count" aria-live="polite">{{ filteredBooks.length }}</span> books found
-              </h3>
-            </div>
-            <div class="text-muted small">
-              Use the controls below to sort and filter results
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- View Mode Toggle - Exact match to legacy -->
-    <section class="mb-3" aria-labelledby="view-mode-heading">
-      <h3 class="sr-only" id="view-mode-heading">View Mode Selection</h3>
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="btn-group" role="group" aria-label="Choose view mode">
-          <button type="button" 
-                  class="btn"
-                  :class="viewMode === 'grid' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="setViewMode('grid')" 
-                  aria-label="Grid view">
-            <i class="fas fa-th" aria-hidden="true"></i>
-            <span class="d-none d-md-inline ms-1">Grid</span>
-          </button>
-          <button type="button" 
-                  class="btn"
-                  :class="viewMode === 'list' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="setViewMode('list')" 
-                  aria-label="List view">
-            <i class="fas fa-list" aria-hidden="true"></i>
-            <span class="d-none d-md-inline ms-1">List</span>
-          </button>
-        </div>
-        <div class="d-flex align-items-center">
-          <label for="main-sort-select" class="form-label me-2 mb-0">Sort by:</label>
-          <select id="main-sort-select" 
-                  class="form-select form-select-sm" 
-                  style="width: auto;" 
-                  aria-label="Sort audiobooks by"
-                  v-model="sortBy"
-                  @change="applySorting">
-            <option value="release_date">Release Date</option>
-            <option value="author">Author</option>
-            <option value="title">Title</option>
-            <option value="series">Series</option>
-          </select>
-          <button type="button" 
-                  class="btn btn-sm btn-outline-secondary ms-2" 
-                  @click="toggleSortOrder"
-                  :aria-label="sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'"
-                  :title="sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'">
-            <i :class="sortOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down'" 
-               aria-hidden="true"></i>
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Books Grid View - Exact match to legacy -->
+    <!-- Books Grid View - Updated to match screenshot layout -->
     <section v-if="viewMode === 'grid'" class="row row-cards" id="books-grid" aria-labelledby="books-grid-heading">
       <h3 class="sr-only" id="books-grid-heading">Audiobook Grid View</h3>
-      <div v-for="(book, index) in filteredBooks" :key="book.asin || index" class="col-sm-6 col-lg-4">
-        <div class="card card-link card-link-pop" :data-book-id="book.asin || index">
-          <div class="card-img-top img-responsive img-responsive-21x9">
-            <img :src="getImageSrc(book)" 
-                 :alt="`Cover image for ${book.title} by ${book.author}`"
-                 class="img-fluid card-cover-image"
-                 @error="handleImageError"
-                 @load="handleImageLoad"
-                 loading="lazy"
-                 :class="{ 'loading': imageLoading[book.asin || index] }">
-          </div>
-          <div class="card-body">
-            <h3 class="card-title">
-              <a :href="book.link || book.audible_url || '#'" 
-                 target="_blank" 
-                 rel="noopener noreferrer"
-                 :aria-label="`View ${book.title} on Audible (opens in new tab)`">
-                {{ book.title }}
-                <i class="fas fa-external-link-alt ms-1" aria-hidden="true"></i>
-              </a>
-            </h3>
-            <p class="text-muted">
-              <i class="fas fa-user me-1" aria-hidden="true"></i>
-              {{ book.author }}
-            </p>
-            <p class="text-muted" v-if="book.series">
-              <i class="fas fa-list me-1" aria-hidden="true"></i>
-              {{ book.series }}
-            </p>
-            <p class="text-muted" v-if="book.narrator">
-              <i class="fas fa-microphone me-1" aria-hidden="true"></i>
-              {{ book.narrator }}
-            </p>
-          </div>
-          <div class="card-footer">
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="text-muted">
-                <i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>
-                {{ formatDate(book.release_date) }}
-              </span>
-              <span class="badge bg-primary" v-if="book.publisher">
-                {{ book.publisher }}
-              </span>
+      <div v-for="(book, index) in filteredBooks" :key="book.asin || book.id || index" class="col-lg-4 col-md-6 col-sm-12">
+        <article class="card h-100 audiobook-card" 
+                 role="article" 
+                 :aria-labelledby="`book-title-${index}`"
+                 :data-book-id="book.asin || book.id || index">
+          
+          <!-- Card Header with Author and Badges -->
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 text-primary">{{ book.author }}</h6>
+            <div class="btn-group d-flex gap-2 align-items-center">
+              <span v-if="isNewRelease(book.release_date)" class="badge bg-danger">This Week</span>
+              <span v-else-if="isComingSoon(book.release_date)" class="badge bg-warning">This Month</span>
             </div>
           </div>
-        </div>
+          
+          <!-- Card Body with Image and Details -->
+          <div class="card-body">
+            <div class="row">
+              <div class="col-4">
+                <div class="audiobook-image-container mb-3">
+                  <img :src="getImageSrc(book)" 
+                       :alt="`Cover of ${book.title}`" 
+                       class="audiobook-image img-fluid rounded"
+                       loading="lazy"
+                       @error="handleImageError"
+                       @load="handleImageLoad"
+                       :class="{ 'loading': imageLoading[book.asin || book.id || index] }">
+                </div>
+              </div>
+              <div class="col-8">
+                <h5 class="audiobook-title card-title" :id="`book-title-${index}`">{{ book.title }}</h5>
+                
+                <!-- Series Information -->
+                <p v-if="book.series" class="audiobook-series text-muted mb-2">
+                  <i class="fas fa-list me-1"></i>
+                  {{ book.series }}
+                  <span v-if="book.series_sequence || book.series_number"> #{{ book.series_sequence || book.series_number }}</span>
+                </p>
+                
+                <!-- Narrator Information -->
+                <p v-if="book.narrator" class="audiobook-narrator text-muted mb-2">
+                  <i class="fas fa-microphone me-1"></i>
+                  {{ book.narrator }}
+                </p>
+                
+                <!-- Publisher Information -->
+                <p v-if="book.publisher_name || book.publisher" class="text-muted mb-2">
+                  <i class="fas fa-building me-1"></i>
+                  {{ book.publisher_name || book.publisher }}
+                </p>
+                
+                <!-- Release Information -->
+                <div class="release-info">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-calendar-day text-primary me-2"></i>
+                    <span class="release-badge">{{ formatDate(book.release_date) }}</span>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    <i class="fas fa-clock text-muted me-2"></i>
+                    <span class="text-muted small">{{ getTimeToRelease(book.release_date) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Card Footer with Action Buttons -->
+          <div class="card-footer bg-light">
+            <div class="audiobook-actions d-flex justify-content-center">
+              <div class="btn-group-unified">
+                  <a v-if="book.link || book.audible_url" 
+                     :href="book.link || book.audible_url" 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     class="btn btn-outline-primary"
+                     :aria-label="`View ${book.title} on Audible`">
+                    <i class="fas fa-external-link-alt me-1"></i>
+                    <span class="d-none d-md-inline">View</span>
+                  </a>
+                  <a v-if="book.asin" 
+                     :href="`/api/ical/download/${book.asin}`" 
+                     download
+                     class="btn btn-outline-success"
+                     :aria-label="`Download calendar event for ${book.title}`">
+                    <i class="fas fa-calendar-plus me-1"></i>
+                    <span class="d-none d-md-inline">iCal</span>
+                  </a>
+                  <button type="button" 
+                          class="btn btn-outline-secondary"
+                          @click="showBookDetails(book)"
+                          :aria-label="`Show details for ${book.title}`">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <span class="d-none d-md-inline">Details</span>
+                  </button>
+                </div>
+              </div>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -618,16 +513,23 @@ const fetchBooks = async () => {
   isLoading.value = true
   
   try {
+    console.log('🔄 Fetching audiobooks from /api/upcoming...')
     const response = await fetch('/api/upcoming')
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
     const data = await response.json()
+    console.log('📦 Raw API response:', data)
+    
     // The /api/upcoming endpoint returns a direct array of books
     books.value = Array.isArray(data) ? data : []
     console.log(`📚 Loaded ${books.value.length} audiobooks`)
+    
+    if (books.value.length > 0) {
+      console.log('📖 Sample book data:', books.value[0])
+    }
   } catch (error) {
-    console.error('Error fetching audiobooks:', error)
+    console.error('❌ Error fetching audiobooks:', error)
     books.value = []
   } finally {
     isLoading.value = false
@@ -640,6 +542,145 @@ const handleKeydown = (event) => {
     event.preventDefault()
     document.getElementById('search-input')?.focus()
   }
+}
+
+// Additional helper methods for audiobook cards
+const getTimeToRelease = (dateString) => {
+  if (!dateString) return 'Date TBD'
+  
+  try {
+    const releaseDate = new Date(dateString)
+    if (isNaN(releaseDate.getTime())) return 'Date TBD'
+    
+    const now = new Date()
+    const diffTime = releaseDate - now
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) {
+      return 'Already released'
+    } else if (diffDays === 0) {
+      return 'Today'
+    } else if (diffDays === 1) {
+      return 'Less than a day'
+    } else if (isThisWeek(releaseDate)) {
+      return 'This week'
+    } else if (isThisMonth(releaseDate)) {
+      return 'This month'
+    } else if (diffDays <= 30) {
+      return 'Next month'
+    } else if (diffDays <= 365) {
+      const months = Math.floor(diffDays / 30)
+      return `${months} month${months > 1 ? 's' : ''}`
+    } else {
+      const years = Math.floor(diffDays / 365)
+      return `${years} year${years > 1 ? 's' : ''}`
+    }
+  } catch (error) {
+    return 'Date TBD'
+  }
+}
+
+const isThisWeek = (releaseDate) => {
+  const now = new Date()
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - now.getDay()) // Start of this week (Sunday)
+  startOfWeek.setHours(0, 0, 0, 0)
+  
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setDate(startOfWeek.getDate() + 6) // End of this week (Saturday)
+  endOfWeek.setHours(23, 59, 59, 999)
+  
+  return releaseDate >= startOfWeek && releaseDate <= endOfWeek
+}
+
+const isThisMonth = (releaseDate) => {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+  
+  return releaseDate >= startOfMonth && releaseDate <= endOfMonth
+}
+
+const isNewRelease = (dateString) => {
+  if (!dateString) return false
+  
+  try {
+    const releaseDate = new Date(dateString)
+    if (isNaN(releaseDate.getTime())) return false
+    
+    const now = new Date()
+    const diffTime = releaseDate - now
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    // "This Week" badge for releases within 7 days
+    return diffDays >= 0 && diffDays <= 7
+  } catch (error) {
+    return false
+  }
+}
+
+const isComingSoon = (dateString) => {
+  if (!dateString) return false
+  
+  try {
+    const releaseDate = new Date(dateString)
+    if (isNaN(releaseDate.getTime())) return false
+    
+    const now = new Date()
+    const diffTime = releaseDate - now
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    // "This Month" badge for releases within 8-30 days
+    return diffDays >= 8 && diffDays <= 30
+  } catch (error) {
+    return false
+  }
+}
+
+const showBookDetails = (book) => {
+  // Create a detailed view of the book information
+  const detailsContent = `
+    <div class="book-details-modal">
+      <div class="row">
+        <div class="col-md-4">
+          <img src="${book.cover_url || book.image_url || '/static/images/og-image.png'}" 
+               alt="Cover of ${book.title}" 
+               class="img-fluid rounded">
+        </div>
+        <div class="col-md-8">
+          <h3>${book.title}</h3>
+          <p class="text-muted mb-3">by ${book.author}</p>
+          
+          ${book.series ? `<p><strong>Series:</strong> ${book.series}${book.series_sequence || book.series_number ? ` #${book.series_sequence || book.series_number}` : ''}</p>` : ''}
+          ${book.narrator ? `<p><strong>Narrator:</strong> ${book.narrator}</p>` : ''}
+          ${book.publisher_name || book.publisher ? `<p><strong>Publisher:</strong> ${book.publisher_name || book.publisher}</p>` : ''}
+          <p><strong>Release Date:</strong> ${formatDate(book.release_date)} (${getTimeToRelease(book.release_date)})</p>
+          ${book.asin ? `<p><strong>ASIN:</strong> ${book.asin}</p>` : ''}
+          ${book.last_checked ? `<p><strong>Last Updated:</strong> ${formatDate(book.last_checked)}</p>` : ''}
+          
+          ${book.merchandising_summary || book.description ? `<div class="mt-3"><h5>Description</h5><p>${book.merchandising_summary || book.description}</p></div>` : ''}
+          
+          <div class="mt-4">
+            ${book.link || book.audible_url ? `<a href="${book.link || book.audible_url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary me-2">View on Audible</a>` : ''}
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+  
+  // For now, use alert as fallback - this can be enhanced with a proper modal later
+  const simpleDetails = [
+    `Title: ${book.title}`,
+    `Author: ${book.author}`,
+    book.series ? `Series: ${book.series}${book.series_sequence || book.series_number ? ` #${book.series_sequence || book.series_number}` : ''}` : '',
+    book.narrator ? `Narrator: ${book.narrator}` : '',
+    book.publisher_name || book.publisher ? `Publisher: ${book.publisher_name || book.publisher}` : '',
+    `Release Date: ${formatDate(book.release_date)} (${getTimeToRelease(book.release_date)})`,
+    book.merchandising_summary || book.description ? `\nDescription: ${book.merchandising_summary || book.description}` : ''
+  ].filter(Boolean).join('\n')
+  
+  alert(simpleDetails)
 }
 
 // === LIFECYCLE - EXACT MATCH TO LEGACY ===
@@ -870,16 +911,18 @@ onUnmounted(() => {
 }
 
 .card-footer {
-  margin-top: auto;
-  padding: 0.75rem 1rem;
-  background-color: transparent;
-  border-top: 1px solid var(--border-color-light, rgba(0,0,0,0.1));
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  position: relative;
+  z-index: 2;
+  padding: 0.5rem 1rem;
+  min-height: unset;
 }
 
 /* Dark mode footer */
 [data-theme="dark"] .card-footer {
   border-top-color: var(--border-color-dark, rgba(255,255,255,0.1));
-}
+  font-size: 1rem;
 
 /* Author, series, narrator info consistent spacing */
 .card-body .text-muted {
@@ -894,8 +937,341 @@ onUnmounted(() => {
   font-size: 0.75rem;
   padding: 0.25em 0.5em;
   white-space: nowrap;
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
 }
+
+  padding: 0.75rem 1rem;
+  min-height: 110px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: 0;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.card-footer {
+  margin-top: auto;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  border-top: 1px solid var(--border-color-light, rgba(0,0,0,0.1));
+}
+
+.audiobook-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, rgba(99, 102, 241, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.audiobook-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+  border-color: var(--primary-200, #c7d2fe);
+}
+
+.audiobook-card:hover::before {
+  opacity: 1;
+}
+
+/* Book image container */
+.audiobook-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--secondary-50, #f8fafc) 0%, var(--secondary-100, #f1f5f9) 100%);
+}
+
+.audiobook-image {
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  border: 1px solid var(--border-light, #e2e8f0);
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+}
+
+.audiobook-image:hover {
+  transform: scale(1.02);
+}
+
+/* Enhanced text styling */
+.audiobook-title {
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.audiobook-author {
+  color: var(--primary-600, #4f46e5);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.audiobook-series {
+  color: var(--text-secondary, #475569);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.audiobook-narrator {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.audiobook-narrator i {
+  color: var(--accent-amber, #d97706);
+}
+
+/* Release date badges */
+.release-badge {
+  background: linear-gradient(135deg, var(--primary-500, #6366f1) 0%, var(--primary-600, #4f46e5) 100%);
+  color: white;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Action buttons */
+.audiobook-actions {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-group-unified {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-group-unified .btn {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-group-unified .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-group-unified .btn i {
+  font-size: 0.8rem;
+}
+
+/* Harmonize button colors for better visual cohesion */
+.btn-group-unified .btn-outline-primary {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.btn-group-unified .btn-outline-primary:hover {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.btn-group-unified .btn-outline-success {
+  border-color: #059669;
+  color: #059669;
+}
+
+.btn-group-unified .btn-outline-success:hover {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.btn-group-unified .btn-outline-secondary {
+  border-color: #6b7280;
+  color: #6b7280;
+}
+
+.btn-group-unified .btn-outline-secondary:hover {
+  background-color: #6b7280;
+  border-color: #6b7280;
+}
+
+/* Card header and footer improvements */
+.card-header {
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  position: relative;
+  z-index: 2;
+}
+
+/* Ensure iCal button always has a green outline */
+.btn-outline-success {
+  border-color: #198754 !important;
+  color: #198754 !important;
+  background-color: transparent !important;
+}
+.btn-outline-success:hover, .btn-outline-success:focus {
+  background-color: #198754 !important;
+  color: #fff !important;
+  border-color: #198754 !important;
+}
+
+.card-footer {
+  background: var(--bg-secondary, #f8fafc);
+  border-top: 1px solid var(--border-light, #e2e8f0);
+  position: relative;
+  z-index: 2;
+}
+
+/* Fix double arrow (vvv) on .form-select and .form-select-sm */
+select.form-select, select.form-select-sm {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' class='feather feather-chevron-down' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25em 1.25em;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.5rem;
+}
+
+.card-body {
+  position: relative;
+  z-index: 2;
+}
+
+/* Dark theme overrides for audiobook cards */
+body.dark-theme .audiobook-card,
+[data-theme="dark"] .audiobook-card {
+  background: var(--bg-secondary, #1a1a1a);
+  border-color: var(--border-medium, #2d3748);
+}
+
+body.dark-theme .audiobook-card:hover,
+[data-theme="dark"] .audiobook-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--primary-400, #818cf8);
+}
+
+body.dark-theme .audiobook-title,
+[data-theme="dark"] .audiobook-title {
+  color: var(--text-primary, #e2e8f0);
+}
+
+body.dark-theme .card-header,
+body.dark-theme .card-footer,
+[data-theme="dark"] .card-header,
+[data-theme="dark"] .card-footer {
+  background: var(--bg-tertiary, #2d3748);
+  border-color: var(--border-medium, #4a5568);
+}
+
+/* Legacy header styling options - Choose one by uncommenting */
+
+/* Static controls header - clean and minimal */
+.static-controls-header {
+  padding: 1rem 0 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.static-controls-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.controls-content {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+/* Dark mode support for controls header and content */
+[data-theme="dark"] .static-controls-header,
+.dark-theme .static-controls-header {
+  border-bottom: 1px solid #374151;
+}
+
+[data-theme="dark"] .static-controls-header h3,
+.dark-theme .static-controls-header h3 {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .controls-content,
+.dark-theme .controls-content {
+  background: #23272f;
+  border: 1px solid #374151;
+}
+
+/* Option 1: Minimal flat header (currently active) */
+.legacy-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Option 2: Subtle accent header (uncomment to use) */
+/*
+.legacy-header {
+  background: #f1f5f9;
+  border-left: 3px solid #6366f1;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+*/
+
+/* Option 3: Clean modern header (uncomment to use) */
+/*
+.legacy-header {
+  background: transparent;
+  border-bottom: 2px solid #f1f5f9;
+  padding: 0.5rem 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #475569;
+}
+*/
+
+/* Option 4: Badge-style compact header (uncomment to use) */
+/*
+.legacy-header {
+  background: #6366f1;
+  color: white;
+  padding: 0.4rem 1rem;
+  font-weight: 500;
+  font-size: 0.85rem;
+  border-radius: 6px 6px 0 0;
+  border: none;
+}
+*/
 </style>
