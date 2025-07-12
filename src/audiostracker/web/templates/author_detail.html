@@ -80,9 +80,9 @@
             <div class="navbar-nav flex-row order-md-last">
                 <a href="/authors" class="nav-link px-0 hide-theme-dark" title="Back to Authors Management">
                     <i class="fas fa-arrow-left me-1"></i>
-                    <span class="d-none d-md-inline">Back to Config</span>
+                    <span class="d-none d-md-inline">Back to Authors</span>
                 </a>
-                <a href="#" class="nav-link px-0 hide-theme-dark ms-2" onclick="saveAuthorData()" title="Save Changes">
+                <a href="#" class="nav-link px-0 hide-theme-dark ms-2" onclick="saveAuthorChanges()" title="Save Changes">
                     <i class="fas fa-save me-1"></i>
                     <span class="d-none d-md-inline">Save</span>
                 </a>
@@ -546,109 +546,125 @@ window.authorData = {
   "narrators": {{ narrators|tojson|safe }},
   "is_new_author": {{ is_new_author|tojson|safe }}
 };
-window.editBook = function(idx) { alert('Edit book not implemented: ' + idx); };
-window.duplicateBook = function(idx) { alert('Duplicate book not implemented: ' + idx); };
-window.deleteBook = function(idx) { alert('Delete book not implemented: ' + idx); };
+window.editBook = function(idx) { 
+    const authorDetail = window.appCore?.getModule('authorDetail');
+    if (authorDetail) {
+        authorDetail.openEditModal(idx);
+    } else {
+        console.warn('AuthorDetail module not available');
+        alert('Edit functionality will be available once the page fully loads.');
+    }
+};
 
-// Add showAddBookModal function if it doesn't exist yet
+window.duplicateBook = function(idx) { 
+    const authorDetail = window.appCore?.getModule('authorDetail');
+    if (authorDetail) {
+        authorDetail.handleBookAction('duplicate', idx);
+    } else {
+        console.warn('AuthorDetail module not available');
+        alert('Duplicate functionality will be available once the page fully loads.');
+    }
+};
+
+window.deleteBook = function(idx) { 
+    const authorDetail = window.appCore?.getModule('authorDetail');
+    if (authorDetail) {
+        authorDetail.handleBookAction('delete', idx);
+    } else {
+        console.warn('AuthorDetail module not available');
+        alert('Delete functionality will be available once the page fully loads.');
+    }
+};
+
+// Add missing global functions for the navbar
+window.saveAuthorChanges = function() {
+    const authorDetail = window.appCore?.getModule('authorDetail');
+    if (authorDetail && authorDetail.hasUnsavedChanges) {
+        // Implement save functionality
+        console.log('Saving author changes...');
+        authorDetail.saveChanges();
+    } else {
+        console.log('No unsaved changes to save');
+    }
+};
+
+window.refreshAuthorData = function() {
+    console.log('Refreshing author data...');
+    window.location.reload();
+};
+
+window.exportAuthorData = function() {
+    const exportModule = window.appCore?.getModule('export');
+    if (exportModule) {
+        exportModule.exportAuthorData(window.authorData.name);
+    } else {
+        console.warn('Export module not available');
+        alert('Export functionality not available');
+    }
+};
+
+window.duplicateAuthor = function() {
+    alert('Duplicate author functionality not yet implemented');
+};
+
+window.mergeAuthor = function() {
+    alert('Merge author functionality not yet implemented');
+};
+
+window.deleteAuthor = function() {
+    if (confirm(`Are you sure you want to delete "${window.authorData.name}" and all their books?`)) {
+        const api = window.appCore?.getModule('api');
+        if (api) {
+            api.deleteAuthor(window.authorData.name)
+                .then(() => {
+                    alert('Author deleted successfully');
+                    window.location.href = '/authors';
+                })
+                .catch(error => {
+                    console.error('Error deleting author:', error);
+                    alert('Error deleting author: ' + error.message);
+                });
+        }
+    }
+};
+
+window.setBooksViewMode = function(mode) {
+    const authorDetail = window.appCore?.getModule('authorDetail');
+    if (authorDetail) {
+        authorDetail.setViewMode(mode);
+    } else {
+        // Fallback implementation
+        if (mode === 'table') {
+            document.getElementById('books-table-container').style.display = 'block';
+            document.getElementById('books-card-container').style.display = 'none';
+        } else {
+            document.getElementById('books-table-container').style.display = 'none';
+            document.getElementById('books-card-container').style.display = 'block';
+        }
+    }
+};
+
+// Add showAddBookModal function that uses the ModalsModule
 window.showAddBookModal = window.showAddBookModal || function() {
-    // Create a modal for adding a book
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.id = 'addBookModal';
-    modal.setAttribute('tabindex', '-1');
-    modal.setAttribute('aria-hidden', 'true');
-    modal.innerHTML = `
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        ${window.authorData.is_new_author ? 
-                          `<i class="fas fa-plus-circle text-success me-2"></i>Add First Book for ${window.authorData.name}` : 
-                          'Add New Book'}
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    ${window.authorData.is_new_author ? `
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Getting Started:</strong> Add your first book for ${window.authorData.name}. 
-                        You can fill out just the title now and add more details later.
-                    </div>` : ''}
-                    <form id="addBookForm">
-                        <div class="mb-3">
-                            <label for="book-title" class="form-label">Book Title</label>
-                            <input type="text" class="form-control" id="book-title" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="book-series" class="form-label">Series (optional)</label>
-                            <input type="text" class="form-control" id="book-series">
-                        </div>
-                        <div class="mb-3">
-                            <label for="book-publisher" class="form-label">Publisher (optional)</label>
-                            <input type="text" class="form-control" id="book-publisher">
-                        </div>
-                        <div class="mb-3">
-                            <label for="book-narrator" class="form-label">Narrator (optional)</label>
-                            <input type="text" class="form-control" id="book-narrator" 
-                                   placeholder="For multiple narrators, separate with commas">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="submitAddBook">Save Book</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add to document
-    document.body.appendChild(modal);
-    
-    // Get Bootstrap modal instance
-    const modalInstance = new bootstrap.Modal(modal);
-    
-    // Add submit handler
-    const submitButton = modal.querySelector('#submitAddBook');
-    if (submitButton) {
-        submitButton.addEventListener('click', function() {
-            const form = document.getElementById('addBookForm');
-            const titleInput = document.getElementById('book-title');
-            
-            if (!titleInput.value) {
-                // Simple validation
-                titleInput.classList.add('is-invalid');
-                return;
-            }
-            
-            // Get form data
-            const bookData = {
-                title: document.getElementById('book-title').value,
-                series: document.getElementById('book-series').value || null,
-                publisher: document.getElementById('book-publisher').value || null,
-                narrator: document.getElementById('book-narrator').value ? 
-                    document.getElementById('book-narrator').value.split(',').map(n => n.trim()) : 
-                    []
-            };
-            
-            // Call API to add the book
+    const modalsModule = window.appCore?.getModule('modals');
+    if (modalsModule && modalsModule.showAddBookModal) {
+        const authorName = window.authorData ? window.authorData.name : 'Unknown Author';
+        const isNewAuthor = window.authorData ? window.authorData.is_new_author : false;
+        modalsModule.showAddBookModal(authorName, isNewAuthor);
+    } else {
+        console.warn('ModalsModule not available, falling back to basic implementation');
+        // Fallback implementation (simplified version)
+        const title = prompt('Enter book title:');
+        if (title && title.trim()) {
             fetch(`/api/authors/${encodeURIComponent(window.authorData.name)}/books`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(bookData)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title.trim(), series: '', publisher: '', narrator: [] })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show success message
                     alert('Book added successfully!');
-                    // Close modal
-                    modalInstance.hide();
-                    // Reload page to show the new book
                     window.location.reload();
                 } else {
                     alert('Error adding book: ' + (data.message || 'Unknown error'));
@@ -658,17 +674,8 @@ window.showAddBookModal = window.showAddBookModal || function() {
                 console.error('Error adding book:', error);
                 alert('Error adding book: ' + error.message);
             });
-        });
+        }
     }
-    
-    // Show the modal
-    modalInstance.show();
-    
-    // Handle cleanup when modal is hidden
-    modal.addEventListener('hidden.bs.modal', function() {
-        // Remove from DOM after hidden
-        this.remove();
-    });
 };
 document.addEventListener('DOMContentLoaded', () => {
   // The bootstrap.js will handle initialization

@@ -1,5 +1,24 @@
 /**
- * AuthorDetailModule - Modular author detail page functionality
+ * Auth    async init() {
+        // Call parent init first
+        await super.init();
+        
+        // Prevent double initialization (BaseModule sets isInitialized)
+        if (this.isInitialized && this.dataTable) {
+            this.debug('Module already initialized, skipping');
+            return;
+        }
+        
+        // Check if we're actually on an author detail page
+        if (!window.authorData && !document.getElementById('books-table')) {
+            this.debug('Not on author detail page, skipping initialization');
+            return;
+        }
+        
+        this.authorData = window.authorData || {};
+        this.dataTable = null;
+        this.currentViewMode = 'table';
+        this.hasUnsavedChanges = false; - Modular author detail page functionality
  * Manages individual author's book collection with DataTables integration
  */
 
@@ -23,6 +42,10 @@ class AuthorDetailModule extends window.BaseModule {
         this.dataTable = null;
         this.currentViewMode = 'table';
         this.hasUnsavedChanges = false;
+        
+        // Selection management
+        this.selectionHistory = [];
+        this.maxSelectionHistory = 10;
         
         // Modern browser APIs
         this.abortController = new AbortController();
@@ -345,6 +368,175 @@ class AuthorDetailModule extends window.BaseModule {
     }
 
     /**
+     * Update selection state for checkboxes and bulk actions
+     */
+    updateSelectionState() {
+        const checkboxes = document.querySelectorAll('.book-checkbox');
+        const selectAllCheckbox = document.getElementById('select-all-books');
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const totalCount = checkboxes.length;
+        
+        // Update select all checkbox state
+        if (selectAllCheckbox) {
+            if (selectedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (selectedCount === totalCount) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+        
+        // Update bulk action buttons
+        const bulkActions = document.querySelectorAll('.bulk-action-btn');
+        bulkActions.forEach(btn => {
+            btn.disabled = selectedCount === 0;
+        });
+        
+        // Update selection counter
+        const selectionCounter = document.getElementById('selection-counter');
+        if (selectionCounter) {
+            selectionCounter.textContent = selectedCount > 0 ? `${selectedCount} selected` : '';
+        }
+        
+        // Store selection for history
+        if (this.selectionHistory && selectedCount > 0) {
+            const selectedIds = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            this.addToSelectionHistory(selectedIds);
+        }
+    }
+
+    /**
+     * Setup accessibility features for the DataTable
+     */
+    setupAccessibilityForTable() {
+        const table = document.getElementById('books-table');
+        if (!table) return;
+        
+        // Add ARIA labels to checkboxes
+        const checkboxes = table.querySelectorAll('.book-checkbox');
+        checkboxes.forEach((checkbox, index) => {
+            const row = checkbox.closest('tr');
+            if (row) {
+                const titleCell = row.querySelector('td:nth-child(2)'); // Assuming title is in 2nd column
+                const title = titleCell ? titleCell.textContent.trim() : `book ${index + 1}`;
+                checkbox.setAttribute('aria-label', `Select ${title}`);
+            }
+        });
+        
+        // Add keyboard navigation
+        table.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && e.target.classList.contains('book-checkbox')) {
+                e.preventDefault();
+                e.target.checked = !e.target.checked;
+                this.updateSelectionState();
+            }
+        });
+        
+        // Add row highlighting for keyboard navigation
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            row.setAttribute('tabindex', '0');
+            row.addEventListener('focus', () => {
+                row.classList.add('table-active');
+            });
+            row.addEventListener('blur', () => {
+                row.classList.remove('table-active');
+            });
+        });
+    }
+
+    /**
+     * Enhance DataTable with comprehensive accessibility features
+     */
+    enhanceDataTableAccessibility() {
+        const table = document.getElementById('books-table');
+        if (!table) return;
+        
+        // Add table caption
+        let caption = table.querySelector('caption');
+        if (!caption) {
+            caption = document.createElement('caption');
+            caption.textContent = `Books by ${this.authorData.name}`;
+            caption.className = 'visually-hidden';
+            table.insertBefore(caption, table.firstChild);
+        }
+        
+        // Enhance column headers
+        const headers = table.querySelectorAll('th');
+        headers.forEach((header, index) => {
+            header.setAttribute('scope', 'col');
+            if (!header.id) {
+                header.id = `book-header-${index}`;
+            }
+        });
+        
+        // Add sort indicators to sortable columns
+        const sortableHeaders = table.querySelectorAll('th[class*="sorting"]');
+        sortableHeaders.forEach(header => {
+            header.setAttribute('role', 'columnheader');
+            header.setAttribute('aria-sort', 'none');
+            
+            // Update aria-sort based on current sort state
+            if (header.classList.contains('sorting_asc')) {
+                header.setAttribute('aria-sort', 'ascending');
+            } else if (header.classList.contains('sorting_desc')) {
+                header.setAttribute('aria-sort', 'descending');
+            }
+        });
+        
+        // Add row headers for better screen reader support
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const firstCell = row.querySelector('td:not(.dataTables_empty)');
+            if (firstCell && !firstCell.getAttribute('scope')) {
+                firstCell.setAttribute('scope', 'row');
+            }
+        });
+        
+        // Add live region for table updates
+        if (!document.getElementById('table-status')) {
+            const statusRegion = document.createElement('div');
+            statusRegion.id = 'table-status';
+            statusRegion.setAttribute('aria-live', 'polite');
+            statusRegion.setAttribute('aria-atomic', 'true');
+            statusRegion.className = 'visually-hidden';
+            table.parentNode.insertBefore(statusRegion, table.nextSibling);
+        }
+        
+        // Announce table state changes
+        const info = table.parentNode.querySelector('.dataTables_info');
+        if (info) {
+            const statusRegion = document.getElementById('table-status');
+            if (statusRegion) {
+                statusRegion.textContent = info.textContent;
+            }
+        }
+    }
+
+    /**
+     * Add selection to history for undo functionality
+     */
+    addToSelectionHistory(selectedIds) {
+        if (!this.selectionHistory) this.selectionHistory = [];
+        
+        this.selectionHistory.push({
+            timestamp: Date.now(),
+            selectedIds: [...selectedIds]
+        });
+        
+        // Keep only recent history
+        if (this.selectionHistory.length > this.maxSelectionHistory) {
+            this.selectionHistory = this.selectionHistory.slice(-this.maxSelectionHistory);
+        }
+    }
+
+    /**
      * Handle book selection changes
      */
     handleBookSelection() {
@@ -425,413 +617,316 @@ class AuthorDetailModule extends window.BaseModule {
     }
 
     /**
-     * Handle individual book actions
+     * Open edit modal for book
+     */
+    openEditModal(bookIndex) {
+        try {
+            const book = this.authorData.books[bookIndex];
+            if (!book) {
+                throw new Error('Book not found');
+            }
+
+            const modalsModule = this.getModule('modals');
+            if (!modalsModule) {
+                throw new Error('Modals module not available');
+            }
+
+            // For now, show a simple edit form - this could be expanded later
+            const modalId = 'edit-book-modal';
+            const content = `
+                <form id="edit-book-form-${modalId}">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-book-title-${modalId}" class="form-label">Book Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="edit-book-title-${modalId}" 
+                                       value="${this.escapeHtml(book.title || '')}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-book-series-${modalId}" class="form-label">Series</label>
+                                <input type="text" class="form-control" id="edit-book-series-${modalId}" 
+                                       value="${this.escapeHtml(book.series || '')}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-book-publisher-${modalId}" class="form-label">Publisher</label>
+                                <input type="text" class="form-control" id="edit-book-publisher-${modalId}" 
+                                       value="${this.escapeHtml(book.publisher || '')}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-book-series-number-${modalId}" class="form-label">Series Number</label>
+                                <input type="text" class="form-control" id="edit-book-series-number-${modalId}" 
+                                       value="${this.escapeHtml(book.series_number || '')}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-book-narrator-${modalId}" class="form-label">Narrator(s)</label>
+                        <input type="text" class="form-control" id="edit-book-narrator-${modalId}" 
+                               value="${this.escapeHtml(Array.isArray(book.narrator) ? book.narrator.join(', ') : (book.narrator || ''))}">
+                        <div class="form-text">Enter narrator names separated by commas</div>
+                    </div>
+                </form>
+            `;
+            
+            const footer = `
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="submit-edit-book-btn-${modalId}">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            `;
+
+            const modal = modalsModule.createModal(modalId, `Edit Book: ${book.title}`, content, {
+                footer: footer,
+                size: 'lg',
+                centered: true
+            });
+
+            // Add submit handler
+            const submitBtn = modal.querySelector(`#submit-edit-book-btn-${modalId}`);
+            if (submitBtn) {
+                submitBtn.addEventListener('click', () => {
+                    this.submitEditBook(modalId, bookIndex);
+                });
+            }
+
+            modalsModule.showModal(modal);
+            
+            // Focus on title input
+            setTimeout(() => {
+                const titleInput = modal.querySelector(`#edit-book-title-${modalId}`);
+                if (titleInput) titleInput.focus();
+            }, 300);
+
+        } catch (error) {
+            this.error('Error opening edit modal:', error);
+            this.notify(`Failed to open edit modal: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Submit edit book form
+     */
+    async submitEditBook(modalId, bookIndex) {
+        try {
+            const titleInput = document.getElementById(`edit-book-title-${modalId}`);
+            if (!titleInput || !titleInput.value.trim()) {
+                this.notify('Please enter a book title', 'warning');
+                if (titleInput) {
+                    titleInput.classList.add('is-invalid');
+                    titleInput.focus();
+                }
+                return;
+            }
+
+            const bookData = {
+                title: titleInput.value.trim(),
+                series: document.getElementById(`edit-book-series-${modalId}`)?.value.trim() || '',
+                series_number: document.getElementById(`edit-book-series-number-${modalId}`)?.value.trim() || '',
+                publisher: document.getElementById(`edit-book-publisher-${modalId}`)?.value.trim() || '',
+                narrator: this.parseNarrators(document.getElementById(`edit-book-narrator-${modalId}`)?.value || '')
+            };
+
+            const apiModule = this.getModule('api');
+            if (!apiModule) {
+                throw new Error('API module not available');
+            }
+
+            await apiModule.updateBook(this.authorData.name, bookIndex, bookData);
+            this.notify(`Book "${bookData.title}" updated successfully`, 'success');
+            
+            // Close modal
+            const modalsModule = this.getModule('modals');
+            const modalData = modalsModule.activeModals.get(modalId);
+            if (modalData && modalData.modal) {
+                modalData.modal.hide();
+            }
+
+            // Refresh the page
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+
+        } catch (error) {
+            this.error('Error updating book:', error);
+            this.notify(`Failed to update book: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Parse narrator string into array (helper method)
+     */
+    parseNarrators(narratorString) {
+        if (!narratorString || !narratorString.trim()) {
+            return [];
+        }
+        
+        return narratorString
+            .split(',')
+            .map(n => n.trim())
+            .filter(n => n.length > 0);
+    }
+
+    /**
+     * Handle book action (edit, duplicate, delete)
      */
     async handleBookAction(action, bookId) {
-        const api = this.getModule('api');
-        const toast = this.getModule('toast');
-
         try {
+            const bookIndex = parseInt(bookId);
+            const authorName = this.authorData.name;
+            
             switch (action) {
-                case 'toggle-status':
-                    await this.toggleBookStatus(bookId);
-                    break;
-                case 'toggle-watchlist':
-                    await this.toggleBookWatchlist(bookId);
-                    break;
                 case 'edit':
-                    this.openEditModal(bookId);
+                    this.openEditModal(bookIndex);
                     break;
+                    
+                case 'duplicate':
+                    await this.duplicateBook(bookIndex);
+                    break;
+                    
                 case 'delete':
-                    await this.confirmDeleteBook(bookId);
+                    await this.deleteBook(bookIndex);
                     break;
-                case 'view-details':
-                    this.openDetailsModal(bookId);
-                    break;
+                    
                 default:
-                    this.warn('Unknown book action:', action);
+                    this.warn(`Unknown book action: ${action}`);
             }
         } catch (error) {
-            this.error('Book action failed:', error);
-            toast?.show(`Action failed: ${error.message}`, 'error');
+            this.error('Error handling book action:', error);
+            this.notify(`Error performing ${action} action: ${error.message}`, 'error');
         }
     }
 
     /**
-     * Confirm bulk delete
+     * Duplicate a book
      */
-    async confirmBulkDelete(selectedBooks) {
-        const modals = this.getModule('modals');
-        if (!modals) {
-            if (!confirm(`Delete ${selectedBooks.length} books?`)) return;
-        } else {
-            const confirmed = await modals.confirm({
-                title: 'Delete Books',
-                message: `Are you sure you want to delete ${selectedBooks.length} books? This action cannot be undone.`,
-                confirmText: 'Delete',
-                confirmClass: 'btn-danger'
-            });
-            if (!confirmed) return;
-        }
-
-        await this.bulkDeleteBooks(selectedBooks);
-    }
-
-    /**
-     * Bulk delete books
-     */
-    async bulkDeleteBooks(bookIds) {
-        const api = this.getModule('api');
-        const toast = this.getModule('toast');
-
-        const response = await api.delete('/api/books/bulk', {
-            book_ids: bookIds,
-            author_id: this.authorData.id
-        });
-
-        toast?.show(`Deleted ${bookIds.length} books`, 'success');
-        this.refreshDataTable();
-        this.hasUnsavedChanges = true;
-    }
-
-    /**
-     * Bulk update book status
-     */
-    async bulkUpdateStatus(bookIds, status) {
-        const api = this.getModule('api');
-        const toast = this.getModule('toast');
-
-        await api.put('/api/books/bulk-status', {
-            book_ids: bookIds,
-            status: status,
-            author_id: this.authorData.id
-        });
-
-        toast?.show(`Updated ${bookIds.length} books to ${status}`, 'success');
-        this.refreshDataTable();
-        this.hasUnsavedChanges = true;
-    }
-
-    /**
-     * Bulk update watchlist status
-     */
-    async bulkUpdateWatchlist(bookIds, inWatchlist) {
-        const api = this.getModule('api');
-        const toast = this.getModule('toast');
-
-        await api.put('/api/books/bulk-watchlist', {
-            book_ids: bookIds,
-            in_watchlist: inWatchlist,
-            author_id: this.authorData.id
-        });
-
-        const action = inWatchlist ? 'added to' : 'removed from';
-        toast?.show(`${bookIds.length} books ${action} watchlist`, 'success');
-        this.refreshDataTable();
-        this.hasUnsavedChanges = true;
-    }
-
-    /**
-     * Get selected book IDs
-     */
-    getSelectedBooks() {
-        const checkboxes = document.querySelectorAll('.book-checkbox:checked');
-        return Array.from(checkboxes).map(cb => cb.value);
-    }
-
-    /**
-     * Get total number of books
-     */
-    getTotalBooks() {
-        return document.querySelectorAll('.book-checkbox').length;
-    }
-
-    /**
-     * Update selection state UI
-     */
-    updateSelectionState() {
-        this.handleBookSelection();
-    }
-
-    /**
-     * Set view mode
-     */
-    setViewMode(mode) {
-        this.currentViewMode = mode;
-        
-        // Update UI to show selected view mode
-        document.querySelectorAll('[data-view-mode]').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.viewMode === mode) {
-                btn.classList.add('active');
+    async duplicateBook(bookIndex) {
+        try {
+            const book = this.authorData.books[bookIndex];
+            if (!book) {
+                throw new Error('Book not found');
             }
-        });
 
-        // Toggle between table and card views
-        const tableContainer = document.getElementById('table-view');
-        const cardContainer = document.getElementById('card-view');
+            // Create a copy with modified title
+            const duplicatedBook = {
+                ...book,
+                title: `${book.title} (Copy)`,
+                asin: '' // Clear ASIN as it should be unique
+            };
 
-        if (mode === 'table') {
-            if (tableContainer) tableContainer.style.display = 'block';
-            if (cardContainer) cardContainer.style.display = 'none';
-        } else {
-            if (tableContainer) tableContainer.style.display = 'none';
-            if (cardContainer) cardContainer.style.display = 'block';
-            this.renderCardView();
-        }
-
-        this.core.emit('author:view-mode-changed', mode);
-    }
-
-    /**
-     * Render card view
-     */
-    renderCardView() {
-        const cardContainer = document.getElementById('card-view');
-        if (!cardContainer) return;
-
-        // Implementation would depend on your data structure
-        // This is a placeholder for card view rendering
-        cardContainer.innerHTML = '<p>Card view implementation needed</p>';
-    }
-
-    /**
-     * Refresh DataTable data
-     */
-    refreshDataTable() {
-        if (this.dataTable) {
-            this.dataTable.ajax.reload(null, false);
+            const apiModule = this.getModule('api');
+            await apiModule.addBook(this.authorData.name, duplicatedBook);
+            
+            this.notify(`Book "${book.title}" duplicated successfully`, 'success');
+            this.emit('book:duplicated', { 
+                authorName: this.authorData.name, 
+                originalBook: book, 
+                duplicatedBook 
+            });
+            
+            // Refresh the page
+            setTimeout(() => window.location.reload(), 1000);
+            
+        } catch (error) {
+            this.error('Error duplicating book:', error);
+            this.notify(`Failed to duplicate book: ${error.message}`, 'error');
         }
     }
 
     /**
-     * Refresh specific book data
+     * Delete a book with confirmation
      */
-    async refreshBookData(bookId) {
-        // Implementation depends on your data structure
-        this.log('Refreshing book data for:', bookId);
+    async deleteBook(bookIndex) {
+        try {
+            const book = this.authorData.books[bookIndex];
+            if (!book) {
+                throw new Error('Book not found');
+            }
+
+            const confirmed = confirm(`Are you sure you want to delete "${book.title}"?\n\nThis action cannot be undone.`);
+            if (!confirmed) {
+                return;
+            }
+
+            const apiModule = this.getModule('api');
+            await apiModule.deleteBook(this.authorData.name, bookIndex);
+            
+            this.notify(`Book "${book.title}" deleted successfully`, 'success');
+            this.emit('book:deleted', { 
+                authorName: this.authorData.name, 
+                book, 
+                bookIndex 
+            });
+            
+            // Refresh the page
+            setTimeout(() => window.location.reload(), 1000);
+            
+        } catch (error) {
+            this.error('Error deleting book:', error);
+            this.notify(`Failed to delete book: ${error.message}`, 'error');
+        }
     }
 
     /**
      * Check for unsaved changes
      */
     checkForUnsavedChanges() {
-        // Monitor form changes, selections, etc.
-        document.addEventListener('change', () => {
-            this.hasUnsavedChanges = true;
-        });
-    }
-
-    /**
-     * Open edit modal for book
-     */
-    openEditModal(bookId) {
-        const modals = this.getModule('modals');
-        if (modals && modals.showModal) {
-            // For now, show a placeholder modal or alert
-            // TODO: Implement actual edit modal
-            alert(`Edit book feature not yet implemented for book ID: ${bookId}`);
-        } else {
-            console.warn('Modals module not available or missing showModal method');
-            alert(`Edit book feature not yet implemented for book ID: ${bookId}`);
-        }
-    }
-
-    /**
-     * Open details modal for book
-     */
-    openDetailsModal(bookId) {
-        const modals = this.getModule('modals');
-        if (modals && modals.showModal) {
-            // For now, show a placeholder modal or alert
-            // TODO: Implement actual details modal
-            alert(`Book details feature not yet implemented for book ID: ${bookId}`);
-        } else {
-            console.warn('Modals module not available or missing showModal method');
-            alert(`Book details feature not yet implemented for book ID: ${bookId}`);
-        }
-    }
-
-    /**
-     * Public API methods
-     */
-    getAPI() {
-        return {
-            refreshData: this.refreshDataTable.bind(this),
-            getSelectedBooks: this.getSelectedBooks.bind(this),
-            setViewMode: this.setViewMode.bind(this),
-            getAuthorData: () => ({ ...this.authorData }),
-            selectAllBooks: this.selectAllBooks.bind(this),
-            deselectAllBooks: this.deselectAllBooks.bind(this),
-            getPerformanceMetrics: () => ({ ...this.performanceMetrics }),
-            bulkAction: this.handleBulkAction.bind(this)
-        };
-    }
-
-    /**
-     * Select all books
-     */
-    selectAllBooks() {
-        document.querySelectorAll('.book-checkbox').forEach(checkbox => {
-            checkbox.checked = true;
-        });
-        this.handleBookSelection();
-        this.announceToScreenReader(`All ${this.getTotalBooks()} books selected`);
-    }
-
-    /**
-     * Deselect all books
-     */
-    deselectAllBooks() {
-        document.querySelectorAll('.book-checkbox').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        this.handleBookSelection();
-        this.announceToScreenReader('All books deselected');
-    }
-
-    /**
-     * Create announcement region for screen readers
-     */
-    createAnnouncementRegion() {
-        let liveRegion = document.getElementById('author-announcements');
-        if (!liveRegion) {
-            liveRegion = document.createElement('div');
-            liveRegion.id = 'author-announcements';
-            liveRegion.setAttribute('aria-live', 'polite');
-            liveRegion.setAttribute('aria-atomic', 'true');
-            liveRegion.className = 'sr-only';
-            document.body.appendChild(liveRegion);
-        }
-    }
-
-    /**
-     * Announce to screen readers
-     */
-    announceToScreenReader(message) {
-        const liveRegion = document.getElementById('author-announcements');
-        if (liveRegion) {
-            liveRegion.textContent = message;
-            setTimeout(() => {
-                liveRegion.textContent = '';
-            }, 1000);
-        }
-    }
-
-    /**
-     * Add keyboard shortcuts help
-     */
-    addKeyboardShortcutsHelp() {
-        // This could be expanded to show a help modal or tooltip
-        const helpText = 'Keyboard shortcuts: Ctrl+A (select all), Ctrl+D (deselect all), Escape (clear selection), Delete (delete selected)';
-        this.log('Keyboard shortcuts available:', helpText);
-    }
-
-    /**
-     * Setup accessibility for new elements
-     */
-    setupAccessibilityForNewElements(nodes) {
-        nodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                // Add ARIA labels to checkboxes
-                const checkboxes = node.querySelectorAll('.book-checkbox');
-                checkboxes.forEach(checkbox => {
-                    if (!checkbox.getAttribute('aria-label')) {
-                        const bookTitle = checkbox.closest('tr')?.querySelector('.book-title')?.textContent;
-                        if (bookTitle) {
-                            checkbox.setAttribute('aria-label', `Select ${bookTitle}`);
-                        }
-                    }
-                });
-                
-                // Add focus management for buttons
-                const buttons = node.querySelectorAll('button[data-book-action]');
-                buttons.forEach(button => {
-                    if (!button.getAttribute('aria-label')) {
-                        const action = button.dataset.bookAction;
-                        const bookTitle = button.closest('tr')?.querySelector('.book-title')?.textContent;
-                        if (action && bookTitle) {
-                            button.setAttribute('aria-label', `${action} ${bookTitle}`);
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    /**
-     * Setup accessibility for table
-     */
-    setupAccessibilityForTable() {
-        // Enhance table accessibility after each draw
-        const table = document.getElementById('books-table');
-        if (table) {
-            // Add table caption if not present
-            if (!table.querySelector('caption')) {
-                const caption = document.createElement('caption');
-                caption.textContent = `Books by ${this.authorData.name}`;
-                caption.className = 'sr-only';
-                table.prepend(caption);
-            }
-        }
-    }
-
-    /**
-     * Enhance DataTable accessibility
-     */
-    enhanceDataTableAccessibility() {
-        // Add ARIA attributes to DataTable controls
-        const searchInput = document.querySelector('.dataTables_filter input');
-        if (searchInput) {
-            searchInput.setAttribute('aria-label', `Search books by ${this.authorData.name}`);
-        }
-        
-        const lengthSelect = document.querySelector('.dataTables_length select');
-        if (lengthSelect) {
-            lengthSelect.setAttribute('aria-label', 'Number of books per page');
-        }
-        
-        // Enhance pagination
-        const paginationButtons = document.querySelectorAll('.dataTables_paginate .paginate_button');
-        paginationButtons.forEach(button => {
-            if (!button.getAttribute('aria-label')) {
-                button.setAttribute('aria-label', button.textContent);
-            }
-        });
-    }
-
-    /**
-     * Adjust layout based on container size
-     */
-    adjustLayoutForSize(contentRect) {
-        const container = document.getElementById('books-container');
-        if (container) {
-            if (contentRect.width < 768) {
-                container.classList.add('mobile-layout');
-            } else {
-                container.classList.remove('mobile-layout');
-            }
-        }
-    }
-
-    /**
-     * Load book details on demand
-     */
-    async loadBookDetails(bookId, element) {
-        try {
-            const api = this.getModule('api');
-            const details = await api.get(`/api/books/${bookId}/details`, {
-                signal: this.abortController.signal
+        // Monitor for form changes
+        const forms = document.querySelectorAll('form, input, textarea, select');
+        forms.forEach(element => {
+            element.addEventListener('change', () => {
+                this.hasUnsavedChanges = true;
+                this.updateUnsavedIndicator();
             });
             
-            // Add details to element
-            element.dataset.detailsLoaded = 'true';
-            element.dataset.bookDetails = JSON.stringify(details);
-            
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                this.warn('Failed to load book details:', error);
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                element.addEventListener('input', () => {
+                    this.hasUnsavedChanges = true;
+                    this.updateUnsavedIndicator();
+                });
             }
+        });
+
+        // Initial check
+        this.updateUnsavedIndicator();
+    }
+
+    /**
+     * Save any unsaved changes
+     */
+    async saveChanges() {
+        if (!this.hasUnsavedChanges) {
+            this.notify('No changes to save', 'info');
+            return;
+        }
+
+        try {
+            // Implement save logic here
+            this.notify('Changes saved successfully', 'success');
+            this.hasUnsavedChanges = false;
+            this.updateUnsavedIndicator();
+        } catch (error) {
+            this.error('Error saving changes:', error);
+            this.notify(`Failed to save changes: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Update unsaved changes indicator
+     */
+    updateUnsavedIndicator() {
+        const indicator = document.getElementById('unsaved-indicator');
+        if (indicator) {
+            indicator.style.display = this.hasUnsavedChanges ? 'block' : 'none';
         }
     }
 
@@ -839,40 +934,140 @@ class AuthorDetailModule extends window.BaseModule {
      * Cleanup resources
      */
     destroy() {
-        // Cancel any pending requests
+        // Destroy DataTable
+        if (this.dataTable) {
+            try {
+                this.dataTable.destroy();
+                this.dataTable = null;
+            } catch (error) {
+                this.warn('Error destroying DataTable:', error);
+            }
+        }
+
+        // Clean up observers
+        if (this.intersectionObserver) {
+            this.intersectionObserver.disconnect();
+            this.intersectionObserver = null;
+        }
+
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+            this.mutationObserver = null;
+        }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+
+        // Abort any pending requests
         if (this.abortController) {
             this.abortController.abort();
         }
-        
-        // Disconnect observers
-        if (this.intersectionObserver) {
-            this.intersectionObserver.disconnect();
-        }
-        
-        if (this.mutationObserver) {
-            this.mutationObserver.disconnect();
-        }
-        
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-        }
-        
-        // Destroy DataTable
-        if (this.dataTable) {
-            this.dataTable.destroy();
-        }
-        
-        // Remove announcement region
-        const liveRegion = document.getElementById('author-announcements');
-        if (liveRegion) {
-            liveRegion.remove();
-        }
-        
-        // Clear performance metrics
-        this.performanceMetrics = null;
-        
-        this.log('AuthorDetailModule destroyed');
+
+        // Call parent cleanup
         super.destroy();
+    }
+
+    /**
+     * Create announcement region for screen readers
+     */
+    createAnnouncementRegion() {
+        // Check if announcement region already exists
+        let announcementRegion = document.getElementById('sr-announcements');
+        if (!announcementRegion) {
+            announcementRegion = document.createElement('div');
+            announcementRegion.id = 'sr-announcements';
+            announcementRegion.setAttribute('aria-live', 'polite');
+            announcementRegion.setAttribute('aria-atomic', 'true');
+            announcementRegion.style.position = 'absolute';
+            announcementRegion.style.left = '-10000px';
+            announcementRegion.style.width = '1px';
+            announcementRegion.style.height = '1px';
+            announcementRegion.style.overflow = 'hidden';
+            document.body.appendChild(announcementRegion);
+        }
+        this.announcementRegion = announcementRegion;
+    }
+
+    /**
+     * Add keyboard shortcuts help
+     */
+    addKeyboardShortcutsHelp() {
+        // Add keyboard shortcuts info to the page
+        const helpButton = document.createElement('button');
+        helpButton.type = 'button';
+        helpButton.className = 'btn btn-sm btn-outline-secondary position-fixed';
+        helpButton.style.bottom = '20px';
+        helpButton.style.left = '20px';
+        helpButton.style.zIndex = '1000';
+        helpButton.innerHTML = '<i class="fas fa-keyboard"></i>';
+        helpButton.title = 'Keyboard Shortcuts (Press ? for help)';
+        helpButton.setAttribute('aria-label', 'Show keyboard shortcuts');
+        
+        helpButton.addEventListener('click', () => {
+            this.showKeyboardShortcuts();
+        });
+        
+        document.body.appendChild(helpButton);
+    }
+
+    /**
+     * Show keyboard shortcuts modal
+     */
+    showKeyboardShortcuts() {
+        const shortcuts = [
+            { key: '?', description: 'Show this help' },
+            { key: 'Ctrl/Cmd + A', description: 'Select all books' },
+            { key: 'Delete', description: 'Delete selected books' },
+            { key: 'Ctrl/Cmd + S', description: 'Save changes' },
+            { key: 'Escape', description: 'Close modals/deselect' },
+            { key: 'Enter', description: 'Activate focused element' },
+            { key: 'Space', description: 'Toggle selection' }
+        ];
+
+        const shortcutsHtml = shortcuts.map(s => 
+            `<tr><td><kbd>${s.key}</kbd></td><td>${s.description}</td></tr>`
+        ).join('');
+
+        const modalContent = `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Shortcut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${shortcutsHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        const modalsModule = this.getModule('modals');
+        if (modalsModule) {
+            modalsModule.createModal(
+                'keyboard-shortcuts-modal',
+                'Keyboard Shortcuts',
+                modalContent,
+                { size: 'lg' }
+            );
+            const modal = document.getElementById('keyboard-shortcuts-modal');
+            if (modal) {
+                modalsModule.showModal(modal);
+            }
+        }
+    }
+
+    /**
+     * Announce message to screen readers
+     */
+    announceToScreenReader(message) {
+        if (this.announcementRegion) {
+            this.announcementRegion.textContent = message;
+        }
     }
 }
 

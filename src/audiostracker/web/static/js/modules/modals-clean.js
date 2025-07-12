@@ -358,20 +358,8 @@ class ModalsModule extends window.BaseModule {
             // Emit event for other modules
             this.emit('author:added', { authorName });
             
-            // Show a message asking if the user wants to navigate to the author page
-            const confirmNavigation = confirm(`Author "${authorName}" added successfully. Do you want to view the author's page?\n\nNote: This author doesn't have any books yet. You'll be able to add books from the author's page.`);
-            if (confirmNavigation) {
-                // Redirect to the author's page with proper URL encoding
-                // Wait a moment for the server to process the new author
-                setTimeout(() => {
-                    window.location.href = `/authors/${encodeURIComponent(authorName)}`;
-                }, 1000);
-            } else {
-                // If they choose not to navigate, refresh the current page to show the updated author list
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            }
+            // Create a success modal asking about navigation
+            this.showNavigationChoiceModal(authorName);
             
         } catch (error) {
             console.error('Error adding author:', error);
@@ -386,6 +374,307 @@ class ModalsModule extends window.BaseModule {
             
             // Focus back to input for retry
             if (input) input.focus();
+        }
+    }
+
+    /**
+     * Show navigation choice modal after adding an author
+     */
+    showNavigationChoiceModal(authorName) {
+        const modalId = 'navigation-choice-modal';
+        const content = `
+            <div class="text-center mb-4">
+                <div class="avatar avatar-xl bg-success text-white mx-auto mb-3">
+                    <i class="fas fa-check-circle fa-2x"></i>
+                </div>
+                <h4 class="text-success mb-2">Author Added Successfully!</h4>
+                <p class="text-muted mb-4">
+                    <strong>${this.escapeHtml(authorName)}</strong> has been added to your collection.
+                </p>
+            </div>
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Next Steps:</strong> This author doesn't have any books yet. 
+                You can add books from the author's dedicated page.
+            </div>
+        `;
+        
+        const footer = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="fas fa-list me-2"></i>Stay on Authors List
+            </button>
+            <button type="button" class="btn btn-primary" id="navigate-to-author">
+                <i class="fas fa-user-plus me-2"></i>Go to Author Page
+            </button>
+        `;
+
+        const modal = this.createModal(modalId, 'Author Added', content, {
+            footer: footer,
+            centered: true,
+            backdrop: 'static'
+        });
+
+        // Add navigation handler
+        const navigateBtn = modal.querySelector('#navigate-to-author');
+        if (navigateBtn) {
+            navigateBtn.addEventListener('click', () => {
+                // Close modal first
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) bsModal.hide();
+                
+                // Show loading state
+                this.showLoading(true);
+                
+                // Navigate to author page
+                setTimeout(() => {
+                    window.location.href = `/authors/${encodeURIComponent(authorName)}`;
+                }, 500);
+            });
+        }
+
+        // Handle staying on current page
+        modal.addEventListener('hidden.bs.modal', (e) => {
+            // If they dismissed the modal without choosing to navigate, refresh the page
+            if (!e.target.querySelector('#navigate-to-author').clicked) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 300);
+            }
+        });
+
+        this.showModal(modal, { backdrop: 'static' });
+    }
+
+    /**
+     * Show loading overlay
+     */
+    showLoading(show = true) {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+   }
+
+    /**
+     * Show add book modal for author page
+     */
+    showAddBookModal(authorName = null, isNewAuthor = false) {
+        const modalId = 'add-book-modal';
+        
+        const authorDisplayName = authorName || (window.authorData ? window.authorData.name : 'Unknown Author');
+        const isFirstBook = isNewAuthor || (window.authorData && window.authorData.is_new_author);
+        
+        const content = `
+            ${isFirstBook ? `
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Getting Started:</strong> Add your first book for ${this.escapeHtml(authorDisplayName)}. 
+                You can fill out just the title now and add more details later.
+            </div>` : ''}
+            <form id="add-book-form-${modalId}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-title-${modalId}" class="form-label">Book Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="book-title-${modalId}" required 
+                                   placeholder="Enter the book title">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-series-${modalId}" class="form-label">Series</label>
+                            <input type="text" class="form-control" id="book-series-${modalId}" 
+                                   placeholder="Series name (optional)">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-publisher-${modalId}" class="form-label">Publisher</label>
+                            <input type="text" class="form-control" id="book-publisher-${modalId}" 
+                                   placeholder="Publisher name (optional)">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-series-number-${modalId}" class="form-label">Series Number</label>
+                            <input type="text" class="form-control" id="book-series-number-${modalId}" 
+                                   placeholder="Book number in series">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="book-narrator-${modalId}" class="form-label">Narrator(s)</label>
+                    <input type="text" class="form-control" id="book-narrator-${modalId}" 
+                           placeholder="For multiple narrators, separate with commas">
+                    <div class="form-text">Enter narrator names separated by commas (e.g., "John Doe, Jane Smith")</div>
+                </div>
+                <div class="mb-3">
+                    <label for="book-description-${modalId}" class="form-label">Description</label>
+                    <textarea class="form-control" id="book-description-${modalId}" rows="3" 
+                              placeholder="Brief description of the book (optional)"></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-release-date-${modalId}" class="form-label">Release Date</label>
+                            <input type="date" class="form-control" id="book-release-date-${modalId}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="book-asin-${modalId}" class="form-label">ASIN</label>
+                            <input type="text" class="form-control" id="book-asin-${modalId}" 
+                                   placeholder="Amazon Standard Identification Number">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        `;
+        
+        const footer = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="fas fa-times me-2"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-primary" id="submit-book-btn-${modalId}">
+                <i class="fas fa-plus me-2"></i>Add Book
+            </button>
+        `;
+
+        const modal = this.createModal(modalId, 
+            isFirstBook ? `Add First Book for ${authorDisplayName}` : 'Add New Book', 
+            content, {
+            footer: footer,
+            size: 'lg',
+            centered: true
+        });
+
+        // Add form submission handler
+        const submitBtn = modal.querySelector(`#submit-book-btn-${modalId}`);
+        if (submitBtn) {
+            submitBtn.addEventListener('click', () => {
+                this.submitAddBook(modalId, authorDisplayName);
+            });
+        }
+
+        // Add Enter key support for the form
+        const form = modal.querySelector(`#add-book-form-${modalId}`);
+        if (form) {
+            form.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    this.submitAddBook(modalId, authorDisplayName);
+                }
+            });
+        }
+
+        this.showModal(modal);
+        
+        // Focus on title input
+        setTimeout(() => {
+            const titleInput = modal.querySelector(`#book-title-${modalId}`);
+            if (titleInput) titleInput.focus();
+        }, 300);
+    }
+
+    /**
+     * Submit add book form
+     */
+    async submitAddBook(modalId, authorName) {
+        const titleInput = document.getElementById(`book-title-${modalId}`);
+        if (!titleInput || !titleInput.value.trim()) {
+            this.notify('Please enter a book title', 'warning');
+            if (titleInput) {
+                titleInput.classList.add('is-invalid');
+                titleInput.focus();
+            }
+            return;
+        }
+
+        // Clear any previous validation errors
+        titleInput.classList.remove('is-invalid');
+
+        const bookData = {
+            title: titleInput.value.trim(),
+            series: document.getElementById(`book-series-${modalId}`)?.value.trim() || '',
+            series_number: document.getElementById(`book-series-number-${modalId}`)?.value.trim() || '',
+            publisher: document.getElementById(`book-publisher-${modalId}`)?.value.trim() || '',
+            narrator: this.parseNarrators(document.getElementById(`book-narrator-${modalId}`)?.value || ''),
+            description: document.getElementById(`book-description-${modalId}`)?.value.trim() || '',
+            release_date: document.getElementById(`book-release-date-${modalId}`)?.value || '',
+            asin: document.getElementById(`book-asin-${modalId}`)?.value.trim() || ''
+        };
+
+        // Disable submit button
+        const submitButton = document.getElementById(`submit-book-btn-${modalId}`);
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Adding...';
+        }
+
+        try {
+            const apiModule = this.getModule('api');
+            if (!apiModule) {
+                throw new Error('API module not available');
+            }
+
+            const response = await apiModule.addBook(authorName, bookData);
+            this.notify(`Book "${bookData.title}" added successfully`, 'success');
+            
+            // Close modal
+            const modalData = this.activeModals.get(modalId);
+            if (modalData && modalData.modal) {
+                modalData.modal.hide();
+            }
+
+            // Emit event for other modules
+            this.emit('book:added', { authorName, book: bookData });
+            
+            // Refresh the page to show the new book
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Error adding book:', error);
+            this.notify(`Failed to add book: ${error.message}`, 'error');
+            
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-plus me-2"></i>Add Book';
+            }
+            
+            if (titleInput) titleInput.focus();
+        }
+    }
+
+    /**
+     * Parse narrator string into array
+     */
+    parseNarrators(narratorString) {
+        if (!narratorString || !narratorString.trim()) {
+            return [];
+        }
+        
+        return narratorString
+            .split(',')
+            .map(n => n.trim())
+            .filter(n => n.length > 0);
+    }
+
+    /**
+     * Show loading overlay
+     */
+    showLoading(show = true) {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            if (show) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
         }
     }
 
